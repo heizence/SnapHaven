@@ -8,13 +8,15 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { ColumnsPhotoAlbum } from "react-photo-album";
-
+import { useRouter } from "next/navigation";
 import "react-photo-album/columns.css";
 import { Button } from "@/components/ui/button";
 import photos from "./photos";
 import { StyledLink } from "../components";
 
 const Page = () => {
+  const router = useRouter();
+
   const [data, setData] = useState([]); // Array to hold photo/video data
   const [page, setPage] = useState<number>(1); // Page number for infinite scroll
   const [type, setType] = useState<number>(0); // 0 : All, 1 : Pictures, 2: Videos
@@ -50,7 +52,7 @@ const Page = () => {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div>
       {/* <h1 className="text-4xl font-bold text-center mb-6">무료 스톡 사진</h1> */}
       <div>
         <div className="mt-5 mb-5">
@@ -86,7 +88,7 @@ const Page = () => {
         <ColumnsPhotoAlbum
           photos={photos}
           render={{
-            link: (props) => <StyledLink {...props} testProp={"testTxt"} />,
+            link: (props) => <StyledLink {...props} />,
           }}
           defaultContainerWidth={1200}
           columns={(containerWidth) => {
@@ -95,15 +97,11 @@ const Page = () => {
             if (containerWidth < 1200) return 3;
             return 4;
           }}
-          // sizes={{
-          //   size: "1168px",
-          //   sizes: [{ viewport: "(max-width: 1200px)", size: "calc(100vw - 32px)" }],
-          // }}
-
           onClick={({ event, photo }) => {
             // let a link open in a new tab / new window / download
             if (event.shiftKey || event.altKey || event.metaKey) return;
             // prevent the default link behavior
+            router.push(`/photo/${photo.id}`);
             event.preventDefault();
           }}
         />
