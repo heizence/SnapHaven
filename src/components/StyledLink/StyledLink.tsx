@@ -6,16 +6,15 @@ import classes from "./StyledLink.module.css";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/solid";
 
 export default function StyledLink({
+  id,
   href,
   className,
   children,
   testProp,
   ...rest
 }: React.ComponentProps<"a">) {
-  console.log("testProp : ", testProp);
-  console.log("children : ", children);
   return (
-    <div href={href} className={clsx(classes.link, className)} {...rest}>
+    <a href={href} className={clsx(classes.link, className)} {...rest}>
       {children}
 
       {/* <span style={{ position: "absolute", top: 0, right: 0 }}>{testProp}</span> */}
@@ -29,6 +28,6 @@ export default function StyledLink({
           color: "white",
         }}
       /> */}
-    </div>
+    </a>
   );
 }

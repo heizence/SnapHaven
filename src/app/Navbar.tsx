@@ -20,8 +20,8 @@ export default function Navbar() {
 
   const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/about", label: "About" },
-    { href: "/account", label: "Account" },
+    { href: "/upload", label: "Upload" },
+    true ? { href: "/login", label: "Login" } : { href: "/mypage", label: "My" },
   ];
 
   return (
@@ -60,7 +60,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-background shadow-lg">
+        <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg">
           <div className="container mx-auto px-4 py-4 space-y-4">
             {navLinks.map((link) => (
               <Link

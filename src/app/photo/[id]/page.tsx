@@ -1,10 +1,10 @@
 import PhotoRenderer from "@/components/PhotoRenderer";
 
-interface BlogPageProps {
+interface PageProps {
   params: { id: string }; // The dynamic route parameter
 }
 
-export default async function BlogPage({ params }: BlogPageProps) {
+export default async function Page({ params }: PageProps) {
   const { id } = await params;
 
   return (
