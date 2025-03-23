@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
+import debounce from "lodash/debounce";
 import { isValidEmail } from "@/lib/utils";
+import { checkEmailAPI, signupAPI } from "@/lib/APIs";
 
 export default function Page() {
   const [email, setEmail] = useState("");
@@ -11,6 +13,8 @@ export default function Page() {
   const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "available" | "taken">(
     "idle"
   );
+  const [verifiedEmail, setVerifiedEmail] = useState("");
+
   const [password, setPassword] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
 
@@ -19,6 +23,24 @@ export default function Page() {
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
+
+  const onChangeEmail = useCallback(
+    debounce((email: string) => {
+      // 여기서 중복 확인 API 호출
+      if (email !== verifiedEmail && emailStatus !== "idle") {
+        setEmailStatus("idle");
+        setEmailError("");
+      }
+      setEmail(email);
+    }, 300),
+    []
+  );
+
+  // 입력값 변경 시 debounce된 함수 호출
+  const debouncedOnChangeEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    onChangeEmail(e.target.value);
+  };
 
   const checkEmailAvailability = async () => {
     if (!email) {
@@ -33,18 +55,50 @@ export default function Page() {
     setEmailError("");
     setEmailStatus("checking");
     try {
-      const response = await fetch(`/api/auth/checkEmail?email=${email}`);
-      console.log("response : ", response);
-      const data = await response.json();
+      const reqBody = {
+        email: email,
+      };
 
-      setEmailStatus(data.available ? "available" : "taken");
+      const res = await checkEmailAPI(reqBody);
+
+      console.log("res : ", res);
+
+      if (res.success) {
+        setEmailStatus("available");
+        setVerifiedEmail(email);
+      } else if (res.code === 401) {
+        setEmailStatus("taken");
+      }
     } catch (error) {
       console.error("Error checking email:", error);
+      alert("에러가 발생했습니다.");
       setEmailStatus("idle");
     }
   };
 
-  const signUp = async () => {};
+  const signUp = async () => {
+    if (!email) {
+      setEmailError("이메일을 입력해 주세요");
+      return;
+    } else if (emailStatus !== "available") {
+      alert("이메일 중복체크를 해주세요.");
+      return;
+    } else if (!password) {
+      alert("비밀번호를 입력해 주세요");
+      return;
+    } else if (password !== confirmPw) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    const reqBody = {
+      email: email,
+      password: password,
+    };
+
+    const res = await signupAPI(reqBody);
+    console.log("res : ", res);
+  };
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-100px)] bg-gray-100">
@@ -59,7 +113,8 @@ export default function Page() {
               placeholder="name@email.com"
               className="w-full p-1 border border-gray-300 rounded-l-sm"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              //onChange={(e) => setEmail(e.target.value)}
+              onChange={debouncedOnChangeEmail}
             />
             <Button
               className="ml-2 bg-blue-500 text-white px-3 rounded-r-sm"
