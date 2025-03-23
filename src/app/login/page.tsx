@@ -3,10 +3,40 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
+import { isValidEmail } from "@/lib/utils";
 
 export default function Page() {
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "available" | "taken">(
+    "idle"
+  );
+
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
+
+  const login = async () => {
+    if (!email) {
+      setEmailError("이메일을 입력해 주세요");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setEmailError("유효한 이메일 주소를 입력하세요.");
+      return;
+    }
+
+    setEmailStatus("checking");
+    try {
+      // const response = await fetch(`/api/check-email?email=${encodeURIComponent(email)}`);
+      // const data = await response.json();
+      // setEmailStatus(data.available ? "available" : "taken");
+    } catch (error) {
+      console.error("Error checking email:", error);
+      //setEmailStatus("idle");
+    }
+  };
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-100px)] bg-gray-100">
@@ -19,7 +49,16 @@ export default function Page() {
             type="email"
             placeholder="name@email.com"
             className="w-full p-1 border border-1px border-solid rounded-sm"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
+          {emailError && <p className="text-red-500 text-sm mt-1">❌ {emailError}</p>}
+          {emailStatus === "available" && (
+            <p className="text-green-500 text-sm mt-1">✅ Email is available</p>
+          )}
+          {emailStatus === "taken" && (
+            <p className="text-red-500 text-sm mt-1">❌ Email is already taken</p>
+          )}
         </div>
 
         <div className="mb-4">
@@ -29,6 +68,8 @@ export default function Page() {
               type={showPassword ? "text" : "password"}
               placeholder="Password"
               className="w-full p-1 pr-10 border border-1px border-solid rounded-sm"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
             <button
               type="button"
@@ -51,7 +92,13 @@ export default function Page() {
           </a>
         </div>
 
-        <Button className="w-full bg-green-500 hover:bg-green-600 text-white">Log in</Button>
+        <Button
+          className="w-full bg-green-500 hover:bg-green-600 text-white"
+          onClick={login}
+          disabled={emailStatus === "checking"}
+        >
+          Log in
+        </Button>
       </div>
     </div>
   );

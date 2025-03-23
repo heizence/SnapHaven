@@ -1,8 +1,38 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { isValidEmail } from "@/lib/utils";
 
 export default function Page() {
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "available" | "taken">(
+    "idle"
+  );
+
+  const checkEmailAvailability = async () => {
+    if (!email) {
+      setEmailError("이메일을 입력해 주세요");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setEmailError("유효한 이메일 주소를 입력하세요.");
+      return;
+    }
+
+    setEmailStatus("checking");
+    try {
+      const response = await fetch(`/api/check-email?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+
+      setEmailStatus(data.available ? "available" : "taken");
+    } catch (error) {
+      console.error("Error checking email:", error);
+      setEmailStatus("idle");
+    }
+  };
+
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-100px)] bg-gray-100">
       <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
@@ -16,7 +46,16 @@ export default function Page() {
             type="email"
             placeholder="name@email.com"
             className="w-full p-1 border border-1px border-solid rounded-sm"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
+          {emailError && <p className="text-red-500 text-sm mt-1">❌ {emailError}</p>}
+          {emailStatus === "available" && (
+            <p className="text-green-500 text-sm mt-1">✅ Email is available</p>
+          )}
+          {emailStatus === "taken" && (
+            <p className="text-red-500 text-sm mt-1">❌ Email is already taken</p>
+          )}
         </div>
 
         <div className="text-center text-gray-500 text-sm mb-4">
@@ -25,7 +64,10 @@ export default function Page() {
           </a>
         </div>
 
-        <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
+        <Button
+          className="w-full bg-green-500 hover:bg-green-600 text-white"
+          onClick={checkEmailAvailability}
+        >
           Send new password
         </Button>
       </div>
