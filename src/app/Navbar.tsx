@@ -21,11 +21,11 @@ export default function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/upload", label: "Upload" },
-    true ? { href: "/login", label: "Login" } : { href: "/mypage", label: "My" },
+    true ? { href: "/signin", label: "Sign in" } : { href: "/mypage", label: "My" },
   ];
 
   return (
-    <nav className="fixed w-full shadow-sm z-50" style={{ backgroundColor: "#fff" }}>
+    <nav className="fixed w-full shadow-sm z-50 " style={{ backgroundColor: "#fff" }}>
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         {/* Logo */}
         <Link href="/" className="text-2xl font-bold text-primary">
