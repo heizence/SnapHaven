@@ -1,17 +1,28 @@
 import axios from "axios";
+import {
+  CheckEmailRequest,
+  CheckEmailResponse,
+  SignInRequest,
+  SignInResponse,
+  SignUpRequest,
+  SignUpResponse,
+  UploadFileRequest,
+  UploadFileResponse,
+} from "./interfaces";
 //import "../../envConfig.ts";
 
 /** 기본적인 API 요청 method 형식
  * 응답값(성공, 실패)을 return 하도록 되어 있음. await 를 이용하여 값을 받으면 됨.
  * 콜백 함수를 넘겨줘서 응답 수신 후 콜백 함수를 실행하게 할 수도 있음.
  */
-const commonAPI = async (
+
+const commonAPI = async <TRequest, TResponse>(
   needAuth = true,
   method: string = "POST",
   path: string,
-  reqParamsOrBody
-) => {
-  const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "/api/";
+  reqParamsOrBody: TRequest
+): Promise<TResponse> => {
+  const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
   const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
   const token = "your_token_here";
 
@@ -39,8 +50,12 @@ const commonAPI = async (
  * 응답값(성공, 실패)을 return 하도록 되어 있음. await 를 이용하여 값을 받으면 됨.
  * 콜백 함수를 넘겨줘서 응답 수신 후 콜백 함수를 실행하게 할 수도 있음.
  */
-const commonMultipartAPI = async (needAuth, path, formData, callbackSuccess, callbackFailed) => {
-  const ipAddress = process.env.IP_ADDRESS + "/api/";
+const commonMultipartAPI = async <TRequest, TResponse>(
+  needAuth = true,
+  path: string,
+  formData: TRequest
+): Promise<TResponse> => {
+  const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
   const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
   const token = "your_token_here";
 
@@ -78,35 +93,46 @@ const commonMultipartAPI = async (needAuth, path, formData, callbackSuccess, cal
   return axiosInstance({
     baseURL: baseUrl,
     url: path,
-    method: "post",
+    method: "POST",
     headers: {
-      Accept: "application/json",
-      "Content-Type": "multipart/form-data",
+      //"Content-Type": "multipart/form-data",
       Authorization: `Bearer ${token}`,
     },
     data: formData,
     timeout: 80000,
   })
     .then((response) => {
-      if (callbackSuccess) callbackSuccess(response.data);
-      setTimeout(() => {
-        return response.data;
-      }, 1000 * 5);
+      return response.data;
     })
     .catch((error) => {
       console.error(`[commonMultipartAPI] [${path}]error : `, error);
-      if (callbackFailed) callbackFailed(error);
       return error.response.data;
     });
 };
 
-const noAuthGetRequest = (path, reqParamsOrBody) => commonAPI(false, "GET", path, reqParamsOrBody);
-const noAuthPostRequest = (path, reqParamsOrBody) =>
-  commonAPI(false, "POST", path, reqParamsOrBody);
-const getRequest = (path, reqParamsOrBody) => commonAPI(true, "GET", path, reqParamsOrBody);
-const postRequest = (path, reqParamsOrBody) => commonAPI(true, "POST", path, reqParamsOrBody);
-const multipartRequest = (path, formData) => commonMultipartAPI(true, path, formData);
+const noAuthGetRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
+  commonAPI<TRequest, TResponse>(false, "GET", path, reqParamsOrBody);
 
-export const signinAPI = (requestBody) => postRequest("signin", requestBody);
-export const checkEmailAPI = (requestBody) => noAuthPostRequest("checkEmail", requestBody);
-export const signupAPI = (requestBody) => noAuthPostRequest("signup", requestBody);
+const noAuthPostRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
+  commonAPI<TRequest, TResponse>(false, "POST", path, reqParamsOrBody);
+
+const getRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
+  commonAPI<TRequest, TResponse>(true, "GET", path, reqParamsOrBody);
+
+const postRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
+  commonAPI<TRequest, TResponse>(true, "POST", path, reqParamsOrBody);
+
+const multipartRequest = <TRequest, TResponse>(path: string, formData: TRequest) =>
+  commonMultipartAPI<TRequest, TResponse>(true, path, formData);
+
+export const signinAPI = (requestBody: SignInRequest) =>
+  noAuthPostRequest<SignInRequest, SignInResponse>("signin", requestBody);
+
+export const checkEmailAPI = (requestBody: CheckEmailRequest) =>
+  noAuthPostRequest<CheckEmailRequest, CheckEmailResponse>("checkEmail", requestBody);
+
+export const signupAPI = (requestBody: SignUpRequest) =>
+  noAuthPostRequest<SignUpRequest, SignUpResponse>("signup", requestBody);
+
+export const uploadFileAPI = (requestBody: FormData) =>
+  multipartRequest<FormData, UploadFileResponse>("files/upload", requestBody);
