@@ -4,10 +4,13 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import debounce from "lodash/debounce";
+import { useRouter } from "next/navigation";
 import { isValidEmail } from "@/lib/utils";
 import { checkEmailAPI, signupAPI } from "@/lib/APIs";
 
 export default function Page() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "available" | "taken">(
@@ -91,13 +94,23 @@ export default function Page() {
       return;
     }
 
-    const reqBody = {
-      email: email,
-      password: password,
-    };
+    try {
+      const reqBody = {
+        email: email,
+        password: password,
+      };
 
-    const res = await signupAPI(reqBody);
-    console.log("res : ", res);
+      const res = await signupAPI(reqBody);
+      console.log("res : ", res);
+
+      if (res.success) {
+        alert("회원가입이 완료되었습니다.");
+        router.push("signin");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("에러가 발생하였습니다.");
+    }
   };
 
   return (
@@ -157,7 +170,7 @@ export default function Page() {
           <label className="block text-gray-700 text-sm font-medium mb-1">Confirm Password</label>
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm Password"
               className="w-full p-1 pr-10 border border-1px border-solid rounded-sm"
               value={confirmPw}
@@ -174,7 +187,7 @@ export default function Page() {
         </div>
 
         <div className="text-center text-gray-500 text-sm mb-4">
-          <a href="/login" className="hover:underline">
+          <a href="/signin" className="hover:underline">
             Already have an account?
           </a>
         </div>

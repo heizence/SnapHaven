@@ -1,10 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import pool from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
-import { commonResDto } from "@/Dto";
+import { commonResDto } from "@/lib/Dto";
+import { User } from "@/lib/interfaces";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).json({ message: "Method Not Allowed" });
+  if (req.method !== "POST")
+    return res.status(405).json(commonResDto(false, 405, "Method Not Allowed", ""));
   const { email, password } = req.body;
 
   if (!email || !password)
@@ -13,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // 이메일 중복체크
     const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
-    const user = (rows as any)[0];
+    const user = (rows as Array<User>)[0];
 
     if (user) {
       return res
@@ -34,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     );
   } catch (error) {
+    console.error(error);
     res.status(500).json(commonResDto(false, 500, "Error registering user", ""));
   }
 }
