@@ -54,8 +54,8 @@ export default function Page() {
       if (res.code === 404) {
         alert("존재하지 않는 계정입니다.");
       } else if (res.code === 200) {
-        // 토큰 쿠키에 저장하기
-        router.replace("/");
+        router.push("/");
+        router.refresh();
       }
     } catch (error) {
       console.error("Error checking email:", error);

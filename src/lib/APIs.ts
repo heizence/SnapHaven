@@ -16,6 +16,8 @@ import {
  * 콜백 함수를 넘겨줘서 응답 수신 후 콜백 함수를 실행하게 할 수도 있음.
  */
 
+axios.defaults.withCredentials = true;
+
 const commonAPI = async <TRequest, TResponse>(
   needAuth = true,
   method: string = "POST",
@@ -127,6 +129,8 @@ const multipartRequest = <TRequest, TResponse>(path: string, formData: TRequest)
 
 export const signinAPI = (requestBody: SignInRequest) =>
   noAuthPostRequest<SignInRequest, SignInResponse>("signin", requestBody);
+
+export const signoutAPI = () => postRequest<null, null>("signout", null);
 
 export const checkEmailAPI = (requestBody: CheckEmailRequest) =>
   noAuthPostRequest<CheckEmailRequest, CheckEmailResponse>("checkEmail", requestBody);
