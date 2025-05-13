@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import cookie from "cookie";
 import pool from "@/lib/db";
-import { generateRefreshToken, generateToken } from "@/lib/auth";
+import { generateRandomToken, generateJWTToken } from "@/lib/auth";
 import { commonResDto } from "@/lib/Dto";
 import { User } from "@/lib/interfaces";
 
@@ -25,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json(commonResDto(false, 404, "User does not exist", ""));
     }
 
-    const token = generateToken(user.id);
-    const refreshToken = generateRefreshToken();
+    const token = generateJWTToken(user.id);
+    const refreshToken = generateRandomToken();
 
     // set cookie at this point
     // 3) Serialize cookies

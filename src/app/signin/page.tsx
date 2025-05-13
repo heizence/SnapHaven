@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import { isValidEmail } from "@/lib/utils";
 import { signinAPI } from "@/lib/APIs";
-import { hashPassword } from "@/lib/auth";
+import { hashString } from "@/lib/auth";
 
 export default function Page() {
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function Page() {
 
     setEmailStatus("checking");
     try {
-      const hashedPassword = await hashPassword(password);
+      const hashedPassword = await hashString(password);
 
       const res = await signinAPI({ email, password: hashedPassword });
       console.log("signin res : ", res);

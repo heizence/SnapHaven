@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import pool from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
+import { hashString } from "@/lib/auth";
 import { commonResDto } from "@/lib/Dto";
 import { User } from "@/lib/interfaces";
 
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 이메일로 회원가입
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashString(password);
     const [result] = await pool.query("INSERT INTO users (email, password) VALUES (?, ?)", [
       email,
       hashedPassword,
