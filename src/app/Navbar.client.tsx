@@ -5,11 +5,13 @@ import { useState, useEffect, useRef } from "react";
 import { Menu, Moon, Sun, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signoutAPI } from "@/lib/APIs";
 
 export default function Navbar({ authToken }) {
   const router = useRouter();
+  const path = usePathname() || "";
+
   const [isMenuOpen, setIsMenuOpen] = useState(false); // for Hamburger menu bar
   const [isMypageMenuOpen, setIsMypageMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -49,6 +51,9 @@ export default function Navbar({ authToken }) {
     }
   };
 
+  const hiddenRoutes = ["/reset-password"];
+  if (hiddenRoutes.includes(path)) return null;
+
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/upload", label: "Upload" },
@@ -85,7 +90,7 @@ export default function Navbar({ authToken }) {
                 {isMypageMenuOpen && (
                   <div className="absolute top-8 right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-50">
                     <Link
-                      href="/tasks"
+                      href="/test"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       My Account
