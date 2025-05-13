@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { isValidEmail } from "@/lib/utils";
+import { resetPasswordAPI } from "@/lib/APIs";
 
 export default function Page() {
   const [email, setEmail] = useState("");
@@ -23,13 +24,15 @@ export default function Page() {
 
     setEmailStatus("checking");
     try {
-      const response = await fetch(`/api/check-email?email=${encodeURIComponent(email)}`);
-      const data = await response.json();
-
-      setEmailStatus(data.available ? "available" : "taken");
+      const res = await resetPasswordAPI({ email });
+      console.log("res : ", res);
+      if (res.code === 404) {
+        alert("존재하지 않는 계정입니다.");
+      } else if (res.code === 200) {
+        alert("해당 이메일로 재설정 링크를 발송했습니다.");
+      }
     } catch (error) {
       console.error("Error checking email:", error);
-      setEmailStatus("idle");
     }
   };
 
@@ -59,7 +62,7 @@ export default function Page() {
         </div>
 
         <div className="text-center text-gray-500 text-sm mb-4">
-          <a href="/login" className="hover:underline">
+          <a href="/signin" className="hover:underline">
             Remember your password?
           </a>
         </div>

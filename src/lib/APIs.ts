@@ -2,12 +2,14 @@ import axios from "axios";
 import {
   CheckEmailRequest,
   CheckEmailResponse,
+  ResetPasswordRequest,
   SignInRequest,
   SignInResponse,
   SignUpRequest,
   SignUpResponse,
   UploadFileRequest,
   UploadFileResponse,
+  checkResetPwInfoRequest,
 } from "./interfaces";
 //import "../../envConfig.ts";
 
@@ -138,5 +140,11 @@ export const checkEmailAPI = (requestBody: CheckEmailRequest) =>
 export const signupAPI = (requestBody: SignUpRequest) =>
   noAuthPostRequest<SignUpRequest, SignUpResponse>("signup", requestBody);
 
+export const resetPasswordAPI = (requestBody: ResetPasswordRequest) =>
+  noAuthPostRequest<ResetPasswordRequest, null>("resetPassword", requestBody);
+
 export const uploadFileAPI = (requestBody: FormData) =>
   multipartRequest<FormData, UploadFileResponse>("files/upload", requestBody);
+
+export const checkResetPasswordInfoAPI = (requestBody: checkResetPwInfoRequest) =>
+  noAuthPostRequest<checkResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);
