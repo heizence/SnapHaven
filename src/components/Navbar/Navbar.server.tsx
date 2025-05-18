@@ -1,4 +1,3 @@
-// components/Navbar.server.tsx
 import NavbarClient from "./Navbar.client";
 import { cookies } from "next/headers";
 
