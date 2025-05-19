@@ -52,7 +52,7 @@ export default function Page() {
       console.log("signin res : ", res);
 
       if (res.code === 404) {
-        alert("존재하지 않는 계정입니다.");
+        alert("이메일과 비밀번호를 다시 확인해 주세요.");
       } else if (res.code === 200) {
         router.push("/");
         router.refresh();
