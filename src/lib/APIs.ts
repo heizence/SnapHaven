@@ -2,6 +2,8 @@ import axios from "axios";
 import {
   CheckEmailRequest,
   CheckEmailResponse,
+  CheckUsernameRequest,
+  CheckUsernameResponse,
   ResetPasswordRequest,
   SignInRequest,
   SignInResponse,
@@ -136,6 +138,9 @@ export const signoutAPI = () => postRequest<null, null>("signout", null);
 
 export const checkEmailAPI = (requestBody: CheckEmailRequest) =>
   noAuthPostRequest<CheckEmailRequest, CheckEmailResponse>("checkEmail", requestBody);
+
+export const checkUsernameAPI = (requestBody: CheckUsernameRequest) =>
+  noAuthPostRequest<CheckUsernameRequest, CheckUsernameResponse>("checkUsername", requestBody);
 
 export const signupAPI = (requestBody: SignUpRequest) =>
   noAuthPostRequest<SignUpRequest, SignUpResponse>("signup", requestBody);

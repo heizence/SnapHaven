@@ -24,6 +24,14 @@ export interface CheckEmailResponse {
   token: string;
 }
 
+export interface CheckUsernameRequest {
+  username: string;
+}
+
+export interface CheckUsernameResponse {
+  token: string;
+}
+
 export interface ResetPasswordRequest {
   email: string;
 }
