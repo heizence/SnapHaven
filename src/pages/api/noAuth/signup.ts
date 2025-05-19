@@ -7,9 +7,9 @@ import { User } from "@/lib/interfaces";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST")
     return res.status(405).json(commonResDto(false, 405, "Method Not Allowed", ""));
-  const { email, password } = req.body;
+  const { email, password, username } = req.body;
 
-  if (!email || !password)
+  if (!email || !password || !username)
     return res.status(400).json(commonResDto(false, 400, "All fields are required", ""));
 
   try {
@@ -25,10 +25,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 이메일로 회원가입
     const hashedPassword = await hashString(password);
-    const [result] = await pool.query("INSERT INTO users (email, password) VALUES (?, ?)", [
-      email,
-      hashedPassword,
-    ]);
+    const [result] = await pool.query(
+      "INSERT INTO users (email, password, username) VALUES (?, ?, ?)",
+      [email, hashedPassword, username]
+    );
 
     res.status(201).json(
       commonResDto(true, 201, "User has been registered successfully", {

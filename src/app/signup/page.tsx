@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
-import debounce from "lodash/debounce";
 import { useRouter } from "next/navigation";
-import { isValidEmail } from "@/lib/utils";
-import { checkEmailAPI, signupAPI } from "@/lib/APIs";
+import { isValidEmail, isValidUsername } from "@/lib/utils";
+import { checkEmailAPI, checkUsernameAPI, signupAPI } from "@/lib/APIs";
 
 export default function Page() {
   const router = useRouter();
@@ -16,7 +15,12 @@ export default function Page() {
   const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "available" | "taken">(
     "idle"
   );
-  const [verifiedEmail, setVerifiedEmail] = useState("");
+
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">(
+    "idle"
+  );
 
   const [password, setPassword] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -26,24 +30,6 @@ export default function Page() {
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword);
-
-  const onChangeEmail = useCallback(
-    debounce((email: string) => {
-      // 여기서 중복 확인 API 호출
-      if (email !== verifiedEmail && emailStatus !== "idle") {
-        setEmailStatus("idle");
-        setEmailError("");
-      }
-      setEmail(email);
-    }, 300),
-    []
-  );
-
-  // 입력값 변경 시 debounce된 함수 호출
-  const debouncedOnChangeEmail = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-    onChangeEmail(e.target.value);
-  };
 
   const checkEmailAvailability = async () => {
     if (!email) {
@@ -68,7 +54,6 @@ export default function Page() {
 
       if (res.success) {
         setEmailStatus("available");
-        setVerifiedEmail(email);
       } else if (res.code === 401) {
         setEmailStatus("taken");
       }
@@ -79,12 +64,53 @@ export default function Page() {
     }
   };
 
+  const checkUsernameAvailability = async () => {
+    if (!username) {
+      setUsernameError("이름을 입력해 주세요");
+      return;
+    }
+    if (!isValidUsername(username)) {
+      setUsernameError(
+        "사용자 이름은 1자 이상 20자 이하이어야 하고 특수문자를 포함할 수 없습니다."
+      );
+      return;
+    }
+
+    setUsernameError("");
+    setUsernameStatus("checking");
+    try {
+      const reqBody = {
+        username: username,
+      };
+
+      const res = await checkUsernameAPI(reqBody);
+
+      console.log("res : ", res);
+
+      if (res.success) {
+        setUsernameStatus("available");
+      } else if (res.code === 401) {
+        setUsernameStatus("taken");
+      }
+    } catch (error) {
+      console.error("Error checking username:", error);
+      alert("에러가 발생하였습니다.");
+      setUsernameStatus("idle");
+    }
+  };
+
   const signUp = async () => {
     if (!email) {
-      setEmailError("이메일을 입력해 주세요");
+      setEmailError("이메일을 입력해 주세요.");
       return;
     } else if (emailStatus !== "available") {
       alert("이메일 중복체크를 해주세요.");
+      return;
+    } else if (!username) {
+      alert("사용자 이름을 입력해 주세요.");
+      return;
+    } else if (usernameStatus !== "available") {
+      alert("사용자 이름 중복체크를 해주세요.");
       return;
     } else if (!password) {
       alert("비밀번호를 입력해 주세요");
@@ -96,8 +122,9 @@ export default function Page() {
 
     try {
       const reqBody = {
-        email: email,
-        password: password,
+        email,
+        password,
+        username,
       };
 
       const res = await signupAPI(reqBody);
@@ -106,6 +133,8 @@ export default function Page() {
       if (res.success) {
         alert("회원가입이 완료되었습니다.");
         router.push("signin");
+      } else {
+        alert("에러가 발생하였습니다.");
       }
     } catch (error) {
       console.error(error);
@@ -118,6 +147,7 @@ export default function Page() {
       <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-center text-xl font-semibold mb-4">Sign up</h2>
 
+        {/* Email  */}
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-medium mb-1">Email</label>
           <div className="flex">
@@ -126,8 +156,10 @@ export default function Page() {
               placeholder="name@email.com"
               className="w-full p-1 border border-gray-300 rounded-l-sm"
               value={email}
-              //onChange={(e) => setEmail(e.target.value)}
-              onChange={debouncedOnChangeEmail}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailStatus("idle");
+              }}
             />
             <Button
               className="ml-2 bg-blue-500 text-white px-3 rounded-r-sm"
@@ -146,6 +178,37 @@ export default function Page() {
           )}
         </div>
 
+        {/* Username  */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-1">Username</label>
+          <div className="flex">
+            <input
+              placeholder="Username"
+              className="w-full p-1 border border-gray-300 rounded-l-sm"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setUsernameStatus("idle");
+              }}
+            />
+            <Button
+              className="ml-2 bg-blue-500 text-white px-3 rounded-r-sm"
+              onClick={checkUsernameAvailability}
+              disabled={usernameStatus === "checking"}
+            >
+              {usernameStatus === "checking" ? "Checking..." : "Check"}
+            </Button>
+          </div>
+          {usernameError && <p className="text-red-500 text-sm mt-1">❌ {usernameError}</p>}
+          {usernameStatus === "available" && (
+            <p className="text-green-500 text-sm mt-1">✅ Username is available</p>
+          )}
+          {usernameStatus === "taken" && (
+            <p className="text-red-500 text-sm mt-1">❌ Username is already taken</p>
+          )}
+        </div>
+
+        {/* Password */}
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-medium mb-1">Password</label>
           <div className="relative">
@@ -166,6 +229,7 @@ export default function Page() {
           </div>
         </div>
 
+        {/* Confirm password */}
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-medium mb-1">Confirm Password</label>
           <div className="relative">
