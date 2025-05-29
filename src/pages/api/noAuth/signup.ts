@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import pool from "@/lib/db";
-import { hashString } from "@/lib/auth";
+import { hashString } from "@/lib/utils";
 import { commonResDto } from "@/lib/Dto";
 import { User } from "@/lib/interfaces";
 

@@ -1,9 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import cookie from "cookie";
 import pool from "@/lib/db";
-import { generateRandomToken, generateJWTToken } from "@/lib/auth";
+import { generateRandomToken } from "@/lib/utils";
 import { commonResDto } from "@/lib/Dto";
 import { User } from "@/lib/interfaces";
+import { generateJWTToken } from "@/lib/Jwt";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log("signin request!");
@@ -25,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json(commonResDto(false, 404, "User does not exist", ""));
     }
 
-    const token = generateJWTToken(user.id);
+    const token = await generateJWTToken(user.id);
     const refreshToken = generateRandomToken();
 
     // set cookie at this point
@@ -35,18 +36,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 15 * 60, // 15 minutes in seconds
+      maxAge: Number(process.env.JWT_EXPIRACY_TIME),
     });
     const refreshCookie = cookie.serialize("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
     });
 
-    res.setHeader("Set-Cookie", [accessCookie, refreshCookie]);
-    res.status(200).json(commonResDto(true, 200, "signin successful", { token, refreshToken }));
+    const updateUserRes = await pool.query("UPDATE users SET refreshToken = ? WHERE id = ?", [
+      refreshToken,
+      user.id,
+    ]);
+
+    if (updateUserRes) {
+      res.setHeader("Set-Cookie", [accessCookie, refreshCookie]);
+      return res.status(200).json(commonResDto(true, 200, "signin successful", ""));
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json(commonResDto(false, 500, "Error signing in", ""));
