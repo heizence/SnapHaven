@@ -32,6 +32,16 @@ export interface CheckUsernameResponse {
   token: string;
 }
 
+export interface GetProfileInfoResponse {
+  email: string;
+  username: string;
+  profileImgUrl: string;
+}
+
+export interface GetProfileInfoRequest {
+  token: string;
+}
+
 export interface ResetPasswordRequest {
   email: string;
 }
@@ -59,9 +69,28 @@ export interface SendMailRequest {
   html: string;
 }
 
-export interface checkResetPwInfoRequest {
+export interface CheckResetPwInfoRequest {
   email: string;
   token: string;
+}
+
+export interface EditProfileRequest {
+  username: string;
+  email: string;
+  profileImg?: File;
+}
+
+export interface EditPasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface DeleteAccountRequest {
+  currentPassword: string;
+}
+
+export interface ReissueTokenRequest {
+  refreshToken: string;
 }
 
 export interface User {
@@ -76,4 +105,10 @@ export interface ResetPasswordRecord {
   token: string;
   expiresAt: string;
   plainPassword: string;
+}
+
+export interface ProfileInfo {
+  email: string;
+  username: string;
+  profileImgUrl?: string;
 }
