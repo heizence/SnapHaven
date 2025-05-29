@@ -1,9 +1,13 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import pool from "@/lib/db";
-import { generateRandomToken, hashString } from "@/lib/auth";
 import { commonResDto } from "@/lib/Dto";
 import { SendMailRequest, User } from "@/lib/interfaces";
-import { convertToMySQLDatetime, generateRandomString } from "@/lib/utils";
+import {
+  hashString,
+  generateRandomToken,
+  convertToMySQLDatetime,
+  generateRandomString,
+} from "@/lib/utils";
 import { sendEmail } from "@/lib/SMTPmailer";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

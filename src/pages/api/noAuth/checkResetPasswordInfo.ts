@@ -1,9 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import pool from "@/lib/db";
-import { hashString } from "@/lib/auth";
 import { commonResDto } from "@/lib/Dto";
 import { ResetPasswordRecord, User } from "@/lib/interfaces";
-import { convertToMySQLDatetime } from "@/lib/utils";
+import { hashString, convertToMySQLDatetime } from "@/lib/utils";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log(`\ncheckResetPasswordInfo handler`);

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 import { signoutAPI } from "@/lib/APIs";
 
-export default function Navbar({ authToken }) {
+export default function Navbar({ authToken }: { authToken: string }) {
   const router = useRouter();
   const path = usePathname() || "";
 
@@ -101,7 +101,7 @@ export default function Navbar({ authToken }) {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/upload", label: "Upload" },
-    { href: "/signin", label: "Signin", hide: authToken !== null },
+    { href: "/signin", label: "Signin", hide: Boolean(authToken) },
   ];
 
   return (

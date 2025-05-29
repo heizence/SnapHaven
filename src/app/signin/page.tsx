@@ -4,9 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
-import { isValidEmail } from "@/lib/utils";
+import { hashString, isValidEmail } from "@/lib/utils";
 import { signinAPI } from "@/lib/APIs";
-import { hashString } from "@/lib/auth";
 
 export default function Page() {
   const router = useRouter();
@@ -46,6 +45,7 @@ export default function Page() {
 
     setEmailStatus("checking");
     try {
+      console.log("signin password : ", password);
       const hashedPassword = await hashString(password);
 
       const res = await signinAPI({ email, password: hashedPassword });
