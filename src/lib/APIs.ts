@@ -1,9 +1,12 @@
 import axios from "axios";
+
 import {
   CheckEmailRequest,
   CheckEmailResponse,
   CheckUsernameRequest,
   CheckUsernameResponse,
+  GetProfileInfoRequest,
+  GetProfileInfoResponse,
   ResetPasswordRequest,
   SignInRequest,
   SignInResponse,
@@ -11,16 +14,18 @@ import {
   SignUpResponse,
   UploadFileRequest,
   UploadFileResponse,
-  checkResetPwInfoRequest,
+  CheckResetPwInfoRequest,
+  EditProfileRequest,
+  EditPasswordRequest,
+  DeleteAccountRequest,
 } from "./interfaces";
-//import "../../envConfig.ts";
 
 /** 기본적인 API 요청 method 형식
  * 응답값(성공, 실패)을 return 하도록 되어 있음. await 를 이용하여 값을 받으면 됨.
  * 콜백 함수를 넘겨줘서 응답 수신 후 콜백 함수를 실행하게 할 수도 있음.
  */
 
-axios.defaults.withCredentials = true;
+const axiosInstance = axios.create({ withCredentials: true });
 
 const commonAPI = async <TRequest, TResponse>(
   needAuth = true,
@@ -30,15 +35,42 @@ const commonAPI = async <TRequest, TResponse>(
 ): Promise<TResponse> => {
   const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
   const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
-  const token = "your_token_here";
 
-  return axios({
+  const retryRequest = (error) => {
+    console.log("\n[retryRequest]");
+    if (error.config && !error.config.__isRetryRequest) {
+      error.config.__isRetryRequest = true;
+      return axiosInstance.request(error.config);
+    }
+    return Promise.reject(error);
+  };
+
+  // Add a response interceptor
+  axiosInstance.interceptors.response.use(
+    (response) => {
+      console.log("axios interceptors response : ", response);
+      return Promise.resolve(response);
+    },
+    async (error) => {
+      console.log("axios interceptors error : ", error);
+      console.log("path : ", error.request.responseURL || "");
+      if (error.status === 401) {
+        const res = await reissueToken();
+        console.log("reissue token res : ", res);
+        if (res.success) {
+          return retryRequest(error);
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  return axiosInstance({
     baseURL: baseUrl,
     url: path,
     method,
     headers: {
       Accept: "application/json",
-      Authorization: needAuth ? `Bearer ${token}` : undefined,
     },
     data: method === "POST" ? reqParamsOrBody : undefined,
     params: method === "GET" ? reqParamsOrBody : undefined,
@@ -63,46 +95,13 @@ const commonMultipartAPI = async <TRequest, TResponse>(
 ): Promise<TResponse> => {
   const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
   const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
-  const token = "your_token_here";
 
-  const axiosInstance = axios.create();
-
-  // Function to retry the request
-  const retryRequest = (error) => {
-    //glog.debug("\n[requestFileWithInterceptor]retryRequest");
-    if (error.config && !error.config.__isRetryRequest) {
-      error.config.__isRetryRequest = true;
-      return axiosInstance.request(error.config);
-    }
-    return Promise.reject(error);
-  };
-
-  // Add a response interceptor
-  axiosInstance.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response) {
-        // Handle HTTP errors
-        //console.error("requestFile error : ", error);
-      } else if (error.request) {
-        // Retry the request if no response was received
-        //console.error("request error:", error);
-        return retryRequest(error);
-      } else {
-        // Handle other errors
-        //console.error("error.message:", error);
-      }
-      return Promise.reject(error);
-    }
-  );
-
-  return axiosInstance({
+  return axios({
     baseURL: baseUrl,
     url: path,
     method: "POST",
     headers: {
-      //"Content-Type": "multipart/form-data",
-      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
     },
     data: formData,
     timeout: 80000,
@@ -145,11 +144,28 @@ export const checkUsernameAPI = (requestBody: CheckUsernameRequest) =>
 export const signupAPI = (requestBody: SignUpRequest) =>
   noAuthPostRequest<SignUpRequest, SignUpResponse>("signup", requestBody);
 
+export const getProfileInfoAPI = () =>
+  getRequest<null, GetProfileInfoResponse>("getProfileInfo", null);
+
+export const getUserContentsAPI = (requestBody: GetProfileInfoRequest) =>
+  getRequest<GetProfileInfoRequest, GetProfileInfoResponse>("getProfileInfo", requestBody);
+
 export const resetPasswordAPI = (requestBody: ResetPasswordRequest) =>
   noAuthPostRequest<ResetPasswordRequest, null>("resetPassword", requestBody);
 
 export const uploadFileAPI = (requestBody: FormData) =>
   multipartRequest<FormData, UploadFileResponse>("files/upload", requestBody);
 
-export const checkResetPasswordInfoAPI = (requestBody: checkResetPwInfoRequest) =>
-  noAuthPostRequest<checkResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);
+export const checkResetPasswordInfoAPI = (requestBody: CheckResetPwInfoRequest) =>
+  noAuthPostRequest<CheckResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);
+
+export const editProfileAPI = (requestBody: FormData) =>
+  multipartRequest<FormData, null>("editProfile", requestBody);
+
+export const editPasswordAPI = (requestBody: EditPasswordRequest) =>
+  postRequest<EditPasswordRequest, null>("editPassword", requestBody);
+
+export const deleteAccountAPI = (requestBody: DeleteAccountRequest) =>
+  postRequest<DeleteAccountRequest, null>("delete", requestBody);
+
+export const reissueToken = () => noAuthPostRequest<null, null>("reissueToken", null);
