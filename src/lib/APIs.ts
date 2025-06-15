@@ -12,10 +12,8 @@ import {
   SignInResponse,
   SignUpRequest,
   SignUpResponse,
-  UploadFileRequest,
   UploadFileResponse,
   CheckResetPwInfoRequest,
-  EditProfileRequest,
   EditPasswordRequest,
   DeleteAccountRequest,
 } from "./interfaces";
@@ -27,6 +25,28 @@ import {
 
 const axiosInstance = axios.create({ withCredentials: true });
 
+const retryRequest = (error) => {
+  console.log("\n[retryRequest]");
+  if (error.config && !error.config.__isRetryRequest) {
+    error.config.__isRetryRequest = true;
+    return axiosInstance.request(error.config);
+  }
+  return Promise.reject(error);
+};
+
+const reissueTokenRequest = async (error) => {
+  console.log("axios interceptors error : ", error);
+  console.log("path : ", error.request.responseURL || "");
+  if (error.status === 401) {
+    const res = await reissueToken();
+    console.log("reissue token res : ", res);
+    if (res.success) {
+      return retryRequest(error);
+    }
+  }
+  return Promise.reject(error);
+};
+
 const commonAPI = async <TRequest, TResponse>(
   needAuth = true,
   method: string = "POST",
@@ -36,33 +56,9 @@ const commonAPI = async <TRequest, TResponse>(
   const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
   const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
 
-  const retryRequest = (error) => {
-    console.log("\n[retryRequest]");
-    if (error.config && !error.config.__isRetryRequest) {
-      error.config.__isRetryRequest = true;
-      return axiosInstance.request(error.config);
-    }
-    return Promise.reject(error);
-  };
-
-  // Add a response interceptor
   axiosInstance.interceptors.response.use(
-    (response) => {
-      console.log("axios interceptors response : ", response);
-      return Promise.resolve(response);
-    },
-    async (error) => {
-      console.log("axios interceptors error : ", error);
-      console.log("path : ", error.request.responseURL || "");
-      if (error.status === 401) {
-        const res = await reissueToken();
-        console.log("reissue token res : ", res);
-        if (res.success) {
-          return retryRequest(error);
-        }
-      }
-      return Promise.reject(error);
-    }
+    (response) => response,
+    async (error) => reissueTokenRequest(error)
   );
 
   return axiosInstance({
@@ -89,6 +85,41 @@ const commonAPI = async <TRequest, TResponse>(
  * 콜백 함수를 넘겨줘서 응답 수신 후 콜백 함수를 실행하게 할 수도 있음.
  */
 const commonMultipartAPI = async <TRequest, TResponse>(
+  needAuth = true,
+  path: string,
+  formData: TRequest
+): Promise<TResponse> => {
+  const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
+  const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
+  console.log("## commonMultipartAPI");
+  console.log("path : ", path);
+  // Add a response interceptor
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    async (error) => reissueTokenRequest(error)
+  );
+
+  return axiosInstance({
+    baseURL: baseUrl,
+    url: path,
+    method: "POST",
+    headers: {
+      //Accept: "application/json",
+      "Content-Type": "multipart/form-data",
+    },
+    data: formData,
+    timeout: 40000,
+  })
+    .then((response) => {
+      return response.data;
+    })
+    .catch((error) => {
+      console.error(`[commonMultipartAPI] [${path}]error : `, error);
+      return error.response.data;
+    });
+};
+
+const _commonMultipartAPI = async <TRequest, TResponse>(
   needAuth = true,
   path: string,
   formData: TRequest

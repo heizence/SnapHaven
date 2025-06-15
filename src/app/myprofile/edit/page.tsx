@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
+import { CircleUserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { editProfileAPI, getProfileInfoAPI } from "@/lib/APIs";
 import { isValidEmail, isValidUsername } from "@/lib/utils";
 
@@ -11,15 +13,26 @@ export default function EditProfilePage() {
   const [form, setForm] = useState({
     username: "",
     email: "",
-    profileImg: "",
+    profileImg: null,
   });
 
   const [usernameError, setUsernameError] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [profileImgPreview, setProfileImgPreview] = useState<string>("");
+  const [isReady, setIsReady] = useState(false); // ready to render?
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files;
+    if (!selectedFile) return;
+
+    const fileURL = URL.createObjectURL(selectedFile[0]);
+    setForm((prev) => ({ ...prev, profileImg: selectedFile[0] }));
+    setProfileImgPreview(fileURL); // 최대 100 개로 갯수 제한
   };
 
   const handleSubmit = async (e) => {
@@ -47,7 +60,7 @@ export default function EditProfilePage() {
       formData.append("username", form.username);
       formData.append("email", form.email);
       formData.append("profileImg", form.profileImg);
-
+      console.log("formData : ", formData);
       const res = await editProfileAPI(formData);
       console.log("res : ", res);
       if (res.success) {
@@ -70,10 +83,12 @@ export default function EditProfilePage() {
           username: res.data.username,
           email: res.data.email,
         }));
-        //setProfileInfo(res.data);
+
+        setProfileImgPreview(res.data.profileImgUrl);
       } else {
         alert("에러가 발생하였습니다.");
       }
+      setIsReady(true);
     } catch (error) {
       console.log(error);
       alert("에러가 발생하였습니다.");
@@ -84,6 +99,8 @@ export default function EditProfilePage() {
     getProfileInfo();
   }, []);
 
+  if (!isReady) return null;
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -93,12 +110,37 @@ export default function EditProfilePage() {
 
       {/* Profile photo */}
       <div className="flex items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-rose-400 flex items-center justify-center text-white text-2xl font-bold">
+        {/* <div className="w-20 h-20 rounded-full bg-rose-400 flex items-center justify-center text-white text-2xl font-bold">
           D
-        </div>
-        <button type="button" className="bg-green-400 px-4 py-1.5 rounded text-white">
+        </div> */}
+        {profileImgPreview ? (
+          <Image
+            src={profileImgPreview}
+            alt="preview"
+            width={200}
+            height={200}
+            priority={true}
+            className="w-20 h-20 rounded-full"
+            unoptimized
+          />
+        ) : (
+          <CircleUserRound size={80} />
+        )}
+        <input
+          type="file"
+          multiple={false}
+          accept="image/*"
+          className="hidden"
+          id="fileInput"
+          onChange={handleFileChange}
+        />
+
+        <label
+          className="bg-green-400 px-4 py-1.5 rounded text-white hover:cursor-pointer"
+          htmlFor="fileInput"
+        >
           이미지 변경
-        </button>
+        </label>
       </div>
 
       {/* Basic info */}
