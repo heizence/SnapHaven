@@ -97,6 +97,8 @@ export interface User {
   id: number;
   email: string;
   password: string;
+  profileImgUrl?: string;
+  s3fileKey?: string;
 }
 
 export interface ResetPasswordRecord {
