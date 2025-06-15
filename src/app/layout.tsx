@@ -4,7 +4,7 @@
  */
 import ScrollRestoration from "@/components/ScrollRestoration";
 import "./globals.css";
-import Navbar from "./Navbar.server";
+import Navbar from "../components/Navbar/Navbar.server";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // The <html> tag sets the language attribute (lang="en" in this example), which is important for accessibility and SEO.

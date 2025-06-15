@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import cookie from "cookie";
 import pool from "@/lib/db";
 import { DeleteAccountRequest, User } from "@/lib/interfaces";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/Jwt";
 import { commonResDto } from "@/lib/Dto";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { authToken } = req.cookies;
-    const tokenData = verifyToken(authToken);
+    const tokenData = await verifyToken(authToken);
     if (!tokenData) return res.status(401).json(commonResDto(false, 401, "Invalid token!", ""));
 
     const userId = tokenData.id;
