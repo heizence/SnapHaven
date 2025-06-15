@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getProfileInfoAPI } from "@/lib/APIs";
 import { ProfileInfo } from "@/lib/interfaces";
+import { CircleUserRound } from "lucide-react";
 
 export default function MyProfilePage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function MyProfilePage() {
   const [orderType, setOrderType] = useState<"최신순" | "이름순">("최신순");
   const [profileInfo, setProfileInfo] = useState<ProfileInfo>({ email: "", username: "" });
   const [data, setData] = useState([]);
+  const [isReady, setIsReady] = useState(false); // ready to render?
 
   const selectTab = async (item) => {
     setActiveTab(item);
@@ -28,6 +30,8 @@ export default function MyProfilePage() {
       } else {
         alert("에러가 발생하였습니다.");
       }
+
+      setIsReady(true);
     } catch (error) {
       console.log(error);
       alert("에러가 발생하였습니다.");
@@ -38,13 +42,25 @@ export default function MyProfilePage() {
     getProfileInfo();
   }, []);
 
+  if (!isReady) return null;
+
   return (
     <div className="max-w-1xl mx-auto px-4 py-8">
       {/* Profile */}
       <div className="flex flex-col items-center text-center">
-        <div className="w-24 h-24 rounded-full bg-rose-400 flex items-center justify-center text-white text-3xl font-bold">
-          프사
-        </div>
+        {profileInfo.profileImgUrl ? (
+          <Image
+            src={profileInfo.profileImgUrl}
+            alt="preview"
+            width={200}
+            height={200}
+            priority={true}
+            className="w-20 h-20 rounded-full"
+            unoptimized
+          />
+        ) : (
+          <CircleUserRound size={80} />
+        )}
         <h1 className="text-2xl font-semibold mt-4">{profileInfo.username}</h1>
         <button
           className="mt-2 bg-green-500 text-white px-4 py-1.5 rounded"
