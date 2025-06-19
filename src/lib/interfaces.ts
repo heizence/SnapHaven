@@ -54,11 +54,24 @@ export interface UploadFileRequest {
   files: any;
 }
 
-export interface CommonResDto<T> {
-  success: boolean;
-  code: number;
-  message: string;
-  data: T;
+export interface GetContentsRequest {
+  type: string;
+  page: number; // starts with 1
+  keyword?: string;
+}
+
+export interface GetContentsResponse {
+  data: Array<EachContentObj>;
+}
+
+export interface EachContentObj {
+  id: string;
+  name: string;
+  type: string;
+  isInList: boolean;
+  listId: string;
+  fileUrl: string;
+  fileKey: string;
 }
 
 export interface SendMailRequest {
@@ -113,4 +126,11 @@ export interface ProfileInfo {
   email: string;
   username: string;
   profileImgUrl?: string;
+}
+
+export interface CommonResDto<T> {
+  success: boolean;
+  code: number;
+  message: string;
+  data: T;
 }
