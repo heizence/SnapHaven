@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { randomBytes } from "crypto";
 import crypto from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 const HASH_SECRET = process.env.HASH_SECRET || process.env.NEXT_PUBLIC_HASH_SECRET || "";
 
@@ -49,6 +50,11 @@ export const generateRandomString = (length: number = 8): string => {
     code += chars[bytes[i] % chars.length];
   }
   return code;
+};
+
+export const generateUUID = () => {
+  const uuid = uuidv4();
+  return String(uuid);
 };
 
 export const convertToMySQLDatetime = (d: Date): string => {
