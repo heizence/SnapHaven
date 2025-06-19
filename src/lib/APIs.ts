@@ -12,7 +12,7 @@ import {
   SignInResponse,
   SignUpRequest,
   SignUpResponse,
-  UploadFileResponse,
+  GetContentsRequest,
   CheckResetPwInfoRequest,
   EditPasswordRequest,
   DeleteAccountRequest,
@@ -185,7 +185,10 @@ export const resetPasswordAPI = (requestBody: ResetPasswordRequest) =>
   noAuthPostRequest<ResetPasswordRequest, null>("resetPassword", requestBody);
 
 export const uploadFileAPI = (requestBody: FormData) =>
-  multipartRequest<FormData, UploadFileResponse>("files/upload", requestBody);
+  multipartRequest<FormData, null>("files/upload", requestBody);
+
+export const getContentsAPI = (requestBody: GetContentsRequest) =>
+  noAuthGetRequest<GetContentsRequest, null>("getContents", requestBody);
 
 export const checkResetPasswordInfoAPI = (requestBody: CheckResetPwInfoRequest) =>
   noAuthPostRequest<CheckResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);
