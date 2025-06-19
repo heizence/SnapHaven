@@ -4,6 +4,7 @@ import pool from "@/lib/db";
 import { DeleteAccountRequest, User } from "@/lib/interfaces";
 import { verifyToken } from "@/lib/Jwt";
 import { commonResDto } from "@/lib/Dto";
+import { deleteProfileImg } from "@/lib/s3";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ message: "Method Not Allowed" });
@@ -20,6 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = tokenData.id;
     const [rows] = await pool.query("SELECT * FROM users WHERE id = ?", [userId]);
     const user = (rows as Array<User>)[0];
+    const imgFileKey = user?.s3fileKey;
 
     if (!user) {
       return res.status(404).json(commonResDto(false, 404, "User not found", ""));
@@ -32,6 +34,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const deleteRes = await pool.query("DELETE FROM users WHERE id = ?", [userId]);
 
     if (deleteRes) {
+      if (imgFileKey) {
+        deleteProfileImg(imgFileKey).catch((err) => {
+          console.error("Failed to delete old S3 object:", err);
+          console.log("s3 file Key : ", imgFileKey);
+        });
+      }
+
       res.setHeader("Set-Cookie", [
         cookie.serialize("authToken", "", {
           httpOnly: true,
