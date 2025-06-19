@@ -6,7 +6,7 @@ import { File as FormidableFile } from "formidable";
 interface s3MethodReturnObj {
   success: boolean;
   fileKey?: string;
-  profileImgUrl?: string;
+  s3Url?: string;
 }
 
 const s3 = new S3Client({
@@ -40,7 +40,7 @@ export const uploadFile = async (
     return {
       success: true,
       fileKey: fileKey,
-      profileImgUrl: `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
+      s3Url: `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
     };
   } catch (e) {
     console.error(e);
@@ -101,4 +101,13 @@ export const deleteProfileImg = (fileKey: string) => {
 
 export const editProfileImg = (oldFileKey: string, newFile: FormidableFile) => {
   return editFile(process.env.AWS_S3_PROFILE_IMG_BUCKET!, oldFileKey, newFile);
+};
+
+// upload images or video
+export const uploadContents = (file: FormidableFile) => {
+  return uploadFile(process.env.AWS_S3_CONTENTS_BUCKET!, file);
+};
+
+export const deleteContents = (fileKey: string) => {
+  return deleteFile(process.env.AWS_S3_CONTENTS_BUCKET!, fileKey);
 };
