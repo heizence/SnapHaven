@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { Upload, X } from "lucide-react";
 import Image from "next/image";
+import DropZone from "@/components/DropZone";
+import { uploadFileAPI } from "@/lib/APIs";
 
 export default function Page() {
   const [files, setFiles] = useState<File[]>([]);
   const [videoUploaded, setVideoUploaded] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles) return;
-
-    const newFiles = Array.from(selectedFiles);
+  // for dragging
+  const handleFiles = (files: File[]) => {
+    const newFiles = Array.from(files);
     const fileURLs: string[] = [];
 
     newFiles.forEach((file) => {
@@ -27,9 +27,23 @@ export default function Page() {
       setPreviews([fileURLs[0]]);
       setVideoUploaded(true);
     } else if (!videoUploaded) {
-      setFiles((prev) => [...prev, ...newFiles].slice(0, 100));
-      setPreviews((prev) => [...prev, ...fileURLs].slice(0, 100));
+      setFiles((prev) => [...prev, ...newFiles].slice(0, 100)); // 최대 100 개로 갯수 제한
+      setPreviews((prev) => [...prev, ...fileURLs].slice(0, 100)); // 최대 100 개로 갯수 제한
     }
+  };
+
+  // for selecting files
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+    const newFiles = Array.from(selectedFiles);
+    handleFiles(newFiles);
+  };
+
+  const clearAll = () => {
+    setFiles([]);
+    setPreviews([]);
+    setVideoUploaded(false);
   };
 
   const handleRemoveFile = (index: number) => {
@@ -48,14 +62,15 @@ export default function Page() {
     }
 
     const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
+    files.forEach((file, index) => {
+      formData.append("data", file);
     });
 
-    if (res.ok) {
+    const res = await uploadFileAPI(formData);
+
+    console.log("res : ", res);
+
+    if (res.success) {
       alert("업로드 성공!");
       setFiles([]);
       setPreviews([]);
@@ -71,45 +86,56 @@ export default function Page() {
       <p className="text-gray-500">
         한 번에 최대 100개의 사진 또는 1개의 동영상을 업로드할 수 있습니다.
       </p>
-
-      <div className="w-full max-w-2xl p-6 mt-6 text-center border-2 border-dashed rounded-lg bg-gray-50">
-        <Upload className="w-12 h-12 mx-auto text-gray-400" />
-        <p className="mt-2 text-lg font-semibold">파일을 끌어다 놓거나 클릭하여 업로드</p>
-
-        <input
-          type="file"
-          multiple={!videoUploaded}
-          accept="image/*, video/*"
-          className="hidden"
-          id="fileInput"
-          onChange={handleFileChange}
-        />
-        <label
-          htmlFor="fileInput"
-          className="inline-block px-4 py-2 mt-4 text-white bg-green-500 rounded-lg cursor-pointer"
-        >
-          파일 선택
-        </label>
-
-        {previews.length > 0 && (
-          <button
-            className="mb-4 ml-2 px-4 py-2 bg-red-500 text-white rounded-lg"
-            onClick={() => {
-              setFiles([]);
-              setPreviews([]);
-              setVideoUploaded(false);
-            }}
+      <DropZone
+        onFilesSelected={handleFiles}
+        videoUploaded={videoUploaded}
+        clearAll={clearAll}
+        currentCount={files.length}
+      >
+        {({ isDragging, rootProps, inputProps }) => (
+          <div
+            {...rootProps}
+            className={`
+              w-full max-w-2xl p-6 mt-6 text-center border-2 border-dashed rounded-lg
+              bg-gray-50 transition
+              ${isDragging ? "border-blue-400 bg-blue-50" : "border-gray-300"}
+            `}
           >
-            전체 삭제
-          </button>
-        )}
+            <Upload className="w-12 h-12 mx-auto text-gray-400" />
+            <p className="mt-2 text-lg font-semibold">파일을 끌어다 놓거나 클릭하여 업로드</p>
 
-        <p className="mt-2 text-sm text-gray-500">
-          {videoUploaded
-            ? "동영상 1개 업로드됨. 추가 파일 업로드 불가"
-            : `현재 파일 개수: ${files.length}개`}
-        </p>
-      </div>
+            <input
+              type="file"
+              multiple={!videoUploaded}
+              accept="image/*, video/*"
+              className="hidden"
+              id="fileInput"
+              onChange={handleFileChange}
+            />
+            <label
+              htmlFor="fileInput"
+              className="inline-block px-4 py-2 mt-4 text-white bg-green-500 rounded-lg cursor-pointer"
+            >
+              파일 선택
+            </label>
+
+            {previews.length > 0 && (
+              <button
+                className="mb-4 ml-2 px-4 py-2 bg-red-500 text-white rounded-lg"
+                onClick={clearAll}
+              >
+                전체 삭제
+              </button>
+            )}
+
+            <p className="mt-2 text-sm text-gray-500">
+              {videoUploaded
+                ? "동영상 1개 업로드됨. 추가 파일 업로드 불가"
+                : `현재 파일 개수: ${files.length}개`}
+            </p>
+          </div>
+        )}
+      </DropZone>
 
       {/* 미리보기 섹션 */}
       <div
