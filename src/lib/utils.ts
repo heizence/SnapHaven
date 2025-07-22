@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge";
 import { randomBytes } from "crypto";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
+import { EachContent } from "./interfaces";
 
 const HASH_SECRET = process.env.HASH_SECRET || process.env.NEXT_PUBLIC_HASH_SECRET || "";
 
@@ -64,4 +65,41 @@ export const convertToMySQLDatetime = (d: Date): string => {
     " " +
     [pad(d.getUTCHours()), pad(d.getUTCMinutes()), pad(d.getUTCSeconds())].join(":")
   );
+};
+
+export async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  const bitmap = await createImageBitmap(file);
+  return { width: bitmap.width, height: bitmap.height };
+}
+
+export function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: video.videoWidth, height: video.videoHeight });
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load video metadata"));
+    };
+    video.src = url;
+  });
+}
+
+export const renderContentsCb = (file: EachContent) => {
+  const contentsUrl = `https://${process.env.NEXT_PUBLIC_AWS_S3_CONTENTS_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${file.s3fileKey}`;
+
+  return {
+    id: file.id,
+    src: contentsUrl,
+    name: file.name,
+    type: file.type,
+    isInList: file.isInList,
+    listId: file.listId,
+    width: file.width,
+    height: file.height,
+  };
 };
