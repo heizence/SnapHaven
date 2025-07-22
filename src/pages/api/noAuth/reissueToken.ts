@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const [rows] = await pool.query(
-      "SELECT id, email, password, username, profileImgUrl, refreshToken FROM Users WHERE refreshToken = ?",
+      "SELECT id, email, password, username, refreshToken FROM Users WHERE refreshToken = ?",
       [refreshToken]
     );
     const user = (rows as Array<User>)[0];
