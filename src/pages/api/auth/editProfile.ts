@@ -19,7 +19,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const conn = await pool.getConnection();
   let oldKey: string | null = null;
   let newKey: string | undefined;
-  let newUrl: string | undefined;
 
   const { authToken } = req.cookies;
   const tokenData = await verifyToken(authToken);
@@ -50,30 +49,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     : (profileImgRaw as FormidableFile);
 
   if (profileImgFile && profileImgFile.filepath) {
-    //return res.status(400).json({ error: "No file uploaded" });
     hasImgFile = true;
   }
 
-  console.log("hasimgfile : ", hasImgFile);
   try {
     await conn.beginTransaction();
 
     if (hasImgFile) {
-      const [[row]] = await conn.query("SELECT s3FileKey FROM users WHERE id = ?", [tokenData.id]);
-      oldKey = row?.s3FileKey;
+      const [[row]] = await conn.query("SELECT s3fileKey FROM users WHERE id = ?", [tokenData.id]);
+      oldKey = row?.s3fileKey;
 
       const uploadRes = await uploadProfileImg(profileImgFile);
-      if (!uploadRes.success || !uploadRes.fileKey || !uploadRes.profileImgUrl) {
+      if (!uploadRes.success || !uploadRes.fileKey) {
         throw new Error("S3 upload failed");
       }
 
       newKey = uploadRes.fileKey;
-      newUrl = uploadRes.profileImgUrl;
 
-      await conn.query(
-        "UPDATE users SET email = ?, username = ?, profileImgUrl = ?, s3FileKey = ? WHERE id = ?",
-        [email, username, newUrl, newKey, tokenData.id]
-      );
+      await conn.query("UPDATE users SET email = ?, username = ?, s3fileKey = ? WHERE id = ?", [
+        email,
+        username,
+        newKey,
+        tokenData.id,
+      ]);
       await conn.commit();
 
       // 6) Delete old image from S3 (fire and forget)
@@ -95,7 +93,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error(err);
     try {
       await conn.rollback();
-    } catch (e2) {}
+    } catch (e2) {
+      console.error(e2);
+    }
 
     if (newKey) {
       try {
@@ -111,6 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // cleanup temp file
     try {
       fs.unlinkSync(profileImgFile.filepath);
-    } catch (e2) {}
+    } catch (e2) {
+      console.error(e2);
+    }
   }
 }
