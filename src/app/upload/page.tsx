@@ -5,28 +5,62 @@ import { Upload, X } from "lucide-react";
 import Image from "next/image";
 import DropZone from "@/components/DropZone";
 import { uploadFileAPI } from "@/lib/APIs";
+import { getImageDimensions, getVideoDimensions } from "@/lib/utils";
+import Checkbox from "@/components/ui/Checkbox";
+
+interface FileToUpload {
+  fileOrigin: File;
+  name: string;
+  size: number;
+  type: string;
+  width: number;
+  height: number;
+}
 
 export default function Page() {
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FileToUpload[]>([]);
   const [videoUploaded, setVideoUploaded] = useState(false);
+  const [isList, setIsList] = useState(false);
   const [previews, setPreviews] = useState<string[]>([]);
 
-  // for dragging
-  const handleFiles = (files: File[]) => {
-    const newFiles = Array.from(files);
+  const handleFiles = async (files: File[]) => {
     const fileURLs: string[] = [];
 
-    newFiles.forEach((file) => {
-      const fileURL = URL.createObjectURL(file);
-      fileURLs.push(fileURL);
-    });
+    const newFiles = await Promise.all(
+      files.map(async (file) => {
+        let dims = { width: 0, height: 0 };
+
+        // just pushing fileURL for preivew
+        const fileURL = URL.createObjectURL(file);
+        fileURLs.push(fileURL);
+
+        try {
+          if (file.type.startsWith("image/")) {
+            dims = await getImageDimensions(file);
+          } else if (file.type.startsWith("video/")) {
+            dims = await getVideoDimensions(file);
+          }
+        } catch (err) {
+          console.warn(`Could not read dimensions for ${file.name}:`, err);
+        }
+
+        return {
+          fileOrigin: file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          width: dims.width,
+          height: dims.height,
+        };
+      })
+    );
 
     // 동영상 포함 여부 확인
     if (newFiles.some((file) => file.type.startsWith("video/"))) {
       setFiles([newFiles[0]]);
       setPreviews([fileURLs[0]]);
       setVideoUploaded(true);
-    } else if (!videoUploaded) {
+    } else {
       setFiles((prev) => [...prev, ...newFiles].slice(0, 100)); // 최대 100 개로 갯수 제한
       setPreviews((prev) => [...prev, ...fileURLs].slice(0, 100)); // 최대 100 개로 갯수 제한
     }
@@ -44,6 +78,7 @@ export default function Page() {
     setFiles([]);
     setPreviews([]);
     setVideoUploaded(false);
+    setIsList(false);
   };
 
   const handleRemoveFile = (index: number) => {
@@ -52,6 +87,10 @@ export default function Page() {
 
     if (videoUploaded) {
       setVideoUploaded(false);
+    }
+
+    if (files.length <= 2) {
+      setIsList(false);
     }
   };
 
@@ -62,8 +101,11 @@ export default function Page() {
     }
 
     const formData = new FormData();
-    files.forEach((file, index) => {
-      formData.append("data", file);
+    formData.append("isList", isList);
+
+    files.forEach((file) => {
+      formData.append("data", file.fileOrigin);
+      formData.append("metadata", JSON.stringify(file));
     });
 
     const res = await uploadFileAPI(formData);
@@ -75,6 +117,7 @@ export default function Page() {
       setFiles([]);
       setPreviews([]);
       setVideoUploaded(false);
+      setIsList(false);
     } else {
       alert("업로드 실패.");
     }
@@ -92,7 +135,7 @@ export default function Page() {
         clearAll={clearAll}
         currentCount={files.length}
       >
-        {({ isDragging, rootProps, inputProps }) => (
+        {({ isDragging, rootProps }) => (
           <div
             {...rootProps}
             className={`
@@ -111,6 +154,7 @@ export default function Page() {
               className="hidden"
               id="fileInput"
               onChange={handleFileChange}
+              disabled={videoUploaded}
             />
             <label
               htmlFor="fileInput"
@@ -128,11 +172,19 @@ export default function Page() {
               </button>
             )}
 
-            <p className="mt-2 text-sm text-gray-500">
-              {videoUploaded
-                ? "동영상 1개 업로드됨. 추가 파일 업로드 불가"
-                : `현재 파일 개수: ${files.length}개`}
-            </p>
+            <div className="flex flex-col items-center">
+              <p className="mt-2 mb-2 text-lm text-gray-500">
+                {videoUploaded
+                  ? "동영상 1개 첨부됨. 추가 파일 첨부 불가"
+                  : `현재 파일 개수: ${files.length}개`}
+              </p>
+              <Checkbox
+                label="묶음으로 업로드"
+                disabled={videoUploaded || files.length < 2}
+                checked={isList}
+                onChange={setIsList}
+              />
+            </div>
           </div>
         )}
       </DropZone>
@@ -161,7 +213,7 @@ export default function Page() {
                 unoptimized
               />
             ) : (
-              <video src={preview} controls className="w-full max-w-[600px] rounded-lg shadow-md" />
+              <video src={preview} className="w-full max-w-[600px] rounded-lg shadow-md" />
             )}
             <button
               className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
@@ -173,7 +225,7 @@ export default function Page() {
         ))}
       </div>
 
-      <button onClick={handleUpload} className="px-4 py-2 mt-6 text-white bg-blue-600 rounded-lg">
+      <button onClick={handleUpload} className="px-4 py-2 mt-5 text-white bg-blue-600 rounded-lg">
         Upload
       </button>
     </div>

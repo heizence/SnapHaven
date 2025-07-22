@@ -43,6 +43,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   console.log("fields : ", fields);
   console.log("files : ", files);
 
+  const isList = fields.isList[0] === "true";
+  console.log("isList : ", isList);
+
+  //return res.status(400).json(commonResDto(false, 500, "Upload failed", ""));
+
   const uploadedFiles = [];
 
   // ── Upload to S3 (parallel) ─────────────────────────────────
@@ -51,7 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json(commonResDto(false, 400, "No files!", ""));
     }
 
-    const isInList = files.data.length > 1 ? 1 : 0;
+    //const isInList = files.data.length > 1 ? 1 : 0;
+    const isInList = isList ? 1 : 0;
     const listId = isInList ? generateUUID() : undefined;
 
     await Promise.all(
@@ -62,12 +68,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         uploadedFiles.push({
           name: file.originalFilename,
-          type: file.mimetype.split("/")[0], // image || video
+          type: file.mimetype,
           size: file.size,
           isInList,
           listId,
           index: _index,
-          s3Url: uploadRes.s3Url,
           key: uploadRes.fileKey,
         });
       })
@@ -90,20 +95,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await conn.beginTransaction();
 
     let contentId;
-    for (const file of uploadedFiles) {
+    const metadata = fields.metadata || [];
+    console.log("metadata : ", metadata);
+    for (let i = 0; i < uploadedFiles.length; i++) {
+      const file = uploadedFiles[i];
+      const info = JSON.parse(metadata[i]);
+      console.log("info : ", info);
       contentId = generateUUID();
 
       await conn.query(
-        "INSERT INTO MediaFiles (id, name, `size`, `type`, `isInList`, listId, `index`, fileUrl, s3fileKey, uploadedAt) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+        "INSERT INTO MediaFiles (id, name, `size`, width, height, `type`, `isInList`, listId, `index`, s3fileKey, uploadedAt) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
         [
           contentId,
           file.name,
           file.size,
+          info.width,
+          info.height,
           file.type,
           file.isInList,
           file.listId,
           file.index,
-          file.s3Url,
           file.key,
         ]
       );
