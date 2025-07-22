@@ -3,48 +3,97 @@
  * The file page.tsx in the src/app directory corresponds to the / route in your application.
  * To create a new route, simply create a new folder with a page.tsx file inside.
  */
-
 "use client";
-import React from "react";
-import { useState, useEffect } from "react";
-import { ColumnsPhotoAlbum } from "react-photo-album";
-import { useRouter } from "next/navigation";
-import "react-photo-album/columns.css";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import photos from "./photos";
-import { StyledLink } from "../components";
+import { getContentsAPI } from "@/lib/APIs";
+import { EachContent, GetContentsRequest } from "@/lib/interfaces";
+import RenderAlbum from "@/components/RenderAlbum";
+import { renderContentsCb } from "@/lib/utils";
 
 const Page = () => {
-  const router = useRouter();
-
-  const [data, setData] = useState([]); // Array to hold photo/video data
+  const [data, setData] = useState<Array<EachContent>>([]); // Array to hold photo/video data
   const [page, setPage] = useState<number>(1); // Page number for infinite scroll
-  const [type, setType] = useState<number>(0); // 0 : All, 1 : Pictures, 2: Videos
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLastPage, setIsLastPage] = useState<boolean>(false);
+  const [type, setType] = useState<"all" | "image" | "video">("all");
+
+  const throttleTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch media items
-  const fetchMedia = async (pageNum: number) => {
+  const getData = async (isRefresh = false) => {
+    console.log("#getData");
+
     try {
-      //const response = await fetch(`/api/media?page=${pageNum}`);
-      //const data = await response.json();
-      //setData((prev) => [...prev, ...data]); // Append new items
+      setIsLoading(true);
+      const params: GetContentsRequest = {
+        type,
+        page: isRefresh ? 1 : page,
+        keyword: "",
+      };
+
+      const res = await getContentsAPI(params);
+      console.log("res : ", res);
+
+      if (res?.success) {
+        const contents = res.data.map((file: EachContent) => renderContentsCb(file));
+
+        if (isRefresh) {
+          setData(contents);
+          setPage(1);
+        } else {
+          setData((prev) => [...prev, ...contents]); // Append new items
+        }
+
+        if (res.data.length < 20) {
+          setIsLastPage(true);
+        }
+      }
+      setIsLoading(false);
     } catch (error) {
       console.error("Failed to fetch media:", error);
+      setIsLoading(false);
     }
   };
 
-  // Handle infinite scroll
-  const handleScroll = () => {
-    if (
-      window.innerHeight + document.documentElement.scrollTop >=
-      document.documentElement.offsetHeight - 100
-    ) {
-      setPage((prev) => prev + 1);
+  // The handleScroll function is now wrapped in throttling logic.
+  const handleScroll = useCallback(() => {
+    // If a throttle timer is already running, do nothing.
+    if (throttleTimeout.current) {
+      return;
     }
-  };
+
+    // If there's no active timer, set one.
+    throttleTimeout.current = setTimeout(() => {
+      // The actual logic runs inside the timeout callback.
+      if (isLastPage || isLoading) {
+        // Clear the timer and exit if we shouldn't fetch.
+        throttleTimeout.current = null;
+        return;
+      }
+
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+        document.documentElement.offsetHeight - 10
+      ) {
+        console.log("Threshold reached, fetching next page...");
+        setPage((prev) => prev + 1);
+      }
+
+      // Clear the ref so a new timer can be set on the next scroll event.
+      throttleTimeout.current = null;
+    }, 500); // Throttle interval: 200 milliseconds
+  }, [isLastPage, isLoading]); // Dependencies are still needed for the logic inside the timeout.
 
   useEffect(() => {
-    fetchMedia(page);
+    if (!isLastPage) {
+      getData();
+    }
   }, [page]);
+
+  useEffect(() => {
+    getData(true);
+  }, [type]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
@@ -53,58 +102,38 @@ const Page = () => {
 
   return (
     <div>
-      {/* <h1 className="text-4xl font-bold text-center mb-6">무료 스톡 사진</h1> */}
       <div>
         <div className="mt-5 mb-5">
           <Button
             className="contents-type-btn"
-            id={type === 0 ? "contents-type-btn-selected" : ""}
+            id={type === "all" ? "contents-type-btn-selected" : ""}
             onClick={() => {
-              setType(0);
+              setType("all");
             }}
           >
             <span>All</span>
           </Button>
           <Button
             className="contents-type-btn"
-            id={type === 1 ? "contents-type-btn-selected" : ""}
+            id={type === "image" ? "contents-type-btn-selected" : ""}
             onClick={() => {
-              setType(1);
+              setType("image");
             }}
           >
             <span>Pictures</span>
           </Button>
           <Button
             className="contents-type-btn"
-            id={type === 2 ? "contents-type-btn-selected" : ""}
+            id={type === "video" ? "contents-type-btn-selected" : ""}
             onClick={() => {
-              setType(2);
+              setType("video");
             }}
           >
             <span>Video</span>
           </Button>
         </div>
 
-        <ColumnsPhotoAlbum
-          photos={photos}
-          render={{
-            link: (props) => <StyledLink {...props} />,
-          }}
-          defaultContainerWidth={1200}
-          columns={(containerWidth) => {
-            if (containerWidth < 400) return 1;
-            if (containerWidth < 800) return 2;
-            if (containerWidth < 1200) return 3;
-            return 4;
-          }}
-          onClick={({ event, photo }) => {
-            // let a link open in a new tab / new window / download
-            if (event.shiftKey || event.altKey || event.metaKey) return;
-            // prevent the default link behavior
-            router.push(`/photo/${photo.id}`);
-            event.preventDefault();
-          }}
-        />
+        <RenderAlbum data={data} />
       </div>
     </div>
   );
