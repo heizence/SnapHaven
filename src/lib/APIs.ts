@@ -16,6 +16,8 @@ import {
   CheckResetPwInfoRequest,
   EditPasswordRequest,
   DeleteAccountRequest,
+  GetEachContentRequest,
+  GetCollectionRequest,
 } from "./interfaces";
 
 /** 기본적인 API 요청 method 형식
@@ -76,7 +78,7 @@ const commonAPI = async <TRequest, TResponse>(
       return response.data;
     })
     .catch((error) => {
-      return error.response.data;
+      return error.response?.data;
     });
 };
 
@@ -109,33 +111,6 @@ const commonMultipartAPI = async <TRequest, TResponse>(
     },
     data: formData,
     timeout: 40000,
-  })
-    .then((response) => {
-      return response.data;
-    })
-    .catch((error) => {
-      console.error(`[commonMultipartAPI] [${path}]error : `, error);
-      return error.response.data;
-    });
-};
-
-const _commonMultipartAPI = async <TRequest, TResponse>(
-  needAuth = true,
-  path: string,
-  formData: TRequest
-): Promise<TResponse> => {
-  const ipAddress = process.env.NEXT_PUBLIC_IP_ADDRESS + "api/";
-  const baseUrl = needAuth ? ipAddress + "auth/" : ipAddress + "noAuth/";
-
-  return axios({
-    baseURL: baseUrl,
-    url: path,
-    method: "POST",
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-    data: formData,
-    timeout: 80000,
   })
     .then((response) => {
       return response.data;
@@ -189,6 +164,12 @@ export const uploadFileAPI = (requestBody: FormData) =>
 
 export const getContentsAPI = (requestBody: GetContentsRequest) =>
   noAuthGetRequest<GetContentsRequest, null>("getContents", requestBody);
+
+export const GetEachContentAPI = (requestBody: GetEachContentRequest) =>
+  noAuthGetRequest<GetEachContentRequest, null>("getEachContent", requestBody);
+
+export const GetCollectionAPI = (requestBody: GetCollectionRequest) =>
+  noAuthGetRequest<GetCollectionRequest, null>("getCollection", requestBody);
 
 export const checkResetPasswordInfoAPI = (requestBody: CheckResetPwInfoRequest) =>
   noAuthPostRequest<CheckResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);

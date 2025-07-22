@@ -1,3 +1,4 @@
+/******************* Request & Response Objects ******************/
 export interface SignInRequest {
   email: string;
   password: string;
@@ -60,6 +61,15 @@ export interface GetContentsRequest {
   keyword?: string;
 }
 
+export interface GetEachContentRequest {
+  id: string;
+}
+
+export interface GetCollectionRequest {
+  id: string;
+  page: number; // starts with 1
+}
+
 export interface GetContentsResponse {
   data: Array<EachContentObj>;
 }
@@ -106,6 +116,14 @@ export interface ReissueTokenRequest {
   refreshToken: string;
 }
 
+export interface CommonResDto<T> {
+  success: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
+
+/******************* Data ******************/
 export interface User {
   id: number;
   email: string;
@@ -128,9 +146,13 @@ export interface ProfileInfo {
   profileImgUrl?: string;
 }
 
-export interface CommonResDto<T> {
-  success: boolean;
-  code: number;
-  message: string;
-  data: T;
+export interface EachContent {
+  id: string | number;
+  name: string;
+  src: string;
+  type: string;
+  isInList: number;
+  listId: string;
+  width: number;
+  height: number;
 }
