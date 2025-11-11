@@ -6,7 +6,17 @@ const AWS_S3_CONTENTS_URL = `https://${AWS_S3_CONTENTS_BUCKET}.s3.${AWS_REGION}.
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   images: {
-    remotePatterns: [new URL(`${AWS_S3_CONTENTS_URL}/**`)],
+    remotePatterns: [
+      new URL(`${AWS_S3_CONTENTS_URL}/**`),
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+      },
+    ],
   },
 
   async headers() {
