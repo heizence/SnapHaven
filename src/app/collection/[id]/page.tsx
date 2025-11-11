@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Download, Heart, Star, Check, UserPlus } from "lucide-react";
@@ -22,11 +22,13 @@ interface AlbumDetail {
   };
 }
 
+const PAGE_LIMIT = 20;
+
 async function getAlbumDetails(id: string): Promise<AlbumDetail | null> {
   console.log(`Fetching ALUBM details for ID: ${id}...`);
 
   // 앨범용 목 데이터 생성기
-  const generateAlbumImages = (count: number): Photo[] => {
+  const generateAlbumImages = (count = 1000): Photo[] => {
     const images: Photo[] = [];
     const ratios = [
       [600, 400],
@@ -59,7 +61,7 @@ async function getAlbumDetails(id: string): Promise<AlbumDetail | null> {
   mockDatabase.set("seoul-autumn", {
     id: "seoul-autumn",
     type: "ALBUM",
-    images: generateAlbumImages(12), // 12장의 이미지 생성
+    images: generateAlbumImages(), // 12장의 이미지 생성
     title: "서울숲의 가을",
     description:
       "가을이 절정에 달했을 때 서울숲의 다채로운 색감과 평화로운 분위기를 담은 사진 모음입니다. 모든 사진은 Sony A7III로 촬영되었으며, 계절의 아름다움을 최대한 살리기 위해 다양한 각도와 빛 조건을 탐색했습니다.",
@@ -84,6 +86,10 @@ export default function CollectionDetailPage() {
 
   const [albumDetail, setAlbumDetail] = useState<AlbumDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [displayedItems, setDisplayedItems] = useState<Photo[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isCollected, setIsCollected] = useState(false);
@@ -93,17 +99,54 @@ export default function CollectionDetailPage() {
   const [startIndex, setStartIndex] = useState(0); // 클릭한 이미지 인덱스
 
   // 데이터 페칭
+  // 데이터 페칭 (기존과 동일)
   useEffect(() => {
     if (!id) return;
     async function loadData() {
       setIsLoading(true);
       const data = await getAlbumDetails(id);
       setAlbumDetail(data);
+      if (data && data.images) {
+        const firstPageItems = data.images.slice(0, PAGE_LIMIT);
+        setDisplayedItems(firstPageItems);
+        setPage(2);
+        setHasMore(firstPageItems.length < data.images.length);
+      }
       setIsExpanded(false);
-      setIsLoading(false);
+      setIsLoading(false); // [정상] 'isLoading'만 해제
     }
     loadData();
   }, [id]);
+
+  // "더 보기" 핸들러 (기존과 동일)
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore || !albumDetail || !albumDetail.images || isLoading) return;
+    setIsLoadingMore(true); // [정상] 'isLoadingMore' 사용
+
+    const start = (page - 1) * PAGE_LIMIT;
+    const end = page * PAGE_LIMIT;
+    const newItems = albumDetail.images.slice(start, end);
+
+    setTimeout(() => {
+      setDisplayedItems((prev) => [...prev, ...newItems]);
+      setPage((prev) => prev + 1);
+      setHasMore(end < albumDetail.images.length);
+      setIsLoadingMore(false); // [정상] 'isLoadingMore' 해제
+    }, 500);
+  }, [isLoadingMore, hasMore, page, albumDetail, isLoading]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop + 100 >=
+        document.documentElement.offsetHeight
+      ) {
+        handleLoadMore();
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleLoadMore]);
 
   // 로딩 및 404
   if (isLoading) {
@@ -256,7 +299,7 @@ export default function CollectionDetailPage() {
           <div className="p-2 md:p-6 md:pt-0">
             {/* 그리드 영역 패딩 */}
             <MasonryPhotoAlbum
-              photos={photos}
+              photos={displayedItems}
               // [핵심] pager.tsx에서 가져온 설정 (메인 페이지와 동일한 Masonry)
               columns={(containerWidth) => {
                 if (containerWidth < 600) return 2;

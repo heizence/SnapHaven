@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MasonryPhotoAlbum } from "react-photo-album";
 import "react-photo-album/masonry.css";
 import { useRouter } from "next/navigation";
 
-// 1. (데이터 타입 정의) - (기존과 동일)
 interface MediaItemDto {
   id: number;
   type: "IMAGE" | "VIDEO";
   title: string;
   urls: {
-    small: string; // [중요] 비디오 타입도 이 URL을 사용합니다.
+    small: string;
     medium: string;
     large: string;
   };
@@ -19,7 +18,7 @@ interface MediaItemDto {
   height: number;
 }
 
-// 2. [수정됨] 200개의 전체 목(Mock) 데이터를 생성하는 함수 (getMediaDatabase)
+// 1000개의 전체 목(Mock) 데이터를 생성하는 함수 (getMediaDatabase)
 async function getMediaDatabase(): Promise<MediaItemDto[]> {
   console.log("Fetching media database... (using extended mock data generator)");
 
@@ -56,12 +55,12 @@ async function getMediaDatabase(): Promise<MediaItemDto[]> {
     return type === "IMAGE" ? "333" : "CCC";
   };
 
-  for (let i = 1; i <= 200; i++) {
+  for (let i = 1; i <= 1000; i++) {
     const [width, height] = ratios[i % ratios.length];
     const type = Math.random() > 0.3 ? "IMAGE" : "VIDEO";
     const title = `${type === "IMAGE" ? "Image" : "Video"} ${i} (${width}x${height})`;
 
-    // [수정] 비디오도 플레이스홀더 URL을 생성하도록 변경
+    // 비디오도 플레이스홀더 URL을 생성하도록 변경
     const smallUrl = `https://placehold.co/${width}x${height}/${randomColor(type)}/${textColor(
       type
     )}?text=Item+${i}`;
@@ -70,7 +69,6 @@ async function getMediaDatabase(): Promise<MediaItemDto[]> {
       id: i,
       type: type,
       title: title,
-      // [수정] 비디오도 smallUrl을 갖게 됨
       urls: { small: smallUrl, medium: "", large: "" },
       width: width,
       height: height,
@@ -82,34 +80,32 @@ async function getMediaDatabase(): Promise<MediaItemDto[]> {
 }
 
 type FilterType = "ALL" | "IMAGE" | "VIDEO";
-const PAGE_LIMIT = 20; // 한 번에 20개씩 불러오기
+const PAGE_LIMIT = 20;
 
-// 3. (메인 페이지 컴포넌트)
 export default function HomePage() {
-  // [기존과 동일] 무한 스크롤을 위한 State
   const [allMedia, setAllMedia] = useState<MediaItemDto[]>([]);
   const [displayedItems, setDisplayedItems] = useState<MediaItemDto[]>([]);
   const [filterType, setFilterType] = useState<FilterType>("ALL");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // "더 보기" 전용
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const router = useRouter();
 
-  // [기존과 동일] 1. DB 로드
+  // DB 로드
   useEffect(() => {
     async function loadDatabase() {
       setIsInitialLoad(true);
       const data = await getMediaDatabase();
-      console.log("### data : ", data);
       setAllMedia(data);
       setIsInitialLoad(false);
     }
     loadDatabase();
   }, []);
 
-  // [기존과 동일] 2. 필터 변경 시 첫 페이지 로드
+  // 필터 변경 시 첫 페이지 로드
   useEffect(() => {
     if (allMedia.length === 0 && !isInitialLoad) return;
     if (!isInitialLoad) setIsLoading(true);
@@ -131,9 +127,9 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [filterType, allMedia, isInitialLoad]);
 
-  // [기존과 동일] 3. "더 보기" 버튼 (무한 스크롤)
-  const handleLoadMore = () => {
-    if (isLoading || !hasMore) return;
+  const handleLoadMore = useCallback(() => {
+    if (isLoading || isLoadingMore || !hasMore || isInitialLoad) return;
+    setIsLoadingMore(true); // [수정] 'isLoadingMore' 사용
 
     const filteredDb = allMedia.filter((item) => {
       if (filterType === "ALL") return true;
@@ -148,11 +144,31 @@ export default function HomePage() {
       setDisplayedItems((prev) => [...prev, ...newItems]);
       setPage((prev) => prev + 1);
       setHasMore(end < filteredDb.length);
-      setIsLoading(false);
+      setIsLoadingMore(false); // [수정] 'isLoadingMore' 해제
     }, 500);
-  };
+  }, [isLoading, isLoadingMore, hasMore, page, allMedia, filterType, isInitialLoad]); // [수정] 의존성 추가
 
-  // [신규] 'react-photo-album'이 요구하는 형식으로 데이터 매핑
+  useEffect(() => {
+    const handleScroll = () => {
+      // 일정 구간 스크롤이 내려가면 버튼을 보여준다.
+      if (
+        window.innerHeight + document.documentElement.scrollTop + 100 >=
+        document.documentElement.offsetHeight
+      ) {
+        handleLoadMore();
+      }
+    };
+
+    // window에 scroll 이벤트를 넣는다.
+    window.addEventListener("scroll", handleScroll);
+
+    // 페이지를 벗어날 때 이벤트를 제거한다.
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [handleLoadMore]);
+
+  // 'react-photo-album'이 요구하는 형식으로 데이터 매핑
   // [중요] DTO에 type과 title을 추가로 전달합니다.
   const photos = displayedItems.map((item) => ({
     src: item.urls.small,
@@ -188,7 +204,6 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* [핵심] 'Masonry' -> 'PhotoAlbum'으로 교체 */}
       {(isInitialLoad || (!isLoading && photos.length > 0)) && (
         <MasonryPhotoAlbum
           photos={photos}
@@ -207,33 +222,17 @@ export default function HomePage() {
         />
       )}
 
-      {/* [신규] 로딩 스피너 및 "더 보기" 버튼 (기존과 동일) */}
+      {/* 무한 스크롤 로더 */}
       <div className="flex justify-center py-10">
+        {/* 로딩 스피너 (초기 로드가 아니고, 로딩 중일 때만) */}
         {isLoading && !isInitialLoad && (
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 dark:border-gray-100"></div>
-        )}
-
-        {!isLoading && hasMore && (
-          <button
-            onClick={handleLoadMore}
-            className="px-6 py-3 rounded-full bg-black text-white font-semibold shadow-md hover:bg-gray-800 transition-colors"
-          >
-            더 보기
-          </button>
-        )}
-
-        {!hasMore && displayedItems.length > 0 && (
-          <p className="text-gray-500">모든 콘텐츠를 불러왔습니다.</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
         )}
       </div>
 
       {/* 빈 결과 메시지 (기존과 동일) */}
-      {!isInitialLoad && !isLoading && displayedItems.length === 0 && (
-        <p className="text-center text-gray-500 py-20">
-          {filterType === "ALL"
-            ? "표시할 미디어가 없습니다."
-            : `표시할 ${filterType === "IMAGE" ? "사진" : "영상"}이(가) 없습니다.`}
-        </p>
+      {!isInitialLoad && !isLoading && !isLoadingMore && displayedItems.length === 0 && (
+        <p className="text-center text-gray-500 py-20">콘텐츠가 없습니다.</p>
       )}
     </main>
   );
