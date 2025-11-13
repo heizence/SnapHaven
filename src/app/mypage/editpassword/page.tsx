@@ -46,7 +46,7 @@ export default function Page() {
       console.log("res : ", res);
       if (res.success) {
         alert("비밀번호가 변경되었습니다.");
-        router.push("/myprofile/edit");
+        router.push("/mypage/edit");
       } else {
         alert(res.message);
       }
