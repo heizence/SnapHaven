@@ -4,17 +4,21 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { Menu, X, User, Search, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signoutAPI } from "@/lib/APIs";
 
 export default function Navbar({ authToken }: { authToken: string }) {
   const router = useRouter();
   const path = usePathname() || "";
+  const searchParams = useSearchParams();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMypageMenuOpen, setIsMypageMenuOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState(searchParams?.get("keyword") || "");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  authToken = true;
 
   // close on outside click
   useEffect(() => {
@@ -30,18 +34,23 @@ export default function Navbar({ authToken }: { authToken: string }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  //  URL 쿼리 -> 검색창 동기화(예: 브라우저 뒤로가기/앞으로가기 버튼 클릭 시)
+  useEffect(() => {
+    setSearchTerm(searchParams?.get("keyword") || "");
+  }, [searchParams]);
+
   // 모바일 메뉴 닫힐 때 검색어 초기화
   useEffect(() => {
     if (!isMenuOpen) {
-      setSearchTerm("");
+      setSearchTerm(searchParams?.get("keyword") || "");
     }
-  }, [isMenuOpen]);
+  }, [isMenuOpen, searchParams]);
 
   // 검색 핸들러
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchTerm.trim()) {
       e.preventDefault();
-      router.push(`/search/${searchTerm.trim()}`);
+      router.push(`/search?keyword=${searchTerm.trim()}`);
       setIsMenuOpen(false);
     }
   };
@@ -68,11 +77,14 @@ export default function Navbar({ authToken }: { authToken: string }) {
   const MyProfileMenuComp = (isMobile: boolean) => {
     if (!authToken) return null;
     return (
-      <div className="relative" onMouseLeave={() => !isMobile && setIsMypageMenuOpen(false)}>
+      <div
+        className="relative p-1"
+        onMouseEnter={() => !isMobile && setIsMypageMenuOpen(true)}
+        onMouseLeave={() => !isMobile && setIsMypageMenuOpen(false)}
+      >
         <button
-          onMouseEnter={() => !isMobile && setIsMypageMenuOpen(true)}
           onClick={() => isMobile && setIsMypageMenuOpen(!isMypageMenuOpen)}
-          className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
+          className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
         >
           <User size={20} className="text-gray-500" />
         </button>
@@ -80,29 +92,29 @@ export default function Navbar({ authToken }: { authToken: string }) {
         {isMypageMenuOpen && (
           <div
             className={`absolute ${
-              isMobile ? "top-10 left-0" : "top-8 right-0"
+              isMobile ? "top-10 left-0" : "top-10 right-0"
             } mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50`}
           >
             <Link
               onClick={linkOnClick}
-              href="/myprofile"
-              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              href="/mypage"
+              className="flex items-center px-4 py-2 text-lm text-gray-700 hover:bg-gray-100"
             >
-              My Profile
+              내 프로필
             </Link>
             <Link
               onClick={linkOnClick}
-              href="/customize"
-              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              href="/mypage/collections"
+              className="flex items-center px-4 py-2 text-lm text-gray-700 hover:bg-gray-100"
             >
-              My Collection
+              내 컬렉션
             </Link>
             <div className="border-t border-gray-200 my-1" />
             <span
               onClick={signout}
-              className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
+              className="flex items-center w-full text-left px-4 py-2 text-lm text-red-600 hover:bg-gray-100 cursor-pointer"
             >
-              Log out
+              로그아웃
             </span>
           </div>
         )}
@@ -208,9 +220,10 @@ export default function Navbar({ authToken }: { authToken: string }) {
               <>
                 <Link
                   href="/upload"
-                  className="block text-gray-700 hover:text-blue-600 py-2"
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
                   onClick={linkOnClick}
                 >
+                  <LayoutGrid size={16} />
                   업로드
                 </Link>
                 <div onMouseLeave={() => setIsMypageMenuOpen(false)}>{MyProfileMenuComp(true)}</div>

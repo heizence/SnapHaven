@@ -181,28 +181,30 @@ export default function HomePage() {
   }));
 
   return (
-    <main className="w-full py-5">
+    <main className="w-full py-10">
       {/* 필터 버튼 UI (기존과 동일) */}
-      <div className="flex justify-center space-x-2 sm:space-x-4 mb-8">
-        {[
-          { key: "ALL", label: "전체" },
-          { key: "IMAGE", label: "사진" },
-          { key: "VIDEO", label: "영상" },
-        ].map((filter) => (
-          <button
-            key={filter.key}
-            onClick={() => setFilterType(filter.key as FilterType)}
-            className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200 ease-in-out
+      {displayedItems.length > 0 && (
+        <div className="flex justify-center space-x-2 sm:space-x-4 mb-8">
+          {[
+            { key: "ALL", label: "전체" },
+            { key: "IMAGE", label: "사진" },
+            { key: "VIDEO", label: "영상" },
+          ].map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => setFilterType(filter.key as FilterType)}
+              className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-full font-semibold text-sm sm:text-base transition-colors duration-200 ease-in-out
               ${
                 filterType === filter.key
                   ? "bg-black text-white shadow-md"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
               }`}
-          >
-            {filter.label}
-          </button>
-        ))}
-      </div>
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {(isInitialLoad || (!isLoading && photos.length > 0)) && (
         <MasonryPhotoAlbum

@@ -160,7 +160,7 @@ export default function CollectionDetailPage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 pt-16">
         <h1 className="text-2xl font-bold text-gray-800">404 - 앨범을 찾을 수 없습니다.</h1>
-        <p className="text-gray-600 mt-2">(예: /collection/seoul-autumn)</p>
+        <p className="text-gray-600 mt-2">(예: /album/seoul-autumn)</p>
       </main>
     );
   }
