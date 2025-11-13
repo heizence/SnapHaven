@@ -21,7 +21,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (isSignedOut) {
-    if (isPathStartsWith("/upload") || isPathStartsWith("/myprofile")) {
+    if (isPathStartsWith("/upload") || isPathStartsWith("/mypage")) {
       return NextResponse.redirect(new URL("/signin", req.url));
     }
   }
@@ -48,5 +48,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/signin", "/upload", "/myprofile/:path*", "/api/:path*"],
+  matcher: ["/signin", "/upload", "/mypage/:path*", "/api/:path*"],
 };
