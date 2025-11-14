@@ -6,8 +6,6 @@ export async function middleware(req: NextRequest) {
   const authToken = req.cookies.get("authToken")?.value || "";
   const refreshToken = req.cookies.get("refreshToken")?.value || "";
 
-  console.log(`\n### /src/app middleware`);
-
   const isAuthTokenValid = Boolean(await verifyToken(authToken));
   const isSignedIn = Boolean(isAuthTokenValid && refreshToken);
   const isSignedOut = Boolean(!isAuthTokenValid && !refreshToken);
