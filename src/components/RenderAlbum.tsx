@@ -1,85 +1,50 @@
 "use client";
 
-import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { EachContent } from "@/lib/interfaces";
-import { BookmarkIcon, DownloadIcon, ImageIcon, VideoIcon, ListIcon } from "./ui/SvgIcons";
+import React, { useState } from "react";
+import { MasonryPhotoAlbum } from "react-photo-album";
+import { BookmarkIcon, DownloadIcon, ImageIcon, ListIcon, VideoIcon } from "./ui/SvgIcons";
+import "react-photo-album/masonry.css";
 
-// Component which renders each contents(photo, video)
-const RenderEachContent = ({ file, onClick, isCollection }) => {
+const RenderEachContent = ({ photo, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isBookmarkHovered, setIsBookmarkHovered] = useState(false);
   const [isDownloadHovered, setIsDownloadHovered] = useState(false);
 
   const handleActionClick = (e, action) => {
     e.stopPropagation();
-    alert(`${action} photo by ${file.authorName}`);
+    alert(`${action} photo by ${photo.authorName}`);
   };
 
-  const overlayStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-    color: "white",
-    opacity: isHovered ? 1 : 0,
-    transition: "opacity 0.2s ease-in-out",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "flex-end",
-    padding: "1rem",
-    pointerEvents: isHovered ? "auto" : "none",
-  };
-
-  // Style for top right action buttons with hover effect
-  const bottomBtnStyle = (hovered: boolean): React.CSSProperties => ({
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    padding: 10,
-    backgroundColor: hovered ? "rgba(0, 0, 0, 0.7)" : "",
-    borderRadius: 10,
-    transition: "transform 0.15s ease",
-  });
+  const bottmBtnStyle = `bg-none border-none cursor-pointer p-[10px] 
+  rounded-[10px] transition-transform duration-150 ease`;
 
   return (
     <div
-      style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        cursor: "pointer",
-        overflow: "hidden",
-        borderRadius: "4px",
-      }}
+      className="relative cursor-pointer overflow-hidden rounded w-full h-auto"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={(e) => onClick({ event: e, file })}
+      onClick={(e) => onClick({ event: e, photo })}
     >
-      {file.type.includes("image") ? (
-        <Image
-          src={file.src}
-          alt={file.name || ""}
-          width={1000}
-          height={1000}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
+      {photo.type === "IMAGE" ? (
+        <img className="w-full h-auto bg-black/40" src={photo.src} alt={photo.name || ""} />
       ) : (
         <video
-          key={file.id}
-          style={{ width: "100%", height: "100%", objectFit: "contain", backgroundColor: "black" }}
-          width="100%" // Make the video responsive to its container
-          height="auto"
-          controls={false} // Show default video controls (play, pause, volume, etc.)
-          autoPlay={false} // Start playing automatically
-          muted // Mute by default (required by most browsers for autoplay)
-          loop // Loop the video when it ends
+          key={photo.id}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            backgroundColor: `rgba(0,0,0, 0.4)`,
+          }}
+          width={photo.width}
+          height={photo.height}
+          controls={false}
+          autoPlay={false}
+          muted
+          loop
           playsInline // Important for playback on iOS
         >
-          <source src={file.src} type={file.type} />
+          <source src={photo.src} type={photo.type} />
           Your browser does not support the video tag.
         </video>
       )}
@@ -93,21 +58,26 @@ const RenderEachContent = ({ file, onClick, isCollection }) => {
           alignItems: "flex-start",
         }}
       >
-        {!isCollection && (
-          <div>
-            {file.type.includes("image") ? (
-              file.isInList === 1 ? (
-                <ListIcon size={30} />
-              ) : (
-                <ImageIcon size={30} />
-              )
+        <div>
+          {photo.type === "IMAGE" ? (
+            photo.isInList === 1 ? (
+              <ListIcon size={30} />
             ) : (
-              <VideoIcon size={30} />
-            )}
-          </div>
-        )}
+              <ImageIcon size={30} />
+            )
+          ) : (
+            <VideoIcon size={30} />
+          )}
+        </div>
       </div>
-      <div style={overlayStyle}>
+      <div
+        className={`
+        absolute inset-0 bg-black/20 text-white 
+        flex flex-col justify-end p-4
+        transition-opacity duration-200 ease-in-out
+        ${isHovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
+      `}
+      >
         <div
           style={{
             display: "flex",
@@ -118,9 +88,12 @@ const RenderEachContent = ({ file, onClick, isCollection }) => {
           }}
         >
           <button
+            className={`
+            ${bottmBtnStyle}
+            ${isBookmarkHovered ? "bg-black/70" : ""}
+            `}
             onMouseEnter={() => setIsBookmarkHovered(true)}
             onMouseLeave={() => setIsBookmarkHovered(false)}
-            style={bottomBtnStyle(isBookmarkHovered)}
             onClick={(e) => handleActionClick(e, "Bookmark")}
           >
             <BookmarkIcon />
@@ -128,7 +101,10 @@ const RenderEachContent = ({ file, onClick, isCollection }) => {
           <button
             onMouseEnter={() => setIsDownloadHovered(true)}
             onMouseLeave={() => setIsDownloadHovered(false)}
-            style={bottomBtnStyle(isDownloadHovered)}
+            className={`
+            ${bottmBtnStyle}
+            ${isDownloadHovered ? "bg-black/70" : ""}
+            `}
             onClick={(e) => handleActionClick(e, "Download")}
           >
             <DownloadIcon />
@@ -139,109 +115,25 @@ const RenderEachContent = ({ file, onClick, isCollection }) => {
   );
 };
 
-// Album which renders all contents(photos, videos)
-const ColumnsAlbum = ({ data, onClick, openSlideshow, isCollection }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(1200);
-  const [computedRows, setComputedRows] = useState<EachContent[][]>([]);
-
-  // Effect to make the layout responsive
-  useLayoutEffect(() => {
-    const observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-      }
-    });
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Effect to calculate the justified layout
-  useEffect(() => {
-    if (containerWidth === 0 || data.length === 0) return;
-
-    const rows: EachContent[][] = [];
-    let currentRow: EachContent[] = [];
-    let currentRowWidth = 0;
-    const gap = 10; // The space between photos
-
-    data.forEach((each: EachContent) => {
-      const aspectRatio = each.width / each.height;
-      const estimatedWidth = 250 * aspectRatio; // By setting number(250), can adjust the number of contents per 1 row
-
-      if (currentRowWidth + estimatedWidth > containerWidth && currentRow.length > 0) {
-        rows.push(currentRow);
-        currentRow = [each];
-        currentRowWidth = estimatedWidth + gap;
-      } else {
-        currentRow.push(each);
-        currentRowWidth += estimatedWidth + gap;
-      }
-    });
-    if (currentRow.length > 0) rows.push(currentRow);
-
-    setComputedRows(rows);
-  }, [data, containerWidth]);
-
-  const layout = (
-    <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-      {computedRows.map((row, rowIndex) => {
-        // Calculate the total aspect ratio of the row
-        const totalAspectRatio = row.reduce((acc, file) => acc + file.width / file.height, 0);
-        // Calculate the height this row should have to fill the container width
-        const rowHeight = (containerWidth - (row.length - 1) * 10) / totalAspectRatio;
-
-        return (
-          <div key={rowIndex} style={{ display: "flex", gap: "10px", height: `${rowHeight}px` }}>
-            {row.map((file, fileIndex) => (
-              <div key={file.id} style={{ flex: `${file.width / file.height}` }}>
-                <RenderEachContent
-                  file={file}
-                  onClick={
-                    isCollection
-                      ? () =>
-                          openSlideshow(computedRows.slice(0, rowIndex).flat().length + fileIndex)
-                      : onClick
-                  }
-                  isCollection={isCollection}
-                />
-              </div>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  return layout;
-};
-
-// Main Component which is exported by default
-const RenderAlbum = ({ data, isCollection = false, openSlideshow }) => {
-  const router = useRouter();
-
+export default function RenderAlbum({ photos, onClick }) {
   return (
-    <ColumnsAlbum
-      data={data}
-      isCollection={isCollection}
-      openSlideshow={openSlideshow}
-      onClick={({ event, file }) => {
-        // let a link open in a new tab / new window / download
-        if (event.shiftKey || event.altKey || event.metaKey) return;
-
-        if (file.isInList === 0) {
-          router.push(`/contents/${file.id}`);
-        } else {
-          router.push(`/collection/${file.listId}`);
-        }
-
-        event.preventDefault();
+    <MasonryPhotoAlbum
+      photos={photos}
+      columns={(containerWidth) => {
+        if (containerWidth < 600) return 2;
+        if (containerWidth < 1500) return 3;
+        return 4;
+      }}
+      spacing={5} // 사진 사이 간격 (선택 사항)
+      padding={0} // 앨범 컨테이너 내부 여백 (선택 사항)
+      targetRowHeight={150}
+      rowConstraints={{ singleRowMaxHeight: 250 }}
+      onClick={onClick}
+      render={{
+        photo: ({ onClick }, { photo }) => (
+          <RenderEachContent key={photo.title} photo={photo} onClick={onClick} />
+        ),
       }}
     />
   );
-};
-export default RenderAlbum;
+}
