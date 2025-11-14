@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
-import { Download, Heart, Star, Check, UserPlus } from "lucide-react";
 import Slideshow from "@/components/Slideshow";
+import UserInfoArea from "@/components/ui/UserInfoArea";
+import ContentDesc from "@/components/ui/ContentDesc";
+import { TagButtons } from "@/components/ui/TagButton";
+import { DownloadBtn } from "@/components/ui/DownloadBtn";
+import { LikeButton } from "@/components/ui/LikeButton";
+import { AddToCollectionBtn } from "@/components/ui/AddToCollectionBtn";
 
 interface MediaDetail {
   id: string;
@@ -140,10 +145,6 @@ export default function ContentDetailPage() {
 
   const [mediaDetail, setMediaDetail] = useState<MediaDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isCollected, setIsCollected] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
   const [showSlideshow, setShowSlideshow] = useState(false);
 
   // [수정] 데이터 페칭 (URL의 ID를 사용)
@@ -154,7 +155,6 @@ export default function ContentDetailPage() {
       setIsLoading(true);
       const data = await getMediaDetails(id); // URL의 id로 데이터 요청
       setMediaDetail(data);
-      setIsExpanded(false);
       setIsLoading(false);
     }
     loadData();
@@ -187,19 +187,12 @@ export default function ContentDetailPage() {
     );
   }
 
-  // 설명 텍스트 로직
-  const description = mediaDetail.description;
-  const isLongDescription = description.length > 300;
-  const truncatedDescription = isLongDescription
-    ? description.substring(0, 300) + "..."
-    : description;
-
   const mediaClassName = "w-full h-auto object-contain max-h-[80vh] min-h-[30vh]";
 
   return (
-    <main className="w-full min-h-[calc(100vh-56px)]">
-      <div className="container mx-auto px-5 py-5">
-        <div className="flex w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+    <main className="w-full h-full py-5">
+      <div className="container mx-auto">
+        <div className="flex w-full flex-col overflow-hidden rounded-xl bg-white">
           {/* 이미지/비디오 렌더링 영역 */}
           <div className="flex w-full max-h-screen items-center justify-center">
             {mediaDetail.type === "IMAGE" && mediaDetail.imageUrl && (
@@ -241,104 +234,26 @@ export default function ContentDetailPage() {
                 <h1 className="text-3xl font-bold text-gray-900 leading-tight">
                   {mediaDetail.title}
                 </h1>
+
+                {/* 다운로드, 좋아요, 컬렉션에 추가 버튼 */}
                 <div className="flex-shrink-0 flex space-x-2 ml-4">
-                  <button className="flex items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-600">
-                    <Download size={20} />
-                    <span>Download</span>
-                  </button>
-                  <button
-                    onClick={() => setIsLiked(!isLiked)}
-                    className={`flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition-colors
-                      ${
-                        isLiked
-                          ? "border-red-500 bg-red-500 text-white"
-                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                      }`}
-                  >
-                    <Heart size={20} fill={isLiked ? "currentColor" : "none"} strokeWidth={1.5} />
-                  </button>
-                  <button
-                    onClick={() => setIsCollected(!isCollected)}
-                    className={`flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition-colors
-                      ${
-                        isCollected
-                          ? "border-yellow-500 bg-yellow-500 text-white"
-                          : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                      }`}
-                  >
-                    <Star
-                      size={20}
-                      fill={isCollected ? "currentColor" : "none"}
-                      strokeWidth={1.5}
-                    />
-                  </button>
+                  <DownloadBtn onClick={() => {}} />
+                  <LikeButton isLiked={true} />
+                  <AddToCollectionBtn isCollected={false} />
                 </div>
               </div>
             </div>
 
             {/* 유저 정보 */}
-            <div className="flex flex-shrink-0 items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Image
-                  src={mediaDetail.user.avatarUrl}
-                  alt={mediaDetail.user.name}
-                  width={48}
-                  height={48}
-                  className="rounded-full"
-                />
-                <div>
-                  <p className="text-base font-bold text-gray-900">{mediaDetail.user.name}</p>
-                  <p className="text-sm text-gray-500">{mediaDetail.user.handle}</p>
-                </div>
-              </div>
-              {/* 팔로우 기능은 추후 추가 */}
-              {/* <button
-                onClick={() => setIsFollowing(!isFollowing)}
-                className={`flex-shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors
-                  ${
-                    isFollowing
-                      ? "bg-gray-200 text-gray-700"
-                      : "bg-gray-900 text-white hover:bg-gray-700"
-                  }`}
-              >
-                {isFollowing ? (
-                  <span className="flex items-center gap-1">
-                    <Check size={16} /> Following
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <UserPlus size={16} /> Follow
-                  </span>
-                )}
-              </button> */}
-            </div>
-
+            <UserInfoArea
+              avatarUrl={mediaDetail.user.avatarUrl}
+              name={mediaDetail.user.name}
+              uploadedDate="2025.11.14"
+            />
             {/* 설명 */}
-            <div className="space-y-3">
-              <p className="text-base text-gray-600 whitespace-pre-line">
-                {isExpanded ? description : truncatedDescription}
-                {!isExpanded && isLongDescription && (
-                  <button
-                    onClick={() => setIsExpanded(true)}
-                    className="ml-2 font-semibold text-blue-500 hover:text-blue-700"
-                  >
-                    ...more
-                  </button>
-                )}
-              </p>
-            </div>
-
+            <ContentDesc description={mediaDetail.description || ""} />
             {/* 태그 */}
-            <div className="flex flex-wrap gap-2">
-              {mediaDetail.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
+            <TagButtons tagsArray={mediaDetail.tags} />
           </div>
         </div>
       </div>

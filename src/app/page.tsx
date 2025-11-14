@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { MasonryPhotoAlbum } from "react-photo-album";
-import "react-photo-album/masonry.css";
 import { useRouter } from "next/navigation";
+import RenderAlbum from "@/components/RenderAlbum";
+import NoDataMessage from "@/components/ui/NoDataMessage";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 interface MediaItemDto {
   id: number;
@@ -55,7 +56,7 @@ async function getMediaDatabase(): Promise<MediaItemDto[]> {
     return type === "IMAGE" ? "333" : "CCC";
   };
 
-  for (let i = 1; i <= 1000; i++) {
+  for (let i = 1; i <= 50; i++) {
     const [width, height] = ratios[i % ratios.length];
     const type = Math.random() > 0.3 ? "IMAGE" : "VIDEO";
     const title = `${type === "IMAGE" ? "Image" : "Video"} ${i} (${width}x${height})`;
@@ -116,9 +117,9 @@ export default function HomePage() {
     });
 
     const firstPageItems = filteredDb.slice(0, PAGE_LIMIT);
-
     const timer = setTimeout(() => {
       setDisplayedItems(firstPageItems);
+      //setDisplayedItems([]);
       setPage(2);
       setHasMore(firstPageItems.length < filteredDb.length);
       setIsLoading(false);
@@ -129,7 +130,7 @@ export default function HomePage() {
 
   const handleLoadMore = useCallback(() => {
     if (isLoading || isLoadingMore || !hasMore || isInitialLoad) return;
-    setIsLoadingMore(true); // [수정] 'isLoadingMore' 사용
+    setIsLoadingMore(true);
 
     const filteredDb = allMedia.filter((item) => {
       if (filterType === "ALL") return true;
@@ -144,7 +145,7 @@ export default function HomePage() {
       setDisplayedItems((prev) => [...prev, ...newItems]);
       setPage((prev) => prev + 1);
       setHasMore(end < filteredDb.length);
-      setIsLoadingMore(false); // [수정] 'isLoadingMore' 해제
+      setIsLoadingMore(false);
     }, 500);
   }, [isLoading, isLoadingMore, hasMore, page, allMedia, filterType, isInitialLoad]); // [수정] 의존성 추가
 
@@ -174,7 +175,6 @@ export default function HomePage() {
     src: item.urls.small,
     width: item.width,
     height: item.height,
-    // --- 라이브러리가 모르는 추가 정보 전달 ---
     key: item.id,
     type: item.type,
     title: item.title,
@@ -182,7 +182,7 @@ export default function HomePage() {
 
   return (
     <main className="w-full py-10">
-      {/* 필터 버튼 UI (기존과 동일) */}
+      {/* 필터 버튼 UI */}
       {displayedItems.length > 0 && (
         <div className="flex justify-center space-x-2 sm:space-x-4 mb-8">
           {[
@@ -207,35 +207,26 @@ export default function HomePage() {
       )}
 
       {(isInitialLoad || (!isLoading && photos.length > 0)) && (
-        <MasonryPhotoAlbum
+        <RenderAlbum
           photos={photos}
-          columns={(containerWidth) => {
-            if (containerWidth < 600) return 2; // 너비가 600px 미만일 때 2열
-            if (containerWidth < 1500) return 3; // 너비가 600px 이상, 1000px 미만일 때 3열
-            return 4; // 너비가 1500px 이상일 때 4열
-          }}
-          spacing={2} // 사진 사이 간격 (선택 사항)
-          padding={2} // 앨범 컨테이너 내부 여백 (선택 사항)
-          targetRowHeight={150}
-          rowConstraints={{ singleRowMaxHeight: 250 }}
-          onClick={({ index }) => {
+          onClick={({ index }: { index: number }) => {
             router.push(`/contents/${index}`);
           }}
         />
       )}
 
-      {/* 무한 스크롤 로더 */}
-      <div className="flex justify-center py-10">
-        {/* 로딩 스피너 (초기 로드가 아니고, 로딩 중일 때만) */}
-        {isLoading && !isInitialLoad && (
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
-        )}
+      <LoadingSpinner isLoading={isLoading && !isInitialLoad} />
+      <div className="mt-10">
+        <NoDataMessage
+          message="콘텐츠가 없습니다"
+          show={!isInitialLoad && !isLoading && !isLoadingMore && displayedItems.length === 0}
+        />
       </div>
 
-      {/* 빈 결과 메시지 (기존과 동일) */}
-      {!isInitialLoad && !isLoading && !isLoadingMore && displayedItems.length === 0 && (
-        <p className="text-center text-gray-500 py-20">콘텐츠가 없습니다.</p>
-      )}
+      <NoDataMessage
+        message="모든 콘텐츠를 불러왔습니다."
+        show={!isLoading && !isLoadingMore && !hasMore && displayedItems.length > 0}
+      />
     </main>
   );
 }

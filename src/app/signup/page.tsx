@@ -1,16 +1,12 @@
 "use client";
 
 import { useState } from "react";
-// import { useRouter } from "next/navigation"; // Next.js 환경에서 주석 해제
-import { Eye, EyeOff } from "lucide-react"; // 비밀번호 토글 아이콘 (lucide-react 필요)
-import { AppleLogo, GoogleLogo } from "@/components/ui/SvgIcons";
 import Link from "next/link";
+import Input from "@/components/ui/Input";
+import LongButton from "@/components/ui/LongButton";
+import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
+import LinkText from "@/components/ui/LinkText";
 
-// --- 임시 모의(Mock) API 함수 시작 ---
-// (실제 프로젝트에서는 이 함수들 대신
-// /api/signup, /api/check-nickname 엔드포인트로 fetch를 실행합니다)
-
-// [기능 구현] /api/signup (Input 2)를 호출하는 모의 함수
 const signupAPI = async (data: any): Promise<{ code: number; message: string }> => {
   console.warn("Using mock signupAPI. Please replace with actual fetch.");
   console.log("Mock signupAPI called with:", data);
@@ -59,9 +55,19 @@ export default function SignupPage() {
   const [termsError, setTermsError] = useState("");
 
   const [formStatus, setFormStatus] = useState<"idle" | "submitting">("idle");
-  // const router = useRouter(); // Next.js 환경에서 주석 해제
 
-  // --- 2. 핸들러 함수 (기능 구현) ---
+  const typeEmail = (value: string) => {
+    setEmail(value);
+    setEmailError("");
+  };
+
+  const typePassword = (value: string) => {
+    setPassword(value);
+    setPasswordError("");
+    checkPasswordStrength(value);
+  };
+
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   // 닉네임 중복 확인 핸들러
   const handleCheckNickname = async () => {
@@ -182,39 +188,29 @@ export default function SignupPage() {
   const strength = getPasswordStrengthClasses();
 
   return (
-    <div className="relative flex h-[calc(100vh-56px)] w-full flex-col items-center justify-center bg-gray-100">
-      <main className="relative z-10 flex w-full max-w-md flex-col items-center rounded-xl bg-white p-8 shadow-2xl sm:p-10">
-        {/* 2. [수정] 로고 및 헤더 (로그인 페이지 스타일 적용) */}
+    <div className="relative flex w-full h-full flex-col items-center justify-center py-5">
+      <main className="relative z-10 flex w-full max-w-md flex-col items-center rounded-xl sm:p-10">
         <div className="mb-6 flex flex-col items-center gap-4 text-slate-800"></div>
         <h1 className="mb-6 text-center text-3xl font-bold tracking-tight text-slate-900">
           회원가입
         </h1>
         <p className="mb-6 text-base text-slate-600">플랫폼에 오신 것을 환영합니다!</p>
 
-        {/* 3. 폼 (내부 스타일 수정) */}
+        {/* 폼 영역 */}
         <div className="flex w-full flex-col gap-4">
-          {/* 이메일 */}
-          <label className="flex flex-col flex-1">
-            <p className="pb-2 text-sm font-medium text-slate-700 ">이메일 주소</p>
-            <input
-              // [수정] 로그인 페이지 인풋 스타일 적용
-              className={`form-input h-12 w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg border p-3 text-base font-normal placeholder:text-slate-400 focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20
-                ${
-                  emailError
-                    ? "border-red-500 focus:ring-red-500/20" // 에러
-                    : "border-slate-300 bg-white text-slate-900" // 기본
-                }`}
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setEmailError("");
-              }}
-            />
-            {emailError && <p className="text-red-500 text-sm mt-1">❌ {emailError}</p>}
-          </label>
+          {/* 이메일 입력 */}
+          <Input
+            type="email"
+            label="이메일 주소"
+            placeholder="your@email.com"
+            value={email}
+            errorMessage={emailError}
+            onChange={(e) => {
+              typeEmail(e.target.value);
+            }}
+          />
 
-          {/* 닉네임 */}
+          {/* 닉네임 입력 */}
           <div className="flex flex-col gap-2">
             <label className="flex flex-col flex-1">
               <p className="pb-2 text-sm font-medium text-slate-700">닉네임</p>
@@ -235,55 +231,48 @@ export default function SignupPage() {
                   }}
                 />
                 <button
-                  className="flex h-12 flex-shrink-0 items-center justify-center rounded-r-lg border border-slate-300 bg-white px-4 text-sm font-medium text-blue-500 hover:bg-slate-100 focus:z-10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className={`flex h-12 flex-shrink-0 items-center justify-center
+                  rounded-r-lg border border-l-0 
+                  px-4 text-sm font-medium text-blue-500 
+                  hover:bg-slate-100 focus:z-10 focus:outline-none focus:ring-2 focus:ring-primary/50
+                  ${
+                    nicknameStatus === "error"
+                      ? "border-red-500" // 에러 시 빨간색 테두리 (상, 우, 하)
+                      : "border-slate-300 bg-white" // 기본 상태
+                  }`}
                   onClick={handleCheckNickname}
                   disabled={nicknameStatus === "checking"}
                 >
                   {nicknameStatus === "checking" ? "확인 중..." : "중복 확인"}
                 </button>
               </div>
+
+              {/* 닉네임 상태 메시지 */}
+              {nicknameMessage && (
+                <p
+                  className={`text-sm mt-1 ${
+                    nicknameStatus === "ok" ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  {nicknameStatus === "ok" ? "✅" : "❌"} {nicknameMessage}
+                </p>
+              )}
             </label>
-            {/* 닉네임 상태 메시지 */}
-            {nicknameMessage && (
-              <p
-                className={`text-sm mt-1 ${
-                  nicknameStatus === "ok" ? "text-green-600" : "text-red-500"
-                }`}
-              >
-                {nicknameStatus === "ok" ? "✅" : "❌"} {nicknameMessage}
-              </p>
-            )}
           </div>
 
-          {/* 비밀번호 */}
+          {/* 비밀번호 입력 */}
           <div className="flex flex-col gap-3">
-            <label className="flex flex-col flex-1">
-              <p className="pb-2 text-sm font-medium text-slate-700">비밀번호</p>
-              <div className="relative flex w-full flex-1 items-stretch">
-                <input
-                  // [수정] 로그인 페이지 인풋 스타일 적용 (h-12, rounded-r-none)
-                  className={`form-input h-12 w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg rounded-r-none border border-r-0 p-3 pr-2 text-base font-normal placeholder:text-slate-400 focus:z-10 focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20
-                    ${
-                      passwordError
-                        ? "border-red-500 focus:ring-red-500/20" // 에러
-                        : "border-slate-300 bg-white text-slate-900" // 기본
-                    }`}
-                  placeholder="8자 이상 입력해 주세요"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => checkPasswordStrength(e.target.value)}
-                />
-                <button
-                  // [수정] 버튼 스타일 (h-12, slate 색상)
-                  className="flex h-12 items-center justify-center rounded-r-lg border border-l-0 border-slate-300 bg-white px-3 text-slate-500 hover:bg-slate-100"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {/* [수정] lucide-react 아이콘 사용 */}
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-            </label>
-            {/* 비밀번호 강도 (스타일 일관성 수정) */}
+            <Input
+              type={"password"}
+              label="비밀번호"
+              placeholder="8자 이상 입력해 주세요"
+              value={password}
+              showPassword={showPassword}
+              errorMessage={passwordError}
+              onChange={(e) => typePassword(e.target.value)}
+              togglePasswordVisibility={togglePasswordVisibility}
+            />
+            {/* 비밀번호 강도 알림 텍스트 */}
             {password.length > 0 && (
               <div className="flex flex-col gap-2 px-1">
                 <div className="h-1.5 w-full rounded-full bg-slate-200">
@@ -292,45 +281,27 @@ export default function SignupPage() {
                 <p className={`text-xs font-medium ${strength.color}`}>{strength.text}</p>
               </div>
             )}
-            {passwordError && <p className="text-red-500 text-sm mt-1">❌ {passwordError}</p>}
           </div>
 
-          {/* 비밀번호 확인 */}
-          <label className="flex flex-col flex-1">
-            <p className="pb-2 text-sm font-medium text-slate-700">비밀번호 확인</p>
-            <div className="relative flex w-full flex-1 items-stretch">
-              <input
-                className={`form-input h-12 w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg rounded-r-none border border-r-0 p-3 pr-2 text-base font-normal placeholder:text-slate-400 focus:z-10 focus:border-primary focus:outline-0 focus:ring-2 focus:ring-primary/20
-                  ${
-                    passwordConfirmError
-                      ? "border-red-500 focus:ring-red-500/20" // 에러
-                      : "border-slate-300 bg-white text-slate-900" // 기본
-                  }`}
-                placeholder="비밀번호를 다시 입력해 주세요"
-                type={showPasswordConfirm ? "text" : "password"}
-                value={passwordConfirm}
-                onChange={(e) => {
-                  setPasswordConfirm(e.target.value);
-                  setPasswordConfirmError("");
-                }}
-              />
-              <button
-                className="flex h-12 items-center justify-center rounded-r-lg border border-l-0 border-slate-300 bg-white px-3 text-slate-500 hover:bg-slate-100"
-                onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-              >
-                {showPasswordConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {passwordConfirmError && (
-              <p className="text-red-500 text-sm mt-1">❌ {passwordConfirmError}</p>
-            )}
-          </label>
+          {/* 비밀번호 확인 입력 */}
+          <Input
+            type={"password"}
+            label="비밀번호 확인"
+            placeholder="8자 이상 입력해 주세요"
+            value={passwordConfirm}
+            showPassword={showPasswordConfirm}
+            errorMessage={passwordConfirmError}
+            onChange={(e) => {
+              setPasswordConfirm(e.target.value);
+              setPasswordConfirmError("");
+            }}
+            togglePasswordVisibility={() => setShowPasswordConfirm(!showPasswordConfirm)}
+          />
 
-          {/* 이용약관 (스타일 일관성 수정) */}
+          {/* 이용약관 링크 */}
           <div className="flex flex-col gap-1 pt-2">
             <div className="flex items-center space-x-2">
               <input
-                // [수정] slate 색상 적용
                 className="form-checkbox h-4 w-4 rounded border-slate-300 bg-slate-100 text-primary focus:ring-2 focus:ring-primary/50"
                 id="terms"
                 type="checkbox"
@@ -340,12 +311,7 @@ export default function SignupPage() {
                   setTermsError("");
                 }}
               />
-              <label
-                // [수정] slate 색상 적용
-                className="text-sm font-medium leading-none text-slate-600"
-                htmlFor="terms"
-              >
-                {/* [수정] 링크 색상 적용 (text-primary -> text-[#5A9CFF]) */}
+              <label className="text-sm font-medium leading-none text-slate-600" htmlFor="terms">
                 <Link
                   className="font-semibold text-[#5A9CFF] hover:text-blue-400 hover:underline"
                   href="/terms"
@@ -367,17 +333,13 @@ export default function SignupPage() {
 
           {/* 가입 버튼 및 SNS */}
           <div className="flex flex-col gap-4 pt-4">
-            <button
-              // [수정] 로그인 페이지 Primary 버튼 스타일 적용 (검은색)
-              className="flex h-12 w-full items-center justify-center gap-3 rounded-lg border bg-blue-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-slate-400/50 focus:ring-offset-2
-              disabled:opacity-50 disabled:cursor-not-allowed"
+            <LongButton
+              title="가입"
               onClick={handleSubmit}
               disabled={formStatus === "submitting"}
-            >
-              가입
-            </button>
+            />
 
-            {/* '또는' 구분선 (로그인 페이지 스타일 적용) */}
+            {/* '또는' 구분선 */}
             <div className="relative my-2 w-full">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-300"></div>
@@ -387,36 +349,26 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {/* SNS 버튼 (로그인 페이지 스타일 적용) */}
+            {/* SNS 버튼 */}
             <div className="w-full space-y-3">
-              <button
-                className="flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400/50 focus:ring-offset-2"
-                onClick={() => alert("Google 가입 API 연동 필요")}
-              >
-                <GoogleLogo /> {/* [수정] SVG 컴포넌트 사용 */}
-                <span>Google로 계속하기</span>
-              </button>
-              <button
-                className="flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400/50 focus:ring-offset-2"
-                onClick={() => alert("Apple 가입 API 연동 필요")}
-              >
-                <AppleLogo /> {/* [수정] SVG 컴포넌트 사용 */}
-                <span>Apple로 계속하기</span>
-              </button>
+              <SnsLoginBtn
+                type="google"
+                title="Google로 계속하기"
+                onClick={() => alert("Google 로그인 API 연동 필요")}
+              />
+              <SnsLoginBtn
+                type="apple"
+                title="Apple로 계속하기"
+                onClick={() => alert("Apple 로그인 API 연동 필요")}
+              />
             </div>
           </div>
         </div>
 
-        {/* 로그인 링크 (로그인 페이지 스타일 적용) */}
+        {/* 로그인 링크 */}
         <div className="mt-8 text-center text-sm text-slate-600">
           <span>이미 계정이 있으신가요?</span>
-          {/* [수정] <a> -> <Link>, 링크 색상 변경 */}
-          <Link
-            className="ml-1 font-semibold text-[#5A9CFF] hover:text-blue-400 hover:underline"
-            href="/signin"
-          >
-            로그인
-          </Link>
+          <LinkText title="로그인" href="/signin" />
         </div>
       </main>
     </div>

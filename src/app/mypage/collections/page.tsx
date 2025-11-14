@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { MasonryPhotoAlbum, Photo } from "react-photo-album";
 import "react-photo-album/masonry.css";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/contexts/ModalProvider";
+import RenderAlbum from "@/components/RenderAlbum";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface CollectionFolder {
   id: string;
@@ -19,7 +21,7 @@ interface CollectionFolder {
 interface CollectionContents {
   id: string;
   title: string;
-  photos: Photo[];
+  photos: any[];
 }
 
 const PAGE_LIMIT = 20;
@@ -56,8 +58,8 @@ async function getMyCollectionsListAPI(): Promise<CollectionFolder[]> {
 async function getCollectionContentsAPI(collectionId: string): Promise<CollectionContents> {
   console.log(`Fetching Contents for ${collectionId}...`);
 
-  const generateDummyUploads = (count: number, name: string): Photo[] => {
-    const items: Photo[] = [];
+  const generateDummyUploads = (count: number, name: string): any[] => {
+    const items: any[] = [];
     const ratios = [
       [600, 400],
       [400, 600],
@@ -105,8 +107,8 @@ export default function MyCollectionsPage() {
   const [selectedCollection, setSelectedCollection] = useState<CollectionFolder | null>(null); // 선택된 폴더
 
   // 하단 그리드 (콘텐츠)용 State
-  const [allContents, setAllContents] = useState<Photo[]>([]); // 선택된 컬렉션의 *모든* 사진 (DB)
-  const [displayedItems, setDisplayedItems] = useState<Photo[]>([]); // 화면에 표시될 사진 (페이징)
+  const [allContents, setAllContents] = useState<any[]>([]); // 선택된 컬렉션의 *모든* 사진 (DB)
+  const [displayedItems, setDisplayedItems] = useState<any[]>([]); // 화면에 표시될 사진 (페이징)
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingContents, setIsLoadingContents] = useState(false); // 하단 그리드 로딩
@@ -204,25 +206,9 @@ export default function MyCollectionsPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleLoadMore]);
 
-  const renderPhoto = ({ photo, wrapperStyle, imageProps }: any) => {
-    return (
-      <div style={wrapperStyle} className="outline-none group cursor-pointer">
-        <img
-          {...imageProps}
-          style={{ ...imageProps.style, width: "100%", height: "auto" }}
-          className="transition-transform duration-300 group-hover:scale-105"
-        />
-      </div>
-    );
-  };
-
   // --- 11. 렌더링 ---
   if (isLoadingPage) {
-    return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-white pt-16">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
-      </main>
-    );
+    return <LoadingSpinner isLoading={isLoadingPage} />;
   }
 
   return (
@@ -290,38 +276,19 @@ export default function MyCollectionsPage() {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
                 </div>
               ) : (
-                <MasonryPhotoAlbum
+                <RenderAlbum
                   photos={displayedItems}
-                  columns={(containerWidth) => {
-                    if (containerWidth < 600) return 2;
-                    if (containerWidth < 1500) return 3;
-                    return 4;
-                  }}
-                  spacing={8}
-                  padding={0}
-                  targetRowHeight={150}
-                  rowConstraints={{ singleRowMaxHeight: 250 }}
-                  renderPhoto={renderPhoto}
-                  onClick={({ index }) => {
-                    // 추후 수정
-                    router.push(`/contents/${index}`);
-                  }}
+                  onClick={({ index }) => router.push(`/contents/${index}`)}
                 />
               )}
 
               {/* 무한 스크롤 로더 */}
-              <div className="flex justify-center py-10">
-                {isLoadingMore && (
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
-                )}
-              </div>
+              <LoadingSpinner isLoading={isLoadingMore} />
 
-              {/* 모든 콘텐츠 로드 완료 메시지 */}
-              {!isLoadingMore && !hasMore && displayedItems.length > 0 && (
-                <div className="flex justify-center pb-10">
-                  <p className="text-gray-500">모든 콘텐츠를 불러왔습니다.</p>
-                </div>
-              )}
+              <NoDataMessage
+                message="모든 콘텐츠를 불러왔습니다."
+                show={!isLoadingMore && !hasMore && displayedItems.length > 0}
+              />
             </div>
           )}
         </div>
