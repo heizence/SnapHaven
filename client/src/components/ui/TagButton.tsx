@@ -1,15 +1,25 @@
+import { useRouter } from "next/navigation";
+
 interface TagButtonProps {
   name: string;
 }
 
 export function TagButton({ name }: TagButtonProps) {
+  const router = useRouter();
+
   return (
-    <span
-      key={name}
-      className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600"
+    <button
+      onClick={() => {
+        router.push(`/tag?name=${name}`);
+      }}
     >
-      #{name}
-    </span>
+      <span
+        key={name}
+        className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-600"
+      >
+        #{name}
+      </span>
+    </button>
   );
 }
 
