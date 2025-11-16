@@ -210,7 +210,7 @@ export default function HomePage() {
         <RenderAlbum
           photos={photos}
           onClick={({ index }: { index: number }) => {
-            router.push(`/contents/${index}`);
+            router.push(`/content/${index}`);
           }}
         />
       )}

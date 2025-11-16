@@ -278,7 +278,7 @@ export default function MyCollectionsPage() {
               ) : (
                 <RenderAlbum
                   photos={displayedItems}
-                  onClick={({ index }) => router.push(`/contents/${index}`)}
+                  onClick={({ index }) => router.push(`/content/${index}`)}
                 />
               )}
 

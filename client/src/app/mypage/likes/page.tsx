@@ -192,7 +192,7 @@ export default function MyLikedContentsPage() {
           <div className="py-6 md:py-8">
             <RenderAlbum
               photos={photos}
-              onClick={({ index }) => router.push(`/contents/${index}`)}
+              onClick={({ index }) => router.push(`/content/${index}`)}
             />
           </div>
         </div>

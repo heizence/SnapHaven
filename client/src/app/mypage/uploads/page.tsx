@@ -198,7 +198,7 @@ export default function MyUploadsPage() {
             ) : (
               <RenderAlbum
                 photos={photos}
-                onClick={({ index }) => router.push(`/contents/${index}`)}
+                onClick={({ index }) => router.push(`/content/${index}`)}
               />
             )}
           </div>
