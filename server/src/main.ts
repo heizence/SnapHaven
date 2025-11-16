@@ -19,13 +19,13 @@ async function bootstrap() {
 
   // Swagger 설정을 위한 DocumentBuilder 생성
   const config = new DocumentBuilder()
-    .setTitle('식당 예약 시스템 API')
-    .setDescription('NestJS 기반 식당 예약 시스템 API 명세서')
-    .setVersion('1.0')
+    .setTitle('SnapHaven API')
+    .setDescription('SnapHaven API 명세서')
+    .setVersion('v1')
     .addBearerAuth() // JWT 인증을 위한 BearerAuth 추가
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document); // 'api' 경로에 Swagger UI 생성
+  SwaggerModule.setup('api/v1/swagger', app, document); // 'api' 경로에 Swagger UI 생성
 
   const port = configService.get<number>('SERVER_PORT', 8000);
 
