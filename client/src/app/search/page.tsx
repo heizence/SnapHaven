@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { MasonryPhotoAlbum } from "react-photo-album";
 import "react-photo-album/masonry.css";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import RenderAlbum from "@/components/RenderAlbum";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface MediaItemDto {
   id: number;
@@ -93,14 +95,14 @@ export default function HomePage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // DB 로드
   useEffect(() => {
     async function loadDatabase() {
       setIsInitialLoad(true);
       const data = await getMediaDatabase();
-      //setAllMedia(data);
-      setAllMedia([]);
+      setAllMedia(data);
       setIsInitialLoad(false);
     }
     loadDatabase();
@@ -186,8 +188,9 @@ export default function HomePage() {
       {/* 필터 버튼 UI (기존과 동일) */}
       {displayedItems.length > 0 && (
         <div className="mx-5">
-          <h1 className="mb-6 text-2xl font-bold">사진 n개, 영상 n개가 검색되었습니다.</h1>
+          <h1 className="mb-3 text-2xl font-bold">키워드 : {searchParams?.get("keyword")}</h1>
 
+          <h1 className="mb-6 text-xl">총 1000개의 검색 결과가 있습니다.</h1>
           <div className="flex justify-start space-x-2 sm:space-x-4 mb-8">
             {[
               { key: "ALL", label: "전체" },
@@ -212,35 +215,23 @@ export default function HomePage() {
       )}
 
       {(isInitialLoad || (!isLoading && photos.length > 0)) && (
-        <MasonryPhotoAlbum
+        <RenderAlbum
           photos={photos}
-          columns={(containerWidth) => {
-            if (containerWidth < 600) return 2; // 너비가 600px 미만일 때 2열
-            if (containerWidth < 1500) return 3; // 너비가 600px 이상, 1000px 미만일 때 3열
-            return 4; // 너비가 1500px 이상일 때 4열
-          }}
-          spacing={2} // 사진 사이 간격 (선택 사항)
-          padding={2} // 앨범 컨테이너 내부 여백 (선택 사항)
-          targetRowHeight={150}
-          rowConstraints={{ singleRowMaxHeight: 250 }}
-          onClick={({ index }) => {
-            router.push(`/contents/${index}`);
+          onClick={({ index }: { index: number }) => {
+            router.push(`/content/${index}`);
           }}
         />
       )}
 
-      {/* 무한 스크롤 로더 */}
-      <div className="flex justify-center py-10">
-        {/* 로딩 스피너 (초기 로드가 아니고, 로딩 중일 때만) */}
-        {isLoading && !isInitialLoad && (
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900"></div>
-        )}
-      </div>
+      <LoadingSpinner isLoading={isLoading && !isInitialLoad} />
 
       {/* 빈 결과 메시지 (기존과 동일) */}
-      {!isInitialLoad && !isLoading && !isLoadingMore && displayedItems.length === 0 && (
-        <p className="text-center text-gray-500 py-20">검색 결과가 없습니다.</p>
-      )}
+      <div className="mt-20">
+        <NoDataMessage
+          message="검색 결과가 없습니다"
+          show={!isInitialLoad && !isLoading && !isLoadingMore && displayedItems.length === 0}
+        />
+      </div>
     </main>
   );
 }
