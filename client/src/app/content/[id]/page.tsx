@@ -181,7 +181,7 @@ export default function ContentDetailPage() {
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 pt-16">
         <h1 className="text-2xl font-bold text-gray-800">404 - 콘텐츠를 찾을 수 없습니다.</h1>
         <p className="text-gray-600 mt-2">
-          `contents/[id]` 경로에서 ID를 확인하세요. (예: /contents/image-landscape)
+          `content/[id]` 경로에서 ID를 확인하세요. (예: /content/image-landscape)
         </p>
       </main>
     );
