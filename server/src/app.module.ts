@@ -5,13 +5,14 @@ import * as path from 'path';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // ConfigModule 을 전역 모듈로 설정. 다른 모듈에서 import 를 할 필요가 없음.
-      //envFilePath: path.resolve(__dirname, '..', '.env'),
-      // [수정] NODE_ENV 값에 따라 동적으로 .env 파일 경로 설정
+      isGlobal: true,
+      // NODE_ENV 값에 따라 동적으로 .env 파일 경로 설정
       envFilePath: path.resolve(
         __dirname,
         '..',
@@ -54,6 +55,10 @@ import { AppService } from './app.service';
         logging: configService.get<string>('NODE_ENV') === 'development',
       }),
     }),
+
+    AuthModule,
+
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

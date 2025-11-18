@@ -3,10 +3,14 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common'; // 요청 데이터 유효성 검사를 위한 ValidationPipe
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'; // API 문서 자동화를 위한 swagger
 import { ConfigService } from '@nestjs/config'; // 환경 변수 관리 모듈
+import { HttpExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+
+  app.setGlobalPrefix('api/v1'); // 모든 API 경로가 /api/v1/... 로 시작됨
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // 애플리케이션 전역에 적용될 글로벌 파이프 설정
   app.useGlobalPipes(
@@ -29,7 +33,6 @@ async function bootstrap() {
 
   const port = configService.get<number>('SERVER_PORT', 8000);
 
-  app.setGlobalPrefix('api/v1'); // 모든 API 경로가 /api/v1/... 로 시작됨
   app.enableShutdownHooks(); // 정상 종료 훅 활성화
   await app.listen(port);
   console.log(`Application is running on: ${await app.getUrl()}/api/v1`); // 실행 중인 URL 로깅
