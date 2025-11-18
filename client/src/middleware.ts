@@ -3,13 +3,12 @@ import type { NextRequest } from "next/server";
 import { verifyToken } from "./lib/Jwt";
 
 export async function middleware(req: NextRequest) {
-  const authToken = req.cookies.get("authToken")?.value || "";
+  const accessToken = req.cookies.get("accessToken")?.value || "";
   const refreshToken = req.cookies.get("refreshToken")?.value || "";
 
-  const isAuthTokenValid = Boolean(await verifyToken(authToken));
-  const isSignedIn = Boolean(isAuthTokenValid && refreshToken);
-  const isSignedOut = Boolean(!isAuthTokenValid && !refreshToken);
-  const isTokenExpired = Boolean(!isAuthTokenValid && refreshToken);
+  const isAccessTokenValid = Boolean(await verifyToken(accessToken));
+  const isSignedIn = Boolean(isAccessTokenValid && refreshToken);
+  const isSignedOut = Boolean(!isAccessTokenValid && !refreshToken);
 
   const isPathStartsWith = (path: string) => req.nextUrl.pathname.startsWith(path);
 
@@ -24,24 +23,6 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  if (req.nextUrl.pathname.startsWith("/api/auth")) {
-    const res = NextResponse.next();
-
-    res.headers.set("Access-Control-Allow-Origin", "*");
-    res.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-    if (isTokenExpired) {
-      console.log(`## ${req.nextUrl.pathname} 401 error!!!`);
-      return new Response("", { status: 401 });
-    }
-
-    if (req.method === "OPTIONS") {
-      return new Response(null, { status: 200 });
-    }
-  }
-
-  // Otherwise, continue
   return NextResponse.next();
 }
 

@@ -11,6 +11,7 @@ export interface SignInResponse {
 export interface SignUpRequest {
   email: string;
   password: string;
+  nickname: string;
 }
 
 export interface SignUpResponse {
@@ -25,11 +26,11 @@ export interface CheckEmailResponse {
   token: string;
 }
 
-export interface CheckUsernameRequest {
-  username: string;
+export interface CheckNicknameRequest {
+  nickname: string;
 }
 
-export interface CheckUsernameResponse {
+export interface CheckNicknameResponse {
   token: string;
 }
 
@@ -155,4 +156,10 @@ export interface EachContent {
   listId: string;
   width: number;
   height: number;
+}
+
+/********** Response dto *********/
+export interface ResponseDto<T> {
+  data: T;
+  message: string;
 }

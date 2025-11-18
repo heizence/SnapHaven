@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signoutAPI } from "@/lib/APIs";
 
-export default function Navbar({ authToken }: { authToken: string }) {
+export default function Navbar({ accessToken }: { accessToken: string }) {
   const router = useRouter();
   const path = usePathname() || "";
   const searchParams = useSearchParams();
@@ -18,9 +18,9 @@ export default function Navbar({ authToken }: { authToken: string }) {
   const [searchTerm, setSearchTerm] = useState(searchParams?.get("keyword") || "");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  authToken = true;
+  //accessToken = true; // for test
 
-  // close on outside click
+  // 바깥쪽 클릭 처리
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -60,8 +60,9 @@ export default function Navbar({ authToken }: { authToken: string }) {
     setIsMypageMenuOpen(false);
     try {
       const res = await signoutAPI();
+      console.log("signout res : ", res);
       if (res.code === 200) {
-        router.push("/signin");
+        router.push("/");
         router.refresh();
       }
     } catch (e) {
@@ -75,7 +76,7 @@ export default function Navbar({ authToken }: { authToken: string }) {
   };
 
   const MyProfileMenuComp = (isMobile: boolean) => {
-    if (!authToken) return null;
+    if (!accessToken) return null;
     return (
       <div
         className="relative p-1"
@@ -150,7 +151,7 @@ export default function Navbar({ authToken }: { authToken: string }) {
 
         {/* Desktop menu */}
         <div className="hidden md:flex justify-self-end items-center space-x-3">
-          {authToken ? (
+          {accessToken ? (
             <>
               {/* 로그인 상태 */}
               <Link
@@ -216,7 +217,7 @@ export default function Navbar({ authToken }: { authToken: string }) {
               />
             </div>
 
-            {authToken ? (
+            {accessToken ? (
               <>
                 <Link
                   href="/upload"

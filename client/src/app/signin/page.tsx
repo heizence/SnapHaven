@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { hashString, isValidEmail } from "@/lib/utils";
+import { isValidEmail } from "@/lib/utils";
 import Input from "@/components/ui/Input";
 import LongButton from "@/components/ui/LongButton";
 import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
 import LinkText from "@/components/ui/LinkText";
 import { signinAPI } from "@/lib/APIs";
+import { SignInRequest } from "@/lib/interfaces";
 
 export default function Page() {
   const router = useRouter();
@@ -44,29 +45,23 @@ export default function Page() {
     }
     if (!password) {
       setPasswordError("비밀번호를 입력하세요.");
-      return; // password가 비어있을 때 signinAPI가 호출되지 않도록 수정
+      return;
     }
 
     setEmailStatus("checking");
     try {
-      console.log("signin password : ", password);
-      // [보안 참고]
-      // 비밀번호 해싱은 '클라이언트'가 아닌 '백엔드(NestJS)'에서 수행하는 것이
-      // 훨씬 더 안전합니다. 지금은 기존 로직을 그대로 유지합니다.
-      const hashedPassword = await hashString(password);
-
-      const res = await signinAPI({ email, password: hashedPassword });
-
-      if (res.code === 404) {
-        setEmailError("이메일 또는 비밀번호를 다시 확인해 주세요.");
-        setPasswordError(" ");
-      } else if (res.code === 200) {
+      const request: SignInRequest = {
+        email,
+        password,
+      };
+      const res = await signinAPI(request);
+      if (res.code === 200) {
         router.push("/");
         router.refresh();
       }
     } catch (error) {
       console.error("Error checking email:", error);
-      setPasswordError("로그인 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      alert(error.message);
     }
     setEmailStatus("idle");
   };

@@ -6,33 +6,10 @@ import Input from "@/components/ui/Input";
 import LongButton from "@/components/ui/LongButton";
 import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
 import LinkText from "@/components/ui/LinkText";
-
-const signupAPI = async (data: any): Promise<{ code: number; message: string }> => {
-  console.warn("Using mock signupAPI. Please replace with actual fetch.");
-  console.log("Mock signupAPI called with:", data);
-  await new Promise((res) => setTimeout(res, 1000)); // 1초 딜레이
-
-  // (Input 2의 이메일 중복 체크 로직 시뮬레이션)
-  if (data.email.includes("used@email.com")) {
-    return { code: 401, message: "The email has already been registered." };
-  }
-  return { code: 201, message: "User has been registered successfully" };
-};
-
-// [기능 구현] 닉네임 중복 확인 API 모의 함수
-const checkNicknameAPI = async (nickname: string): Promise<{ code: number; message: string }> => {
-  console.warn("Using mock checkNicknameAPI. Please replace with actual fetch.");
-  await new Promise((res) => setTimeout(res, 500)); // 0.5초 딜레이
-
-  if (nickname.toLowerCase() === "admin") {
-    return { code: 409, message: "사용할 수 없는 닉네임입니다." };
-  }
-  return { code: 200, message: "사용 가능한 닉네임입니다." };
-};
-// --- 임시 모의(Mock) API 함수 끝 ---
+import { signupAPI, checkNicknameAPI } from "@/lib/APIs";
+import { CheckNicknameRequest, SignUpRequest } from "@/lib/interfaces";
 
 export default function SignupPage() {
-  // --- 1. State 정의 (기능 구현) ---
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
@@ -79,13 +56,23 @@ export default function SignupPage() {
     setNicknameStatus("checking");
     setNicknameMessage("");
 
-    const res = await checkNicknameAPI(nickname);
-    if (res.code === 200) {
-      setNicknameStatus("ok");
-      setNicknameMessage(res.message); // "사용 가능한 닉네임입니다."
-    } else {
-      setNicknameStatus("error");
-      setNicknameMessage(res.message); // "사용할 수 없는 닉네임입니다."
+    const param: CheckNicknameRequest = { nickname };
+    try {
+      const res = await checkNicknameAPI(param);
+
+      // 사용 가능한 닉네임
+      if (res.code === 200) {
+        setNicknameStatus("ok");
+        setNicknameMessage(res.message);
+      }
+    } catch (error) {
+      // 이미 사용 중인 닉네임
+      if (error.code === 409) {
+        setNicknameStatus("error");
+        setNicknameMessage(error.message);
+      } else {
+        setNicknameStatus("idle");
+      }
     }
   };
 
@@ -106,57 +93,45 @@ export default function SignupPage() {
 
   // 폼 제출(회원가입) 핸들러
   const handleSubmit = async () => {
-    // Client-side 유효성 검사
-    let isValid = true;
+    let isValid = false;
     if (!email) {
       setEmailError("이메일을 입력해주세요.");
-      isValid = false;
     }
     if (nicknameStatus !== "ok") {
       setNicknameStatus("error");
       setNicknameMessage("닉네임 중복 확인을 완료해주세요.");
-      isValid = false;
     }
     if (password.length < 8) {
       setPasswordError("비밀번호는 8자 이상이어야 합니다.");
-      isValid = false;
     }
     if (password !== passwordConfirm) {
       setPasswordConfirmError("비밀번호가 일치하지 않습니다.");
-      isValid = false;
     }
     if (!termsChecked) {
       setTermsError("약관에 동의해주세요.");
-      isValid = false;
     }
-
+    isValid = true;
     if (!isValid) return;
 
     setFormStatus("submitting");
 
     try {
-      // [기능 구현] Input 2의 API 로직 호출
-      // (보안: 실제로는 plain-text 비밀번호를 보내고,
-      // API 라우트(Input 2)에서 hashString을 실행해야 합니다)
-      const res = await signupAPI({
+      const request: SignUpRequest = {
         email: email,
-        password: password, // Input 2가 해싱하므로 plain-text 전송
-        username: nickname,
-      });
+        password: password,
+        nickname: nickname,
+      };
 
+      const res = await signupAPI(request);
       if (res.code === 201) {
         // 회원가입 성공
         alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
-        window.location.href = "/login"; // 로그인 페이지로 리디렉션
-        // router.push("/login"); // Next.js 환경
-      } else {
-        // (Input 2의 이메일 중복 에러 등)
-        setEmailError(res.message);
-        setFormStatus("idle");
+        window.location.href = "/signin"; // 로그인 페이지로 리디렉션
       }
     } catch (error) {
       console.error(error);
       setFormStatus("idle");
+      alert(error.message);
     }
   };
 
