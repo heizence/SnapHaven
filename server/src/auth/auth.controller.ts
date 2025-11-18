@@ -7,6 +7,8 @@ import {
   Res,
   UseGuards,
   Req,
+  Get,
+  Query,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
@@ -16,6 +18,7 @@ import { SignUpDto } from './dto/signup.dto';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
 import {
+  ApiCheckNickname,
   ApiRefreshToken,
   ApiSignin,
   ApiSignout,
@@ -24,6 +27,7 @@ import {
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import { User } from 'src/users/entities/user.entity';
+import { CheckNicknameDto } from './dto/check-nickname.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -35,21 +39,17 @@ export class AuthController {
   @Post('signin')
   @HttpCode(HttpStatus.OK)
   @ApiSignin()
-  async login(
+  async signin(
     @Body() signinDto: SigninDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseDto<{ access_token: string; refresh_token: string }>> {
     const { access_token, refresh_token, message } =
       await this.authService.signin(signinDto);
 
-    // Refresh Token을 HttpOnly 쿠키에 저장
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'prod', // https 에서만
-      path: '/api/v1/auth', // /auth 경로에서만 유효
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7일 (ms)
+    return ResponseDto.success(HttpStatus.OK, message, {
+      access_token,
+      refresh_token,
     });
-    return ResponseDto.success({ access_token, refresh_token }, message);
   }
 
   // **************** 로그아웃 ****************
@@ -57,16 +57,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiSignout()
-  async logout(
+  async signout(
     @Req() req,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseDto<null>> {
     const user = req.user as User;
     const serviceRes = await this.authService.signout(user.id);
 
-    res.clearCookie('refresh_token', { path: '/api/v1/auth' });
-
-    return ResponseDto.successWithoutData(serviceRes.message);
+    return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
   }
 
   // **************** 토큰 새로고침 ****************
@@ -92,7 +90,7 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return ResponseDto.success({ access_token }, message);
+    return ResponseDto.success(HttpStatus.OK, message, { access_token });
   }
 
   // **************** 회원가입 ****************
@@ -101,6 +99,20 @@ export class AuthController {
   @ApiSignUp()
   async signup(@Body() signUpDto: SignUpDto): Promise<ResponseDto<null>> {
     const serviceRes = await this.authService.signUp(signUpDto);
-    return ResponseDto.successWithoutData(serviceRes.message);
+    return ResponseDto.successWithoutData(
+      HttpStatus.CREATED,
+      serviceRes.message,
+    );
+  }
+
+  // **************** 닉네임 중복 확인 ****************
+  @ApiCheckNickname()
+  @Get('check-nickname')
+  @HttpCode(HttpStatus.OK)
+  async checkNickname(
+    @Query() checkNicknameDto: CheckNicknameDto,
+  ): Promise<ResponseDto<null>> {
+    const serviceRes = await this.authService.checkNickname(checkNicknameDto);
+    return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
   }
 }

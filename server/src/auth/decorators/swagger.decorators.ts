@@ -7,6 +7,7 @@ import {
   ApiExtraModels,
   getSchemaPath,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
@@ -101,6 +102,64 @@ export function ApiSignUp() {
   );
 }
 
+export function ApiCheckNickname() {
+  return applyDecorators(
+    ApiExtraModels(ResponseDto),
+    ApiOperation({
+      summary: '닉네임 중복 확인',
+      description: '회원가입 시 사용할 닉네임이 이미 존재하는지 확인합니다.',
+    }),
+    ApiQuery({
+      name: 'nickname',
+      type: String,
+      description: '중복 확인할 닉네임',
+      example: 'testuser',
+      required: true,
+    }),
+    ApiOkResponse({
+      description: '사용 가능한 닉네임입니다.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          message: '사용 가능한 닉네임입니다.',
+          data: null,
+        },
+      },
+    }),
+    ApiResponse({
+      status: 409,
+      description: '이미 사용 중인 닉네임입니다.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          message: '이미 사용 중인 닉네임입니다.',
+          data: null,
+        },
+      },
+    }),
+    ApiResponse({
+      status: 400,
+      description: '유효성 검사 실패 (e.g., 닉네임이 너무 짧음)',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          message: '닉네임은 2자 이상이어야 합니다.',
+          data: null,
+        },
+      },
+    }),
+  );
+}
+
 export function ApiRefreshToken() {
   return applyDecorators(
     ApiExtraModels(ResponseDto),
@@ -158,7 +217,6 @@ export function ApiRefreshToken() {
   );
 }
 
-// 4. 로그아웃 (신규 추가)
 export function ApiSignout() {
   return applyDecorators(
     ApiBearerAuth('bearerAuth'), // 'main.ts'의 Bearer scheme 이름

@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -11,6 +12,7 @@ import { AuthProvider } from 'src/common/enums';
 import { SignUpDto } from './dto/signup.dto';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/users/entities/user.entity';
+import { CheckNicknameDto } from './dto/check-nickname.dto';
 
 @Injectable()
 export class AuthService {
@@ -68,7 +70,7 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException('이메일 또는 비밀번호를 확인하세요.');
+      throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
     console.log('#user : ', user);
     // 비밀번호 확인 (Bcrypt)
@@ -78,7 +80,7 @@ export class AuthService {
     );
 
     if (!isPasswordMatching) {
-      throw new UnauthorizedException('이메일 또는 비밀번호를 확인하세요.');
+      throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
     console.log('#isPasswordMatching : ', isPasswordMatching);
     const tokens = await this.getTokens(user);
@@ -112,12 +114,9 @@ export class AuthService {
     }
 
     // 닉네임 중복 확인
-    const existingNickname = await this.usersService.findByNickname(nickname);
-    if (existingNickname) {
-      throw new ConflictException('이미 사용 중인 닉네임입니다.');
-    }
+    await this.checkNickname({ nickname });
 
-    const password_hash = await bcrypt.hash(password, 10); // password, hash round
+    const password_hash = await bcrypt.hash(password, 10);
 
     await this.usersService.create({
       email,
@@ -127,5 +126,18 @@ export class AuthService {
     });
 
     return { message: '회원가입이 완료되었습니다.' };
+  }
+
+  // 닉네임 중복 확인
+  async checkNickname(
+    checkNicknameDto: CheckNicknameDto,
+  ): Promise<{ message: string }> {
+    const existingNickname = await this.usersService.findByNickname(
+      checkNicknameDto.nickname,
+    );
+    if (existingNickname) {
+      throw new ConflictException('이미 사용 중인 닉네임입니다.');
+    }
+    return { message: '사용 가능한 닉네임입니다.' };
   }
 }
