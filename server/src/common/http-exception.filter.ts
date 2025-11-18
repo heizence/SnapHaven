@@ -37,8 +37,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else {
       message = exception.message;
     }
+
     // ResponseDto.fail() 정적 메소드를 사용하여 응답 객체 생성
-    const responseDto = ResponseDto.fail(message, errorData);
+    const responseDto = ResponseDto.fail(status, message, errorData);
 
     response.status(status).json(responseDto);
   }

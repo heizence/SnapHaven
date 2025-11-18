@@ -9,6 +9,8 @@ export class ResponseDto<T> {
     example: 200,
     description: 'HTTP 상태 코드 (HttpStatus 열거형 값)',
   })
+  public readonly code: number = 200;
+
   @ApiProperty({ example: 'Success', description: '응답 메시지' })
   public readonly message: string;
 
@@ -22,7 +24,8 @@ export class ResponseDto<T> {
    * DTO 생성을 위한 private 생성자.
    * 정적 팩토리 메소드(success, fail)를 통해서만 인스턴스를 생성해야 한다.
    */
-  public constructor(message: string, data: T) {
+  public constructor(code: number, message: string, data: T) {
+    this.code = code;
     this.message = message;
     this.data = data;
   }
@@ -30,15 +33,17 @@ export class ResponseDto<T> {
   /**
    * [정적 팩토리 메소드]
    * 성공 응답
+   * @param code  응답 코드
    * @param data 응답에 포함될 데이터
    * @param message [Optional] 커스텀 성공 메시지
    * @returns ResponseDto<T>
    */
   public static success<T>(
-    data: T,
+    code: number,
     message: string = 'Success',
+    data: T,
   ): ResponseDto<T> {
-    return new ResponseDto(message, data);
+    return new ResponseDto(code, message, data);
   }
 
   /**
@@ -48,9 +53,10 @@ export class ResponseDto<T> {
    * @returns ResponseDto<null>
    */
   public static successWithoutData(
+    code: number,
     message: string = 'Success',
   ): ResponseDto<null> {
-    return new ResponseDto(message, null);
+    return new ResponseDto(code, message, null);
   }
 
   /**
@@ -61,9 +67,10 @@ export class ResponseDto<T> {
    * @returns ResponseDto<T | null>
    */
   public static fail<T = null>(
+    code: number,
     message: string,
     data: T,
   ): ResponseDto<T | null> {
-    return new ResponseDto(message, data);
+    return new ResponseDto(code, message, data);
   }
 }
