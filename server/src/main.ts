@@ -10,6 +10,10 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   app.setGlobalPrefix('api/v1'); // 모든 API 경로가 /api/v1/... 로 시작됨
+  app.enableCors({
+    origin: 'http://localhost:3000', // 클라이언트 주소 (추후 수정)
+    credentials: true,
+  });
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // 애플리케이션 전역에 적용될 글로벌 파이프 설정
