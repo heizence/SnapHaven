@@ -21,6 +21,14 @@ export class User {
   nickname: string;
 
   @Column({
+    name: 'profile_image_url',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  profileImageUrl: string | null;
+
+  @Column({
     type: 'enum',
     enum: AuthProvider,
     default: AuthProvider.EMAIL,

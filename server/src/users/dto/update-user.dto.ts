@@ -23,7 +23,7 @@ export class UpdateUserDto {
   @Matches(/^(?=.*[a-zA-Z])(?=.*\d).*$/, {
     message: '비밀번호는 영문자와 숫자를 최소 1개씩 포함해야 합니다.',
   })
-  password?: string;
+  password_hash?: string;
 
   // 토큰 버전
   @IsOptional()
@@ -34,5 +34,5 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @IsUrl({}, { message: '유효한 URL 형식이 아닙니다.' })
-  profileImageUrl?: string;
+  profile_image?: string;
 }
