@@ -5,14 +5,23 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UsersService } from '../users/users.service';
-import { JwtService } from '@nestjs/jwt';
-import { SigninDto } from './dto/signin.dto';
-import { AuthProvider } from 'src/common/enums';
-import { SignUpDto } from './dto/signup.dto';
 import { ConfigService } from '@nestjs/config';
+import { MailerService } from '@nestjs-modules/mailer';
+import { JwtService } from '@nestjs/jwt';
+
+import { UsersService } from '../users/users.service';
+import { AuthProvider } from 'src/common/enums';
 import { User } from 'src/users/entities/user.entity';
+
+import { SigninDto } from './dto/signin.dto';
+import { SignUpDto } from './dto/signup.dto';
 import { CheckNicknameDto } from './dto/check-nickname.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+
+interface ServiceResDto {
+  message: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -20,6 +29,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private readonly mailerService: MailerService,
   ) {}
 
   // 토큰 2개(Access, Refresh)를 생성하는 헬퍼 함수
@@ -93,7 +103,7 @@ export class AuthService {
   }
 
   // 로그아웃
-  async signout(userId: number): Promise<{ message: string }> {
+  async signout(userId: number): Promise<ServiceResDto> {
     const user = await this.usersService.findById(userId);
     if (user) {
       await this.usersService.update(userId, {
@@ -104,7 +114,7 @@ export class AuthService {
   }
 
   // 회원가입
-  async signUp(signUpDto: SignUpDto): Promise<{ message: string }> {
+  async signUp(signUpDto: SignUpDto): Promise<ServiceResDto> {
     const { email, nickname, password } = signUpDto;
 
     // 이메일 중복 확인
@@ -131,7 +141,7 @@ export class AuthService {
   // 닉네임 중복 확인
   async checkNickname(
     checkNicknameDto: CheckNicknameDto,
-  ): Promise<{ message: string }> {
+  ): Promise<ServiceResDto> {
     const existingNickname = await this.usersService.findByNickname(
       checkNicknameDto.nickname,
     );
@@ -139,5 +149,94 @@ export class AuthService {
       throw new ConflictException('이미 사용 중인 닉네임입니다.');
     }
     return { message: '사용 가능한 닉네임입니다.' };
+  }
+
+  // 비밀번호 재설정 요청(이메일로 재설정 링크만 보내줌. 재설정은 별도로 진행)
+  async forgotPassword(
+    forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<ServiceResDto> {
+    const { email } = forgotPasswordDto;
+    const user = await this.usersService.findByEmail(email);
+    console.log('email : ', email);
+    // 보안: 유저가 존재하지 않아도, 존재 여부를 알려주지 않기 위해 항상 성공처럼 응답한다.(User Enumeration 방지)
+    if (!user) {
+      console.warn(`[Forgot PW] Non-existent email requested: ${email}`);
+      return { message: '이메일이 성공적으로 발송되었습니다.' };
+    }
+
+    // 재설정 전용 토큰 생성 (매우 짧은 만료 시간)
+    // payload '용도'를 명시하는 것이 좋다.
+    const payload = {
+      sub: user.id,
+      purpose: 'password-reset',
+    };
+    const resetToken = await this.jwtService.signAsync(payload, {
+      expiresIn: '10m',
+      secret: this.configService.get<string>('JWT_SECRET_KEY'),
+    });
+
+    // 클라이언트의 재설정 페이지 URL
+    const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+
+    try {
+      // 이메일 발송
+      // 추후 옵션 파라미터 변경
+      await this.mailerService.sendMail({
+        to: email,
+        //to: 'heizence6626@gmail.com', // for test
+        from: 'SnapHaven <noreply@snaphaven.com>',
+        subject: '[SnapHaven] 비밀번호 재설정 링크입니다.',
+        html: `
+        <p>비밀번호를 재설정하려면 아래 링크를 클릭하세요 (10분 내 만료):</p>
+        <a href="${resetUrl}" target="_blank">비밀번호 재설정하기</a>
+      `,
+      });
+    } catch (error) {
+      // 이메일 전송 실패(e.g., 존재하지 않는 도메인) 시 에러를 로깅하되, 500 에러를 반환하지 않고 조용히 종료합니다.
+      console.error(`[Forgot PW] Failed to send email to ${email}`, error);
+    }
+
+    return { message: '이메일이 성공적으로 발송되었습니다.' };
+  }
+
+  // 비밀번호 재설정
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<ServiceResDto> {
+    const { token, newPassword } = resetPasswordDto;
+
+    let payload: { sub: number; purpose: string };
+
+    // 토큰 검증
+    try {
+      payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('JWT_SECRET_KEY'),
+      });
+    } catch (error) {
+      console.error(error);
+      throw new UnauthorizedException('유효하지 않거나 만료된 토큰입니다.');
+    }
+
+    // 토큰 용도 확인 (Access/Refresh 토큰 재사용 방지)
+    if (payload.purpose !== 'password-reset') {
+      throw new UnauthorizedException('잘못된 용도의 토큰입니다.');
+    }
+
+    // 유저 존재 확인
+    const user = await this.usersService.findById(payload.sub);
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    // 새 비밀번호 해싱
+    const password_hash = await bcrypt.hash(newPassword, 10);
+
+    // 보안: 비밀번호 변경 시, 모든 기기 로그아웃 (토큰 버전 증가)
+    await this.usersService.update(user.id, {
+      password_hash: password_hash,
+      token_version: user.token_version + 1,
+    });
+
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
 }

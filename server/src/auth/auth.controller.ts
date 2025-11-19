@@ -19,7 +19,9 @@ import { ResponseDto } from 'src/common/dto/response.dto';
 
 import {
   ApiCheckNickname,
+  ApiForgotPassword,
   ApiRefreshToken,
+  ApiResetPassword,
   ApiSignin,
   ApiSignout,
   ApiSignUp,
@@ -28,6 +30,8 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import { User } from 'src/users/entities/user.entity';
 import { CheckNicknameDto } from './dto/check-nickname.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -113,6 +117,28 @@ export class AuthController {
     @Query() checkNicknameDto: CheckNicknameDto,
   ): Promise<ResponseDto<null>> {
     const serviceRes = await this.authService.checkNickname(checkNicknameDto);
+    return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
+  }
+
+  // **************** 비밀번호 재설정 요청(이메일로 링크 전송) ****************
+  @ApiForgotPassword()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body() forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<ResponseDto<null>> {
+    const serviceRes = await this.authService.forgotPassword(forgotPasswordDto);
+    return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
+  }
+
+  // **************** 비밀번호 재설정 ****************
+  @ApiResetPassword()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<ResponseDto<null>> {
+    const serviceRes = await this.authService.resetPassword(resetPasswordDto);
     return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
   }
 }

@@ -36,6 +36,7 @@ export function ApiSignin() {
           },
         ],
         example: {
+          code: 200,
           message: '로그인 성공',
           data: {
             access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -53,6 +54,7 @@ export function ApiSignin() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 401,
           message: '이메일 또는 비밀번호를 확인하세요.',
           data: null,
         },
@@ -80,6 +82,7 @@ export function ApiSignUp() {
           },
         ],
         example: {
+          code: 201,
           message: '회원가입이 완료되었습니다.',
           data: null,
         },
@@ -94,6 +97,7 @@ export function ApiSignUp() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 409,
           message: '이미 사용 중인 이메일(닉네임)입니다.',
           data: null,
         },
@@ -124,6 +128,7 @@ export function ApiCheckNickname() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 200,
           message: '사용 가능한 닉네임입니다.',
           data: null,
         },
@@ -138,6 +143,7 @@ export function ApiCheckNickname() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 409,
           message: '이미 사용 중인 닉네임입니다.',
           data: null,
         },
@@ -152,6 +158,7 @@ export function ApiCheckNickname() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 400,
           message: '닉네임은 2자 이상이어야 합니다.',
           data: null,
         },
@@ -192,6 +199,7 @@ export function ApiRefreshToken() {
           },
         ],
         example: {
+          code: 200,
           message: '토큰 갱신 성공',
           data: {
             access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
@@ -209,6 +217,7 @@ export function ApiRefreshToken() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 401,
           message: '유효하지 않은 토큰입니다.',
           data: null,
         },
@@ -234,6 +243,7 @@ export function ApiSignout() {
           { properties: { data: { type: 'null' } } }, // data: null
         ],
         example: {
+          code: 200,
           message: '로그아웃 되었습니다.',
           data: null,
         },
@@ -248,7 +258,73 @@ export function ApiSignout() {
           { properties: { data: { type: 'null' } } },
         ],
         example: {
+          code: 401,
           message: 'Unauthorized',
+          data: null,
+        },
+      },
+    }),
+  );
+}
+
+export function ApiForgotPassword() {
+  return applyDecorators(
+    ApiExtraModels(ResponseDto),
+    ApiOperation({
+      summary: '비밀번호 재설정 요청(이메일 발송)',
+      description:
+        '이메일을 입력받아, 유효한 계정일 경우 비밀번호 재설정 링크를 메일로 발송합니다.',
+    }),
+    ApiOkResponse({
+      description: '요청 성공 (계정 존재 여부와 상관없이 항상 동일한 응답)',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          code: 200,
+          message: '이메일이 성공적으로 발송되었습니다.',
+          data: null,
+        },
+      },
+    }),
+  );
+}
+
+export function ApiResetPassword() {
+  return applyDecorators(
+    ApiExtraModels(ResponseDto),
+    ApiOperation({
+      summary: '비밀번호 재설정',
+      description:
+        '재설정 토큰과 새 비밀번호를 받아 비밀번호를 업데이트합니다.',
+    }),
+    ApiOkResponse({
+      description: '비밀번호 변경 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          code: 200,
+          message: '비밀번호가 성공적으로 변경되었습니다.',
+          data: null,
+        },
+      },
+    }),
+    ApiResponse({
+      status: 401,
+      description: '인증 실패 (유효하지 않거나 만료된 토큰)',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          code: 401,
+          message: '유효하지 않거나 만료된 토큰입니다.',
           data: null,
         },
       },
