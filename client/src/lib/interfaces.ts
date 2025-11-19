@@ -44,6 +44,10 @@ export interface GetProfileInfoRequest {
   token: string;
 }
 
+export interface forgotPasswordRequest {
+  email: string;
+}
+
 export interface ResetPasswordRequest {
   email: string;
 }

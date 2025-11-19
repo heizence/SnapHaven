@@ -18,6 +18,7 @@ import {
   DeleteAccountRequest,
   GetEachContentRequest,
   GetCollectionRequest,
+  forgotPasswordRequest,
 } from "./interfaces";
 
 /** 기본적인 API 요청 method 형식
@@ -136,8 +137,13 @@ export const getProfileInfoAPI = () =>
 export const getUserContentsAPI = (requestBody: GetProfileInfoRequest) =>
   getRequest<GetProfileInfoRequest, GetProfileInfoResponse>("getProfileInfo", requestBody);
 
+// 비밀번호 재설정 링크를 메일로 전송하는 api
+export const forgotPasswordAPI = (requestBody: forgotPasswordRequest) =>
+  postRequest<forgotPasswordRequest, null>("auth/forgot-password", requestBody);
+
+// 실제로 비밀번호 재설정하는 api
 export const resetPasswordAPI = (requestBody: ResetPasswordRequest) =>
-  postRequest<ResetPasswordRequest, null>("resetPassword", requestBody);
+  postRequest<ResetPasswordRequest, null>("auth/reset-password", requestBody);
 
 export const uploadFileAPI = (requestBody: FormData) =>
   multipartRequest<FormData, null>("files/upload", requestBody);

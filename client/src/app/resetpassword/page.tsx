@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { isValidEmail } from "@/lib/utils";
-import { resetPasswordAPI } from "@/lib/APIs";
+import { forgotPasswordAPI } from "@/lib/APIs";
 import Input from "@/components/ui/Input";
 import LongButton from "@/components/ui/LongButton";
 import LinkText from "@/components/ui/LinkText";
+import { forgotPasswordRequest } from "@/lib/interfaces";
 
 export default function Page() {
   const [email, setEmail] = useState("");
@@ -25,11 +26,11 @@ export default function Page() {
     }
     setEmailStatus("checking");
     try {
-      const res = await resetPasswordAPI({ email });
+      const request: forgotPasswordRequest = { email };
+      const res = await forgotPasswordAPI(request);
+
       console.log("res : ", res);
-      if (res.code === 404) {
-        alert("존재하지 않는 계정입니다."); // 기존 로직
-      } else if (res.code === 200) {
+      if (res.code === 200) {
         alert("해당 이메일로 재설정 링크를 발송했습니다."); // 기존 로직
       }
     } catch (error) {
