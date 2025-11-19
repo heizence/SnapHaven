@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "./lib/Jwt";
 
 export async function middleware(req: NextRequest) {
   const accessToken = req.cookies.get("accessToken")?.value || "";
   const refreshToken = req.cookies.get("refreshToken")?.value || "";
 
-  const isAccessTokenValid = Boolean(await verifyToken(accessToken));
-  const isSignedIn = Boolean(isAccessTokenValid && refreshToken);
-  const isSignedOut = Boolean(!isAccessTokenValid && !refreshToken);
+  const isSignedIn = Boolean(accessToken && refreshToken);
+  const isSignedOut = Boolean(!accessToken && !refreshToken);
 
   const isPathStartsWith = (path: string) => req.nextUrl.pathname.startsWith(path);
 
