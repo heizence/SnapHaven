@@ -62,7 +62,7 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
       const res = await signoutAPI();
       console.log("signout res : ", res);
       if (res.code === 200) {
-        router.push("/");
+        router.push("/signin");
         router.refresh();
       }
     } catch (e) {
