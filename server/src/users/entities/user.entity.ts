@@ -26,7 +26,7 @@ export class User {
     length: 255,
     nullable: true,
   })
-  profileImageUrl: string | null;
+  profile_image_url: string | null;
 
   @Column({
     type: 'enum',
