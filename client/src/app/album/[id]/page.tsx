@@ -6,7 +6,6 @@ import { Photo } from "react-photo-album";
 import Slideshow from "@/components/Slideshow";
 
 import RenderAlbum from "@/components/RenderAlbum";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import UserInfoArea from "@/components/ui/UserInfoArea";
 import ContentDesc from "@/components/ui/ContentDesc";
 import { TagButtons } from "@/components/ui/TagButton";
@@ -151,14 +150,6 @@ export default function CollectionDetailPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleLoadMore]);
 
-  // 로딩 및 404
-  if (isLoading) {
-    return (
-      <main className="flex w-full items-center justify-center">
-        <LoadingSpinner isLoading={isLoading} />
-      </main>
-    );
-  }
   if (!albumDetail) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 pt-16">

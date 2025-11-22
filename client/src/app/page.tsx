@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import RenderAlbum from "@/components/RenderAlbum";
 import NoDataMessage from "@/components/ui/NoDataMessage";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 interface MediaItemDto {
   id: number;
@@ -215,7 +214,6 @@ export default function HomePage() {
         />
       )}
 
-      <LoadingSpinner isLoading={isLoading && !isInitialLoad} />
       <div className="mt-10">
         <NoDataMessage
           message="콘텐츠가 없습니다"

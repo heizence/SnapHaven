@@ -8,7 +8,6 @@ import "react-photo-album/masonry.css";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/contexts/ModalProvider";
 import RenderAlbum from "@/components/RenderAlbum";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface CollectionFolder {
@@ -206,11 +205,6 @@ export default function MyCollectionsPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleLoadMore]);
 
-  // --- 11. 렌더링 ---
-  if (isLoadingPage) {
-    return <LoadingSpinner isLoading={isLoadingPage} />;
-  }
-
   return (
     <main className="w-full min-h-[calc(100vh-56px)] bg-white px-5">
       <div className="container mx-auto py-5">
@@ -281,9 +275,6 @@ export default function MyCollectionsPage() {
                   onClick={({ index }) => router.push(`/content/${index}`)}
                 />
               )}
-
-              {/* 무한 스크롤 로더 */}
-              <LoadingSpinner isLoading={isLoadingMore} />
 
               <NoDataMessage
                 message="모든 콘텐츠를 불러왔습니다."

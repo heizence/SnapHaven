@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import "react-photo-album/masonry.css";
 import RenderAlbum from "@/components/RenderAlbum";
 import NoDataMessage from "@/components/ui/NoDataMessage";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 interface MediaItemDto {
   id: number;
@@ -197,8 +196,6 @@ export default function MyLikedContentsPage() {
           </div>
         </div>
       </div>
-
-      <LoadingSpinner isLoading={isLoading} />
 
       <div className="mt-10">
         <NoDataMessage

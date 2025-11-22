@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import "react-photo-album/masonry.css";
 import { useRouter, useSearchParams } from "next/navigation";
 import RenderAlbum from "@/components/RenderAlbum";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 import { TagButton } from "@/components/ui/TagButton";
 
@@ -223,8 +222,6 @@ export default function HomePage() {
           }}
         />
       )}
-
-      <LoadingSpinner isLoading={isLoading && !isInitialLoad} />
 
       {/* 빈 결과 메시지 (기존과 동일) */}
       <div className="mt-20">

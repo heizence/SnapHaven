@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RenderAlbum from "@/components/RenderAlbum";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface MediaItemDto {
@@ -204,8 +203,6 @@ export default function MyUploadsPage() {
           </div>
         </div>
       </div>
-
-      <LoadingSpinner isLoading={isLoading} />
 
       <NoDataMessage
         message="모든 콘텐츠를 불러왔습니다."
