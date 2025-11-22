@@ -19,6 +19,7 @@ import {
   GetEachContentRequest,
   GetCollectionRequest,
   forgotPasswordRequest,
+  GoogleAuthRequest,
 } from "./interfaces";
 
 /** 기본적인 API 요청 method 형식
@@ -119,6 +120,9 @@ const multipartRequest = <TRequest, TResponse>(path: string, formData: TRequest)
 /******************* API List ******************/
 export const signinAPI = (requestBody: SignInRequest) =>
   postRequest<SignInRequest, SignInResponse>("auth/signin", requestBody);
+
+export const googleAuthAPI = (requestBody: GoogleAuthRequest) =>
+  postRequest<GoogleAuthRequest, SignInResponse>("auth/google", requestBody);
 
 export const signoutAPI = () => postRequest<null, null>("auth/signout", null);
 

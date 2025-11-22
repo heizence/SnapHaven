@@ -2,19 +2,24 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { ResponseDto } from "@/lib/ResponseDto";
 import { serializeAuthCookies } from "@/utils/authCookieUtils";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function googleSignInHandler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
-    return res.status(405).json(ResponseDto.fail(405, "Method Not Allowed", null));
+    return res.status(405).end();
+  }
+
+  const { accessToken } = req.body;
+  if (!accessToken) {
+    return res.status(400).json(ResponseDto.fail(400, "accessToken이 필요합니다.", null));
   }
 
   try {
-    const targetUrl = `${process.env.SERVER_ADDRESS}/api/v1/auth/signin`;
+    const targetUrl = `${process.env.SERVER_ADDRESS}/api/v1/auth/google`;
 
     // Next.js 서버(BFF)가 NestJS 서버로 직접 로그인 요청
     const apiRes = await fetch(targetUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify({ accessToken: accessToken }),
     });
 
     const responseData = await apiRes.json();
@@ -33,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(apiRes.status).json(responseData);
   } catch (error) {
-    console.error("BFF /api/auth/signin Error:", error);
+    console.error(`Google Sign-In Proxy Error:`, error);
     return res.status(500).json(ResponseDto.fail(500, "Internal Server Error", null));
   }
 }

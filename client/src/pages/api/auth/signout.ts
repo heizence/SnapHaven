@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import cookie from "cookie";
 import { ResponseDto } from "@/lib/ResponseDto";
+import { clearAuthCookies } from "@/utils/authCookieUtils";
 
 const BASE_URL = `${process.env.SERVER_ADDRESS}/api/v1/auth/signout`;
 
@@ -25,31 +25,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       apiResStatus = apiRes.status;
       responseData = await apiRes.json();
     } catch (error) {
-      // NestJS 서버가 죽어있어도, 클라이언트 쿠키는 삭제해야 하므로
-      // 에러를 로깅만 하고 계속 진행
+      // 서버가 죽어있어도, 클라이언트 쿠키는 삭제해야 하므로 에러를 로깅만 하고 계속 진행
       console.error("BFF /api/auth/signout NestJS Error:", error);
     }
   }
 
   // NestJS 요청 성공 여부와 "상관없이" 쿠키를 삭제
-  const deleteAccessCookie = cookie.serialize("accessToken", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  const deletedCookies = clearAuthCookies();
+  res.setHeader("Set-Cookie", deletedCookies);
 
-  const deleteRefreshCookie = cookie.serialize("refreshToken", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: 0,
-  });
-
-  // 응답 헤더에 쿠키 삭제 설정
-  res.setHeader("Set-Cookie", [deleteAccessCookie, deleteRefreshCookie]);
-  // 클라이언트에 최종 응답
   return res.status(apiResStatus).json(responseData);
 }

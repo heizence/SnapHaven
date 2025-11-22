@@ -18,6 +18,10 @@ export interface SignUpResponse {
   user: User;
 }
 
+export interface GoogleAuthRequest {
+  accessToken: string;
+}
+
 export interface CheckEmailRequest {
   email: string;
 }
