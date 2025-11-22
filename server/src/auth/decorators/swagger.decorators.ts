@@ -47,7 +47,7 @@ export function ApiSignin() {
     }),
     ApiResponse({
       status: 401,
-      description: '인증 실패 (이메일 또는 비밀번호 오류)',
+      description: '인증 실패(이메일 또는 비밀번호 오류)',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -99,6 +99,57 @@ export function ApiSignUp() {
         example: {
           code: 409,
           message: '이미 사용 중인 이메일(닉네임)입니다.',
+          data: null,
+        },
+      },
+    }),
+  );
+}
+
+export function ApiGoogleAuth() {
+  return applyDecorators(
+    ApiExtraModels(ResponseDto),
+    ApiOperation({
+      summary: 'Google 로그인(회원가입)',
+      description:
+        'Google 계정으로 로그인(회원가입)하고 JWT(access_token)를 발급받습니다.',
+    }),
+    ApiOkResponse({
+      description: '로그인 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          {
+            properties: {
+              data: {
+                type: 'string',
+                example:
+                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVt...',
+              },
+            },
+          },
+        ],
+        example: {
+          code: 200,
+          message: '로그인 성공',
+          data: {
+            access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          },
+        },
+      },
+    }),
+    ApiResponse({
+      status: 401,
+      description: 'Google 토큰 검증 실패',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          code: 401,
+          message: '유효하지 않거나 만료된 Google 토큰입니다.',
           data: null,
         },
       },

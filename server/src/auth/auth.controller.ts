@@ -20,6 +20,7 @@ import { ResponseDto } from 'src/common/dto/response.dto';
 import {
   ApiCheckNickname,
   ApiForgotPassword,
+  ApiGoogleAuth,
   ApiRefreshToken,
   ApiResetPassword,
   ApiSignin,
@@ -32,6 +33,7 @@ import { User } from 'src/users/entities/user.entity';
 import { CheckNicknameDto } from './dto/check-nickname.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -107,6 +109,28 @@ export class AuthController {
       HttpStatus.CREATED,
       serviceRes.message,
     );
+  }
+
+  // **************** 구글 로그인, 회원가입 ****************
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiGoogleAuth()
+  async googleAuth(
+    @Body() googleAuthDto: GoogleAuthDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<
+    ResponseDto<{
+      access_token: string;
+      refresh_token: string;
+    }>
+  > {
+    const { access_token, refresh_token, message } =
+      await this.authService.googleAuth(googleAuthDto);
+
+    return ResponseDto.success(HttpStatus.OK, message, {
+      access_token,
+      refresh_token,
+    });
   }
 
   // **************** 닉네임 중복 확인 ****************

@@ -36,6 +36,9 @@ export class User {
   })
   auth_provider: AuthProvider;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  sns_id: string;
+
   @CreateDateColumn()
   created_at: Date;
 

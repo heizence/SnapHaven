@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 
 import { UsersService } from '../users/users.service';
 import { AuthProvider } from 'src/common/enums';
+import { OAuth2Client } from 'google-auth-library';
 import { User } from 'src/users/entities/user.entity';
 
 import { SigninDto } from './dto/signin.dto';
@@ -18,22 +19,35 @@ import { SignUpDto } from './dto/signup.dto';
 import { CheckNicknameDto } from './dto/check-nickname.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleAuthDto } from './dto/google-auth.dto';
 
 interface ServiceResDto {
   message: string;
 }
 
+interface ServiceSignInDto {
+  message: string;
+  access_token: string;
+  refresh_token: string;
+}
+
 @Injectable()
 export class AuthService {
+  private googleClient: OAuth2Client;
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private readonly mailerService: MailerService,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client(
+      configService.get<string>('GOOGLE_CLIENT_ID'),
+    );
+  }
 
   // 토큰 2개(Access, Refresh)를 생성하는 헬퍼 함수
-  async getTokens(user: User) {
+  private async getTokens(user: User) {
     const accessPayload = {
       sub: user.id,
       email: user.email,
@@ -60,7 +74,6 @@ export class AuthService {
     // (이 시점에 이미 Refresh Token 검증 및 token_version 검증이 완료됨)
 
     const tokens = await this.getTokens(user);
-    console.log('#tokens : ', tokens);
     await this.usersService.update(user.id, {
       token_version: user.token_version + 1,
     });
@@ -73,9 +86,7 @@ export class AuthService {
   }
 
   // 로그인
-  async signin(
-    signinDto: SigninDto,
-  ): Promise<{ message: string; access_token: string; refresh_token: string }> {
+  async signin(signinDto: SigninDto): Promise<ServiceSignInDto> {
     const { email, password } = signinDto;
 
     const user = await this.usersService.findByEmail(email);
@@ -118,7 +129,10 @@ export class AuthService {
     const { email, nickname, password } = signUpDto;
 
     // 이메일 중복 확인
-    const existingEmail = await this.usersService.findByEmail(email);
+    const existingEmail = await this.usersService.findByEmailAndProvider(
+      email,
+      AuthProvider.EMAIL,
+    );
     if (existingEmail) {
       throw new ConflictException('이미 사용 중인 이메일입니다.');
     }
@@ -136,6 +150,83 @@ export class AuthService {
     });
 
     return { message: '회원가입이 완료되었습니다.' };
+  }
+
+  // 구글 로그인, 회원가입
+  async googleAuth(googleAuthDto: GoogleAuthDto): Promise<ServiceSignInDto> {
+    const { accessToken } = googleAuthDto;
+
+    const response = await fetch(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new UnauthorizedException(
+        '유효하지 않거나 만료된 Google Access Token입니다.',
+      );
+    }
+
+    const {
+      email,
+      name: snsName,
+      sub: providerId,
+      picture, // 프로필 사진 url
+    } = await response.json();
+    const provider = AuthProvider.GOOGLE;
+
+    const user = await this.usersService.findByEmailAndProvider(
+      email,
+      provider,
+    );
+    console.log('#user : ', user);
+    if (user) {
+      // 7. 로그인 처리 (JWT 반환)
+      const tokens = await this.getTokens(user);
+
+      return {
+        message: '구글 로그인 성공',
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token, // 컨트롤러가 이 토큰을 쿠키에 담음
+      };
+    }
+
+    // 3-B. 계정 없음: 자동 회원가입 처리
+
+    // 4. 닉네임 중복 처리
+    const baseNickname = snsName.substring(0, 15);
+    const uniqueNickname =
+      baseNickname + '#' + Math.floor(Math.random() * 10000); // 닉네임 중복등록 방지를 위해 랜덤 숫자값과 결합
+
+    // 5. 더미 비밀번호 생성 및 해싱
+    const dummyPassword =
+      Math.random().toString(36).substring(2, 15) + Date.now();
+    const password_hash = await bcrypt.hash(dummyPassword, 10);
+
+    // 6. 사용자 생성 (자동 가입)
+    const newUser = await this.usersService.create({
+      email,
+      nickname: uniqueNickname,
+      password_hash: password_hash,
+      auth_provider: provider, // GOOGLE로 저장
+      sns_id: providerId,
+    });
+
+    console.log('## newUser : ', newUser);
+
+    // 7. 로그인 처리 (JWT 반환)
+    const tokens = await this.getTokens(newUser);
+
+    return {
+      message: '구글 로그인 성공',
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token, // 컨트롤러가 이 토큰을 쿠키에 담음
+    };
   }
 
   // 닉네임 중복 확인
@@ -192,7 +283,7 @@ export class AuthService {
       `,
       });
     } catch (error) {
-      // 이메일 전송 실패(e.g., 존재하지 않는 도메인) 시 에러를 로깅하되, 500 에러를 반환하지 않고 조용히 종료합니다.
+      // 이메일 전송 실패(e.g., 존재하지 않는 도메인) 시 에러를 로깅하되, 500 에러를 반환하지 않고 조용히 종료
       console.error(`[Forgot PW] Failed to send email to ${email}`, error);
     }
 

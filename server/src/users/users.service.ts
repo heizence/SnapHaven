@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuthProvider } from 'src/common/enums';
 
 @Injectable()
 export class UsersService {
@@ -17,9 +18,19 @@ export class UsersService {
     return this.usersRepository.save(newUser);
   }
 
-  // 이메일로 유저 찾기 (로그인 시 사용)
+  // 이메일로 유저 찾기
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
+  }
+
+  // 유저 찾기 (로그인 시 사용)
+  async findByEmailAndProvider(
+    email: string,
+    provider: AuthProvider,
+  ): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { email, auth_provider: provider },
+    });
   }
 
   // ID로 유저 찾기 (JWT 인증 시 사용)
