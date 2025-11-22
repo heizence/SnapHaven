@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLoading } from "@/contexts/LoadingProvider";
-import { googleSigninAPI } from "@/lib/APIs";
+import { googleAuthAPI } from "@/lib/APIs";
 
 export default function GoogleRedirectPage() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export default function GoogleRedirectPage() {
 
     try {
       // ID Token을 Next.js BFF 프록시로 전송
-      await googleSigninAPI({ accessToken });
+      await googleAuthAPI({ accessToken });
 
       router.push("/");
       router.refresh();
