@@ -2,7 +2,7 @@ import ScrollRestoration from "@/components/ScrollRestoration";
 import "./globals.css";
 import Navbar from "../components/Navbar/Navbar.server";
 import { ModalProvider } from "@/contexts/ModalProvider";
-import { LoadingProvider } from "@/components/LoadingContext";
+import { LoadingProvider } from "@/contexts/LoadingProvider";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
