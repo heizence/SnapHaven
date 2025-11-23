@@ -26,7 +26,7 @@ import {
   ApiSignin,
   ApiSignout,
   ApiSignUp,
-} from './decorators/swagger.decorators';
+} from './decorators/swagger.auth.decorators';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import { User } from 'src/users/entities/user.entity';
