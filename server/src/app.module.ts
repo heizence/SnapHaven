@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import * as path from 'path';
 import * as Joi from 'joi';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TagsModule } from './tags/tags.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -57,9 +60,12 @@ import { TagsModule } from './tags/tags.module';
       }),
     }),
 
+    EventEmitterModule.forRoot(),
+
     AuthModule,
     UsersModule,
     TagsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
