@@ -1,3 +1,17 @@
+/**
+ * =================================================================
+ * 파일 역할: Google 로그인/자동 가입 및 쿠키 설정
+ * =================================================================
+ * * * 1. 존재 이유 (외부 ID Token 검증 처리):
+ * - 클라이언트가 Google SDK를 통해 획득한 ID Token을 받아 NestJS 서버로 전달하는 특수 목적의 파일이다.
+ * - NestJS는 이 토큰을 검증하고 (유효성, 자동 가입 처리), 일반 로그인과 동일한 형태의 JWT를 반환한다.
+ * * * 2. 주요 기능:
+ * - **NestJS 호출:** ID Token을 NestJS의 /auth/google 엔드포인트로 전달한다.
+ * - **HttpOnly 쿠키 설정 (핵심):** NestJS로부터 받은 JWT를 추출하여 HttpOnly 쿠키로 변환, 설정하여 클라이언트에 응답한다.
+ * - **통합 아키텍처:** 일반 로그인(signin.ts)과 동일한 방식으로 HttpOnly 쿠키를 설정하여, 모든 인증 방식이 동일한 서버 컴포넌트/미들웨어 인증 흐름을 따르도록 보장한다.
+ * =================================================================
+ */
+
 import { NextApiRequest, NextApiResponse } from "next";
 import { ResponseDto } from "@/lib/ResponseDto";
 import { serializeAuthCookies } from "@/utils/authCookieUtils";

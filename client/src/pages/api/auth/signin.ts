@@ -1,3 +1,18 @@
+/**
+ * =================================================================
+ * 파일 역할: 일반 로그인 핸들러 및 쿠키 설정
+ * =================================================================
+ * * * 1. 존재 이유 (보안 게이트웨이):
+ * - 클라이언트의 일반 로그인 요청을 받아 NestJS에 전달하고, 반환된 JWT를 브라우저에 HttpOnly 쿠키로 설정하는 특수 목적의 파일이다.
+ * - NextAuth.js의 Credentials Provider로 통합할 수 있으나, 현재는 순수 Next.js API Route로 구현되어 있다.
+ * * * 2. 주요 기능:
+ * - **NestJS 호출:** 클라이언트의 email/password를 받아 NestJS의 /auth/signin으로 전달한다.
+ * - **JWT 수신:** NestJS로부터 Access Token 및 Refresh Token이 포함된 JSON 응답을 받는다.
+ * - **쿠키 설정 (핵심):** 받은 JWT를 **'Set-Cookie' 헤더**에 담아 HttpOnly 쿠키로 브라우저에 설정한다. (로그인 상태 유지의 시작점)
+ * - **토큰 은닉:** JWT를 응답 본문에 노출하지 않고 쿠키로만 전달하여 보안을 유지한다.
+ * =================================================================
+ */
+
 import { NextApiRequest, NextApiResponse } from "next";
 import { ResponseDto } from "@/lib/ResponseDto";
 import { serializeAuthCookies } from "@/utils/authCookieUtils";
