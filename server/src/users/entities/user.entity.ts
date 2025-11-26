@@ -1,10 +1,13 @@
 import {
   Column,
-  CreateDateColumn,
   Entity,
+  ManyToMany,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { AuthProvider } from '../../common/enums';
+import { MediaItem } from 'src/media-items/entities/media-item.entity';
+import { Collection } from 'src/collections/entities/collection.entity';
 
 @Entity('users')
 export class User {
@@ -39,12 +42,33 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   sns_id: string;
 
-  @CreateDateColumn()
-  created_at: Date;
+  @Column({
+    type: 'timestamp',
+    name: 'created_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  createdAt: Date;
 
-  @CreateDateColumn()
-  updated_at: Date;
+  @Column({
+    type: 'timestamp',
+    name: 'updated_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  updatedAt: Date;
 
   @Column({ type: 'int', default: 0 })
   token_version: number;
+
+  // MediaItem (업로드한 콘텐츠)과의 One-to-Many 관계 (역방향)
+  // MediaItem 엔티티의 owner 속성과 연결된다
+  @OneToMany(() => MediaItem, (mediaItem) => mediaItem.owner)
+  mediaItems: MediaItem[];
+
+  // 사용자가 좋아요 표시한 미디어 콘텐츠들
+  @ManyToMany(() => MediaItem, (mediaItem) => mediaItem.likedByUsers)
+  likedMediaItems: MediaItem[];
+
+  // Collection 과의 One-to-Many 관계 (역방향)
+  @OneToMany(() => Collection, (collection) => collection.owner)
+  collections: Collection[];
 }

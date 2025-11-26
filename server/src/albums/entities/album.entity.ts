@@ -7,7 +7,6 @@ import {
   ManyToMany,
   JoinTable,
   JoinColumn,
-  CreateDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
@@ -16,18 +15,18 @@ import { ContentStatus } from 'src/common/enums';
 
 @Entity('albums')
 export class Album {
-  @PrimaryGeneratedColumn('increment') // BIGINT PK [cite: 605]
+  @PrimaryGeneratedColumn('increment')
   id: number;
 
   // owner_id (FK to users.id)
-  @Column({ name: 'owner_id', type: 'bigint' }) // [cite: 605]
+  @Column({ name: 'owner_id', type: 'bigint' })
   ownerId: number;
 
   @Column({ type: 'varchar', length: 30, nullable: true })
-  title: string | null; // [cite: 605]
+  title: string | null;
 
   @Column({ type: 'text', nullable: true })
-  description: string | null; // [cite: 605]
+  description: string | null;
 
   // Soft Delete
   @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.ACTIVE })
@@ -47,7 +46,17 @@ export class Album {
 
   // 3. Tag와의 Many-to-Many 관계 (album_tags 테이블 생성) [cite: 619, 621]
   @ManyToMany(() => Tag, (tag) => tag.albums, { cascade: true })
-  @JoinTable({ name: 'album_tags' })
+  @JoinTable({
+    name: 'album_tags',
+    joinColumn: {
+      name: 'album_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'tag_id',
+      referencedColumnName: 'id',
+    },
+  })
   tags: Tag[];
 
   // TODO : 추후 수정
@@ -57,9 +66,17 @@ export class Album {
   // likedByUsers: User[];
 
   // ---------------- Timestamps ----------------
-  @CreateDateColumn()
-  created_at: Date;
+  @Column({
+    type: 'timestamp',
+    name: 'created_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  createdAt: Date;
 
-  @CreateDateColumn()
-  updated_at: Date;
+  @Column({
+    type: 'timestamp',
+    name: 'updated_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  updatedAt: Date;
 }

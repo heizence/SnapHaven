@@ -6,39 +6,36 @@ import {
   ManyToMany,
   JoinColumn,
   JoinTable,
-  CreateDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { Album } from 'src/albums/entities/album.entity';
 import { Tag } from 'src/tags/entities/tag.entity';
-//import { Collection } from 'src/collections/entities/collection.entity'; // 컬렉션 N:M 관계 [cite: 632]
-import { ContentType, ContentStatus } from 'src/common/enums'; // ENUMs
+import { Collection } from 'src/collections/entities/collection.entity';
+import { ContentType, ContentStatus } from 'src/common/enums';
 
 @Entity('media_items')
 export class MediaItem {
-  @PrimaryGeneratedColumn('increment') // BIGINT PK [cite: 609]
+  @PrimaryGeneratedColumn('increment')
   id: number;
 
-  // owner_id (FK to users.id) [cite: 609]
   @Column({ name: 'owner_id', type: 'bigint' })
   ownerId: number;
 
-  // album_id (FK to albums.id), Nullable [cite: 609]
   @Column({ name: 'album_id', type: 'bigint', nullable: true })
   albumId: number | null;
 
   @Column({ type: 'enum', enum: ContentType, default: ContentType.IMAGE })
-  type: ContentType; // IMAGE or VIDEO [cite: 609]
+  type: ContentType;
 
   @Column({ type: 'varchar', length: 30 })
-  title: string; // [cite: 609]
+  title: string;
 
-  // Pipeline Status & Soft Delete [cite: 610, 645]
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
   @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.PENDING })
   status: ContentStatus;
 
-  // S3 URL & Key Storage (VARCHAR 2048)
-  // [cite: 610, 636]
   @Column({ name: 's3_key_original', type: 'varchar', length: 2048 })
   s3KeyOriginal: string; // Private S3 Key
 
@@ -57,7 +54,7 @@ export class MediaItem {
     length: 2048,
     nullable: true,
   })
-  urlVideoPlayback: string | null; // Video playback URL
+  urlVideoPlayback: string | null;
 
   @Column({
     name: 'url_video_preview',
@@ -65,48 +62,60 @@ export class MediaItem {
     length: 2048,
     nullable: true,
   })
-  urlVideoPreview: string | null; // Video hover preview clip URL
+  urlVideoPreview: string | null;
 
   @Column({ name: 'download_count', type: 'bigint', default: 0 })
-  downloadCount: number; // [cite: 610]
+  downloadCount: number;
 
-  // ---------------- Relationships ----------------
+  @Column({
+    type: 'timestamp',
+    name: 'created_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  createdAt: Date;
 
-  // TODO : 추후 수정
-  // 1. User (Owner)와의 Many-to-One 관계
-  // @ManyToOne(() => User, (user) => user.mediaItems)
-  // @JoinColumn({ name: 'owner_id' })
-  // owner: User;
+  @Column({
+    type: 'timestamp',
+    name: 'updated_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  updatedAt: Date;
 
-  // 2. Album과의 Many-to-One 관계
+  // User 와의 Many-to-One 관계
+  @ManyToOne(() => User, (user) => user.mediaItems)
+  @JoinColumn({ name: 'owner_id' })
+  owner: User;
+
+  // Album 과의 Many-to-One 관계
   @ManyToOne(() => Album, (album) => album.mediaItems)
   @JoinColumn({ name: 'album_id' })
-  album: Album; // [cite: 590]
+  album: Album;
 
-  // 3. Tag와의 Many-to-Many 관계 (media_tags 테이블 사용) [cite: 591, 617]
+  // Tag 와의 Many-to-Many 관계
   @ManyToMany(() => Tag, (tag) => tag.mediaItems, {
     cascade: true,
     eager: true,
   })
-  @JoinTable({ name: 'media_tags' })
+  @JoinTable({
+    name: 'media_tags', // 연결 테이블 이름
+    joinColumn: {
+      name: 'media_id', // [!code focus] // 💡 이 테이블(media_items)의 PK를 연결 테이블에 'media_id'로 저장
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'tag_id', // [!code focus] // 💡 연결 테이블에 태그의 PK를 'tag_id'로 저장
+      referencedColumnName: 'id',
+    },
+  })
   tags: Tag[];
 
-  // TODO : 추후 수정
-  // 4. UserLikes와의 Many-to-Many 관계 (user_media_likes 테이블 사용) [cite: 593, 622]
-  // @ManyToMany(() => User, (user) => user.likedMediaItems)
-  // @JoinTable({ name: 'user_media_likes' })
-  // likedByUsers: User[];
+  // UserLikes 와의 Many-to-Many 관계
+  @ManyToMany(() => User, (user) => user.likedMediaItems)
+  @JoinTable({ name: 'user_media_likes' })
+  likedByUsers: User[];
 
-  // TODO : 추후 수정
-  // 5. Collection과의 Many-to-Many 관계 (collection_media_items 테이블 사용) [cite: 596, 632]
-  // @ManyToMany(() => Collection, (collection) => collection.mediaItems)
-  // @JoinTable({ name: 'collection_media_items' })
-  // collections: Collection[];
-
-  // ---------------- Timestamps ----------------
-  @CreateDateColumn()
-  created_at: Date;
-
-  @CreateDateColumn()
-  updated_at: Date;
+  // Collection 과의 Many-to-Many 관계
+  @ManyToMany(() => Collection, (collection) => collection.mediaItems)
+  @JoinTable({ name: 'collection_media_items' })
+  collections: Collection[];
 }
