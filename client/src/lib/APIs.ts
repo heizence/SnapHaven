@@ -1,8 +1,6 @@
 import axios from "axios";
 
 import {
-  CheckEmailRequest,
-  CheckEmailResponse,
   CheckNicknameRequest,
   CheckNicknameResponse,
   GetProfileInfoRequest,
@@ -20,6 +18,7 @@ import {
   GetCollectionRequest,
   forgotPasswordRequest,
   GoogleAuthRequest,
+  GetTagsResponse,
 } from "./interfaces";
 
 /** 기본적인 API 요청 method 형식
@@ -118,20 +117,22 @@ const multipartRequest = <TRequest, TResponse>(path: string, formData: TRequest)
   commonMultipartAPI<TRequest, TResponse>(path, formData);
 
 /******************* API List ******************/
+// 로그인
 export const signinAPI = (requestBody: SignInRequest) =>
   postRequest<SignInRequest, SignInResponse>("auth/signin", requestBody);
 
+// 구글 로그인(회원가입)
 export const googleAuthAPI = (requestBody: GoogleAuthRequest) =>
   postRequest<GoogleAuthRequest, SignInResponse>("auth/google", requestBody);
 
+// 로그아웃
 export const signoutAPI = () => postRequest<null, null>("auth/signout", null);
 
-export const checkEmailAPI = (requestBody: CheckEmailRequest) =>
-  postRequest<CheckEmailRequest, CheckEmailResponse>("checkEmail", requestBody);
-
+// 닉네임 중복체크
 export const checkNicknameAPI = (requestBody: CheckNicknameRequest) =>
   getRequest<CheckNicknameRequest, CheckNicknameResponse>("auth/check-nickname", requestBody);
 
+// 회원가입
 export const signupAPI = (requestBody: SignUpRequest) =>
   postRequest<SignUpRequest, SignUpResponse>("auth/signup", requestBody);
 
@@ -149,8 +150,14 @@ export const forgotPasswordAPI = (requestBody: forgotPasswordRequest) =>
 export const resetPasswordAPI = (requestBody: ResetPasswordRequest) =>
   postRequest<ResetPasswordRequest, null>("auth/reset-password", requestBody);
 
-export const uploadFileAPI = (requestBody: FormData) =>
-  multipartRequest<FormData, null>("files/upload", requestBody);
+// 태그 목록 불러오기
+export const getTagsAPI = () => getRequest<null, GetTagsResponse>("tags", null);
+
+export const uploadImagesAPI = (formData: FormData) =>
+  multipartRequest<FormData, { mediaIds: number[] }>("upload/images", formData);
+
+export const uploadVideoAPI = (formData: FormData) =>
+  multipartRequest<FormData, { mediaId: number }>("upload/video", formData);
 
 export const getContentsAPI = (requestBody: GetContentsRequest) =>
   getRequest<GetContentsRequest, null>("getContents", requestBody);

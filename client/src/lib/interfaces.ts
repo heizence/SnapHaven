@@ -22,14 +22,6 @@ export interface GoogleAuthRequest {
   accessToken: string;
 }
 
-export interface CheckEmailRequest {
-  email: string;
-}
-
-export interface CheckEmailResponse {
-  token: string;
-}
-
 export interface CheckNicknameRequest {
   nickname: string;
 }
@@ -58,6 +50,14 @@ export interface ResetPasswordRequest {
 
 export interface ResetPasswordResponse {
   token: string;
+}
+
+export interface Tag {
+  id: number;
+  name: string;
+}
+export interface GetTagsResponse {
+  tags: Tag[];
 }
 
 export interface UploadFileRequest {

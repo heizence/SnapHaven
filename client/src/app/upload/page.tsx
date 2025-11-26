@@ -1,29 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import DropZone from "@/components/DropZone";
-import { uploadFileAPI } from "@/lib/APIs";
+import { getTagsAPI, uploadImagesAPI, uploadVideoAPI } from "@/lib/APIs";
 import { getImageDimensions, getVideoDimensions } from "@/lib/utils";
-
-// [신규] 1. 선택 가능한 태그 목록 정의
-const predefinedTags = [
-  "풍경",
-  "하늘",
-  "바다",
-  "도시",
-  "야경",
-  "인물",
-  "동물",
-  "여행",
-  "음식",
-  "건축",
-  "자연",
-  "꽃",
-  "숲",
-  "가을",
-];
+import { Tag } from "@/lib/interfaces";
+import { useLoading } from "@/contexts/LoadingProvider";
 
 interface FileToUpload {
   fileOrigin: File;
@@ -41,11 +25,24 @@ export default function Page() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [tagRendered, setTagRendered] = useState<Tag[]>([]);
   const [tags, setTags] = useState<string[]>([]); // 선택된 태그 목록
   const [isAlbum, setIsAlbum] = useState(false); // 앨범으로 업로드 여부
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { showLoading, hideLoading } = useLoading();
+
+  const getAllTags = async () => {
+    try {
+      const res = await getTagsAPI();
+      console.log("gettags res : ", res);
+      setTagRendered(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   // 파일 핸들링 로직 (기존과 동일)
   const handleFiles = async (selectedFiles: File[]) => {
@@ -142,7 +139,7 @@ export default function Page() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // [수정] 전체 초기화 (태그 로직 수정)
+  // 전체 초기화
   const clearAll = () => {
     setFiles([]);
     setPreviews([]);
@@ -150,11 +147,11 @@ export default function Page() {
     setUploadError(null);
     setTitle("");
     setDescription("");
-    setTags([]); // 선택된 태그 초기화
+    setTags([]);
     setIsAlbum(false);
   };
 
-  // 단일 파일 제거 (기존과 동일)
+  // 단일 파일 제거
   const handleRemoveFile = (index: number) => {
     const updatedFiles = files.filter((_, i) => i !== index);
     const updatedPreviews = previews.filter((_, i) => i !== index);
@@ -171,7 +168,7 @@ export default function Page() {
     }
   };
 
-  // [신규] 2. 태그 토글 핸들러
+  // 태그 토글 핸들러
   const handleToggleTag = (tagToToggle: string) => {
     setTags(
       (prev) =>
@@ -181,12 +178,12 @@ export default function Page() {
     );
   };
 
-  // [수정] 3. 선택된 태그 제거 핸들러 (이름 통일)
+  // 선택된 태그 제거 핸들러
   const handleRemoveTag = (tagToRemove: string) => {
     setTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   };
 
-  // 업로드 핸들러 (기존과 동일)
+  // 업로드 핸들러
   const handleUpload = async () => {
     if (files.length === 0) {
       setUploadError("업로드할 파일을 선택하세요.");
@@ -196,36 +193,45 @@ export default function Page() {
       setUploadError("제목을 입력하세요.");
       return;
     }
+
+    showLoading();
     const formData = new FormData();
     files.forEach((file) => {
-      formData.append("data", file.fileOrigin);
-      formData.append(
-        "metadata",
-        JSON.stringify({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          width: file.width,
-          height: file.height,
-          videoDuration: file.videoDuration,
-        })
-      );
+      formData.append("files", file.fileOrigin);
     });
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("tags", JSON.stringify(tags));
-    formData.append("isAlbum", String(isAlbum));
+    formData.append("tags", tags.join(","));
+    formData.append("isAlbumUpload", String(isAlbum));
 
-    // const res = { success: true }; // 테스트용
-    const res = await uploadFileAPI(formData);
+    try {
+      let res: any; // 응답 타입을 추론하기 어려우므로 any 사용
 
-    if (res.success) {
-      alert("업로드 성공!");
+      if (videoUploaded) {
+        res = await uploadVideoAPI(formData);
+      } else {
+        res = await uploadImagesAPI(formData);
+      }
+
+      // 응답 처리
+      const idCount = res.data?.mediaIds?.length || res.data?.mediaId || 0; // 응답 데이터 확인
+
+      alert(`업로드 접수 완료! ${idCount}개의 파일이 백그라운드에서 처리됩니다.`);
+
       clearAll();
-    } else {
-      setUploadError((res as any).message || "업로드 실패.");
+    } catch (apiError) {
+      // 서버에서 400, 413, 500 에러 반환 시 처리
+      const errorMessage =
+        (apiError as any).message || "업로드 처리 중 알 수 없는 오류가 발생했습니다.";
+      setUploadError(errorMessage);
+    } finally {
+      hideLoading();
     }
   };
+
+  useEffect(() => {
+    getAllTags();
+  }, []);
 
   return (
     <main className="w-full min-h-[calc(100vh-56px)] px-5">
@@ -263,7 +269,7 @@ export default function Page() {
                 <input
                   type="file"
                   multiple={!videoUploaded}
-                  accept="image/*,video/*"
+                  accept="image/jpeg,image/png,image/webp,video/*"
                   className="hidden"
                   id="fileInput"
                   onChange={handleFileChange}
@@ -417,12 +423,12 @@ export default function Page() {
 
               {/* 추천 태그 */}
               <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                {predefinedTags.map((tag) => {
-                  const isSelected = tags.includes(tag);
+                {tagRendered.map((tag) => {
+                  const isSelected = tags.includes(tag.name);
                   return (
                     <button
-                      key={tag}
-                      onClick={() => handleToggleTag(tag)}
+                      key={tag.name}
+                      onClick={() => handleToggleTag(tag.name)}
                       className={`px-3 py-1 rounded-full text-sm font-semibold transition-colors
                         ${
                           isSelected
@@ -430,7 +436,7 @@ export default function Page() {
                             : "bg-gray-200 text-gray-800 hover:bg-gray-300" // 선택 가능
                         }`}
                     >
-                      {tag}
+                      {tag.name}
                     </button>
                   );
                 })}
