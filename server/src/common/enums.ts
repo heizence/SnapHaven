@@ -16,5 +16,6 @@ export enum ContentStatus {
   PENDING = 'PENDING', // 업로드 대기 중
   PROCESSING = 'PROCESSING', // 업로드 진행 중
   ACTIVE = 'ACTIVE', // 업로드 완료(활성화)
+  FAILED = 'FAILED', // 업로드 실패
   DELETED = 'DELETED', // Soft Delete 처리되었을 때
 }
