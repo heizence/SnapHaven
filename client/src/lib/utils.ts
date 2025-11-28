@@ -103,3 +103,40 @@ export const renderContentsCb = (file: EachContent) => {
     height: file.height,
   };
 };
+
+// 영상 파일 용량 및 길이 검증
+export function validateVideoFile(
+  file: File,
+  maxSizeMB: number = 200,
+  maxDurationSec: number = 60
+): Promise<{ valid: boolean; reason?: string }> {
+  return new Promise((resolve) => {
+    // 1. 파일 용량 확인
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > maxSizeMB) {
+      resolve({ valid: false, reason: `파일 용량 초과: ${fileSizeMB.toFixed(2)}MB` });
+      return;
+    }
+
+    // 2. 영상 길이 확인
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      if (video.duration > maxDurationSec) {
+        resolve({ valid: false, reason: `영상 길이 초과: ${video.duration.toFixed(1)}초` });
+      } else {
+        resolve({ valid: true });
+      }
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ valid: false, reason: "영상 파일 로드 실패" });
+    };
+
+    video.src = url;
+  });
+}
