@@ -45,7 +45,7 @@ export class MediaProcessorService {
     const urls: ProcessedUrls = {};
 
     const uniqueFolderName = `${mediaId}_${Date.now()}`;
-    const tempBaseKey = `processed/images/${uniqueFolderName}`;
+    const tempBaseKey = `media_items/${uniqueFolderName}`;
     const tempLocalDir = path.join(
       TEMP_DIR,
       `img_proc_${mediaId}_${Date.now()}`,
