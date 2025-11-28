@@ -24,6 +24,8 @@ import {
 import { ValidationService } from './validation.service';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
+const MAX_IMAGE_COUNT = 100;
+
 @ApiTags('Upload')
 @ApiBearerAuth('bearerAuth')
 @UseGuards(JwtAuthGuard)
@@ -37,7 +39,7 @@ export class UploadController {
   // **************** 이미지(단일, 다중 모두 해당) 업로드 ****************
   @Post('images')
   @HttpCode(HttpStatus.ACCEPTED)
-  @UseInterceptors(FilesInterceptor('files', 100)) // 'files' 필드명으로 전송된 파일 배열을 최대 100개까지 처리
+  @UseInterceptors(FilesInterceptor('files', MAX_IMAGE_COUNT)) // 'files' 필드명으로 전송된 파일 배열을 최대 100개까지 처리
   @ApiUploadImages()
   async uploadImages(
     @UploadedFiles() files: Express.Multer.File[],
@@ -46,7 +48,11 @@ export class UploadController {
   ): Promise<ResponseDto<{ mediaIds: number[] }>> {
     console.log('[upload.controller]incoming request : images');
     // 파일 검증 (용량, 갯수)
-    this.validationService.validateFileArray(files, ContentType.IMAGE, 10);
+    this.validationService.validateFileArray(
+      files,
+      ContentType.IMAGE,
+      MAX_IMAGE_COUNT,
+    );
 
     const ownerId = (req.user as any).id;
     console.log('[upload.controller]ownerId : ', ownerId);
