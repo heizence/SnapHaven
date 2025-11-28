@@ -19,6 +19,8 @@ interface FileToUpload {
   videoDuration?: number;
 }
 
+type UploadMode = "SINGLE" | "ALBUM";
+
 export default function Page() {
   const [files, setFiles] = useState<FileToUpload[]>([]);
   const [videoUploaded, setVideoUploaded] = useState(false);
@@ -27,8 +29,8 @@ export default function Page() {
   const [description, setDescription] = useState("");
   const [tagRendered, setTagRendered] = useState<Tag[]>([]);
   const [tags, setTags] = useState<string[]>([]); // 선택된 태그 목록
-  const [isAlbum, setIsAlbum] = useState(false); // 앨범으로 업로드 여부
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<UploadMode>("SINGLE");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -126,6 +128,10 @@ export default function Page() {
         setVideoUploaded(true);
       }
     } else {
+      if ([...files, ...newFiles].length > 100) {
+        setUploadError("파일은 최대 100개까지만 첨부 가능합니다.");
+      }
+
       setFiles((prev) => [...prev, ...newFiles].slice(0, 100));
       setPreviews((prev) => [...prev, ...fileURLs].slice(0, 100));
     }
@@ -135,6 +141,7 @@ export default function Page() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
+
     handleFiles(Array.from(selectedFiles));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -148,7 +155,14 @@ export default function Page() {
     setTitle("");
     setDescription("");
     setTags([]);
-    setIsAlbum(false);
+  };
+
+  // 첨부한 파일 목록 초기회
+  const clearFiles = () => {
+    setFiles([]);
+    setPreviews([]);
+    setVideoUploaded(false);
+    setUploadError(null);
   };
 
   // 단일 파일 제거
@@ -160,11 +174,6 @@ export default function Page() {
     setUploadError(null);
     if (videoUploaded && updatedFiles.length === 0) {
       setVideoUploaded(false);
-    }
-
-    // 파일이 2개 미만이 되면 앨범 체크 해제
-    if (updatedFiles.length < 2) {
-      setIsAlbum(false);
     }
   };
 
@@ -202,7 +211,7 @@ export default function Page() {
     formData.append("title", title);
     formData.append("description", description);
     formData.append("tags", tags.join(","));
-    formData.append("isAlbumUpload", String(isAlbum));
+    formData.append("isAlbumUpload", files.length > 1 ? "true" : "false");
 
     try {
       let res: any; // 응답 타입을 추론하기 어려우므로 any 사용
@@ -229,6 +238,11 @@ export default function Page() {
     }
   };
 
+  const handleSelectUploadMode = (mode: UploadMode) => {
+    setUploadMode(mode);
+    clearFiles();
+  };
+
   useEffect(() => {
     getAllTags();
   }, []);
@@ -238,6 +252,22 @@ export default function Page() {
       <div className="container mx-auto py-5">
         <div className="flex w-full max-w-3xl mx-auto flex-col overflow-hidden rounded-xl bg-white p-6 md:p-8 gap-6">
           <h1 className="text-3xl font-bold text-center text-gray-900">새 게시물 만들기</h1>
+
+          <div className="flex justify-center space-x-2 border-b pb-4 mt-5">
+            {["SINGLE", "ALBUM"].map((mode) => (
+              <button
+                key={mode}
+                onClick={() => handleSelectUploadMode(mode as UploadMode)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                  uploadMode === mode
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {mode === "ALBUM" ? "묶음 (앨범)" : "단일 사진 또는 영상"}
+              </button>
+            ))}
+          </div>
 
           {/* 드롭존 */}
           <DropZone
@@ -268,8 +298,8 @@ export default function Page() {
                 </label>
                 <input
                   type="file"
-                  multiple={!videoUploaded}
                   accept="image/jpeg,image/png,image/webp,video/*"
+                  multiple={uploadMode === "ALBUM"}
                   className="hidden"
                   id="fileInput"
                   onChange={handleFileChange}
@@ -338,30 +368,6 @@ export default function Page() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* 묶음으로 업로드 체크박스 */}
-          {files.length > 0 && !videoUploaded && (
-            <div className="flex items-center gap-2 mt-2">
-              <input
-                type="checkbox"
-                id="isAlbumCheckbox"
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:bg-gray-200"
-                checked={isAlbum}
-                onChange={(e) => setIsAlbum(e.target.checked)}
-                disabled={files.length < 2 || videoUploaded}
-              />
-              <label
-                htmlFor="isAlbumCheckbox"
-                className={`text-sm font-medium ${
-                  files.length < 2 || videoUploaded
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-700 cursor-pointer"
-                }`}
-              >
-                묶음으로 업로드 (앨범 생성)
-              </label>
             </div>
           )}
 
