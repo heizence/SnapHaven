@@ -4,106 +4,67 @@ import {
   Body,
   HttpCode,
   HttpStatus,
-  UseInterceptors,
   UploadedFiles,
-  InternalServerErrorException,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { FilesInterceptor } from '@nestjs/platform-express'; // 다중 파일 인터셉터 사용
-import { MediaPipelineService } from 'src/media-pipeline/media-pipeline.service';
-import { UploadContentDto } from './dto/upload-content.dto';
-import { ContentType } from 'src/common/enums';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import {
-  ApiUploadImages,
-  ApiUploadVideo,
-} from './decorators/swagger.upload.decorators';
-import { ValidationService } from './validation.service';
 import { ResponseDto } from 'src/common/dto/response.dto';
-
-const MAX_IMAGE_COUNT = 100;
+import { RequestUrlsDto } from './dto/request-urls.dto';
+import { UploadService } from './upload.service';
+import { UploadCompleteDto } from './dto/upload-complete.dto';
 
 @ApiTags('Upload')
 @ApiBearerAuth('bearerAuth')
 @UseGuards(JwtAuthGuard)
 @Controller('upload')
 export class UploadController {
-  constructor(
-    private readonly validationService: ValidationService,
-    private readonly pipelineService: MediaPipelineService,
-  ) {}
+  constructor(private readonly uploadService: UploadService) {}
 
-  // **************** 이미지(단일, 다중 모두 해당) 업로드 ****************
-  @Post('images')
+  // **************** S3 Presigned URL 발급 및 파일 업로드 준비 요청 ****************
+  @Post('request-urls')
   @HttpCode(HttpStatus.ACCEPTED)
-  @UseInterceptors(FilesInterceptor('files', MAX_IMAGE_COUNT)) // 'files' 필드명으로 전송된 파일 배열을 최대 100개까지 처리
-  @ApiUploadImages()
-  async uploadImages(
+  async requesturls(
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: UploadContentDto,
+    @Body() body: RequestUrlsDto,
     @Req() req: Request,
-  ): Promise<ResponseDto<{ mediaIds: number[] }>> {
-    console.log('[upload.controller]incoming request : images');
-    // 파일 검증 (용량, 갯수)
-    this.validationService.validateFileArray(
-      files,
-      ContentType.IMAGE,
-      MAX_IMAGE_COUNT,
+  ): Promise<
+    ResponseDto<{
+      urls: Array<{ fileIndex: number; signedUrl: string; s3Key: string }>;
+      albumId?: number;
+    }>
+  > {
+    console.log('[upload.controller]request-urls incoming request!');
+    const ownerId = (req.user as any).id;
+    const { message, urls, albumId } = await this.uploadService.readyToUpload(
+      ownerId,
+      body,
     );
 
-    const ownerId = (req.user as any).id;
-    console.log('[upload.controller]ownerId : ', ownerId);
-    // 파이프라인 서비스 호출 (전체 앨범/묶음 처리)
-    const { message, mediaIds } =
-      await this.pipelineService.processMultipleUploads(
-        ownerId,
-        files, // 파일 배열 전달
-        body,
-        ContentType.IMAGE,
-      );
-
-    console.log('[upload.controller]mediaId : ', mediaIds);
-
-    return ResponseDto.success(HttpStatus.ACCEPTED, message, { mediaIds });
+    return ResponseDto.success(HttpStatus.ACCEPTED, message, {
+      urls,
+      albumId,
+    });
   }
 
-  // **************** 비디오 업로드 ****************
-  @Post('video')
+  // **************** Presigned URL 요청 후 업로드 파이프라인 시작 요청 ****************
+  @Post('request-processing')
   @HttpCode(HttpStatus.ACCEPTED)
-  @UseInterceptors(FilesInterceptor('files', 1)) // 비디오는 단일 파일만 허용
-  @ApiUploadVideo()
-  async uploadVideo(
-    @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: UploadContentDto,
+  async requestProcessing(
+    @Body() body: UploadCompleteDto,
     @Req() req: Request,
-  ): Promise<ResponseDto<{ mediaId: number }>> {
-    console.log('[upload.controller]incoming request : video');
-    if (!files || files.length !== 1) {
-      throw new InternalServerErrorException(
-        '비디오는 단일 파일만 업로드 가능합니다.',
-      );
-    }
-
-    // 파일 검증
-    this.validationService.validateFileArray(files, ContentType.VIDEO, 1);
-    await this.validationService.validateVideoDuration(files[0]);
-
+  ): Promise<{ message: string }> {
+    console.log('[upload.controller]request-processing incoming request!');
     const ownerId = (req.user as any).id;
-    console.log('[upload.controller]ownerId : ', ownerId);
-    // 파이프라인 서비스 호출 (단일 파일)
-    const { message, mediaIds } =
-      await this.pipelineService.processMultipleUploads(
-        ownerId,
-        files,
-        body,
-        ContentType.VIDEO,
-      );
-    console.log('[upload.controller]mediaIds : ', mediaIds);
-    return ResponseDto.success(HttpStatus.ACCEPTED, message, {
-      mediaId: mediaIds[0],
-    });
+
+    const { message } = await this.uploadService.requestProcessing(
+      ownerId,
+      body.s3Keys,
+      body.albumId,
+    );
+
+    return ResponseDto.successWithoutData(HttpStatus.ACCEPTED, message);
   }
 }

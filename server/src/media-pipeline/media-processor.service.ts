@@ -8,6 +8,8 @@ import { S3UtilityService } from './s3-utility.service';
 import * as sharp from 'sharp';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as ffprobeStatic from '@ffprobe-installer/ffprobe';
+import * as ffmpegStatic from '@ffmpeg-installer/ffmpeg';
+
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -26,6 +28,7 @@ const IMAGE_SIZES = { LARGE: 1920, MEDIUM: 1080, SMALL: 640 };
 const VIDEO_PREVIEW_DURATION = 5; // 5 seconds
 
 // FFmpeg 바이너리 경로 설정
+ffmpeg.setFfmpegPath(ffmpegStatic.path);
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 @Injectable()

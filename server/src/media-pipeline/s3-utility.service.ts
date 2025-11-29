@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
@@ -63,6 +64,41 @@ export class S3UtilityService {
       this.handleS3Error('uploadOriginal', error);
       throw new InternalServerErrorException(
         'Private S3 원본 파일 업로드 실패',
+      );
+    }
+  }
+
+  /**
+   * S3에 파일 직접 업로드를 위한 Presigned PUT URL을 생성
+   * @param key S3에 저장될 최종 키 (ex: media_items/uuid.jpg)
+   * @param contentType 파일의 MIME 타입 (클라이언트 PUT 요청의 Content-Type과 일치해야 함)
+   * @param contentLength 파일의 바이트 크기 (클라이언트 PUT 요청의 Content-Length와 일치해야 함)
+   * @returns 10분 동안 유효한 Presigned URL
+   */
+  async getPresignedPutUrl(
+    key: string,
+    contentType: string,
+    contentLength: number,
+  ): Promise<string> {
+    const expiresIn = 600; // 10분 유효
+
+    const command = new PutObjectCommand({
+      Bucket: this.ORIGINALS_BUCKET,
+      Key: key,
+      ContentType: contentType,
+      // [CRITICAL] 클라이언트가 PUT 요청 시 해당 크기와 타입으로만 업로드 허용하도록 제한
+      ContentLength: contentLength,
+    });
+
+    try {
+      const signedUrl = await getSignedUrl(this.s3Client, command, {
+        expiresIn: expiresIn,
+      });
+      return signedUrl;
+    } catch (error) {
+      console.error('Presigned URL 생성 오류:', error);
+      throw new InternalServerErrorException(
+        'Presigned URL 생성 중 문제가 발생했습니다.',
       );
     }
   }

@@ -6,6 +6,10 @@ import {
 import { ContentType } from 'src/common/enums';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as ffprobeStatic from '@ffprobe-installer/ffprobe';
+import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
+import * as fsPromises from 'fs/promises';
+import * as os from 'os';
+import * as path from 'path';
 
 @Injectable()
 export class ValidationService {
@@ -13,7 +17,7 @@ export class ValidationService {
   private readonly MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
   private readonly MAX_VIDEO_DURATION = 60; // 60초
 
-  constructor() {
+  constructor(private readonly s3UtilityService: S3UtilityService) {
     // ffprobe 바이너리 경로 설정
     ffmpeg.setFfprobePath(ffprobeStatic.path);
   }
@@ -24,10 +28,10 @@ export class ValidationService {
     contentType: ContentType,
     maxCount: number,
   ) {
-    console.log('[validation.servide]validateFileArray start');
-    console.log('[validation.servide]files : ', files);
-    console.log('[validation.servide]contentType : ', contentType);
-    console.log('[validation.servide]maxCount : ', maxCount);
+    console.log('[validation.service]validateFileArray start');
+    console.log('[validation.service]files : ', files);
+    console.log('[validation.service]contentType : ', contentType);
+    console.log('[validation.service]maxCount : ', maxCount);
     if (!files || files.length === 0) {
       throw new BadRequestException('업로드할 파일이 없습니다.');
     }
@@ -42,7 +46,7 @@ export class ValidationService {
         ? this.MAX_IMAGE_SIZE
         : this.MAX_VIDEO_SIZE;
 
-    console.log('[validation.servide]maxSize : ', maxSize);
+    console.log('[validation.service]maxSize : ', maxSize);
     for (const file of files) {
       if (file.size > maxSize) {
         // 413 Payload Too Large 대신 400 BadRequest 사용 (Multer에서 이미 413을 던졌을 수도 있음)
@@ -55,34 +59,47 @@ export class ValidationService {
 
   // 비디오 길이 검증(60초 이하)
   async validateVideoDuration(file: Express.Multer.File) {
-    console.log('[validation.servide]validateVideoDuration start.');
-    console.log('[validation.servide]file : ', file);
-    const filePath = file.path || file.filename;
-    console.log('[validation.servide]filePath : ', filePath);
+    console.log('[validation.service]validateVideoDuration start.');
+    console.log('[validation.service]file : ', file);
+    //const filePath = file.path || file.filename;
 
-    if (!filePath) {
+    const s3Key = (file as any).key;
+    console.log('[validation.service]s3Key : ', s3Key);
+    const originalName = file.originalname;
+
+    if (!s3Key) {
       throw new InternalServerErrorException(
-        '파일 경로를 찾을 수 없어 비디오 길이를 검증할 수 없습니다.',
+        'S3 키가 누락되어 비디오 길이를 검증할 수 없습니다.',
       );
     }
 
+    // 1. EC2 호스트의 임시 다운로드 경로 설정
+    const tempLocalPath = path.join(
+      os.tmpdir(),
+      `ffprobe_vid_${Date.now()}_${originalName}`,
+    );
+    let isDownloaded = false;
+
     try {
+      await this.s3UtilityService.downloadOriginal(s3Key, tempLocalPath); // [!code focus]
+      isDownloaded = true;
+
       // fluent-ffmpeg의 ffprobe 기능을 Promise로 래핑하여 사용
       const metadata: any = await new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(filePath, (err, metadata) => {
+        ffmpeg.ffprobe(tempLocalPath, (err, metadata) => {
           if (err) {
             return reject(err);
           }
           resolve(metadata);
         });
       });
-      console.log('[validation.servide]metadata : ', metadata);
+      console.log('[validation.service]metadata : ', metadata);
 
       const durationSeconds = metadata?.format?.duration
         ? parseFloat(metadata.format.duration)
         : 0;
 
-      console.log('[validation.servide]durationSeconds : ', durationSeconds);
+      console.log('[validation.service]durationSeconds : ', durationSeconds);
 
       if (isNaN(durationSeconds) || durationSeconds <= 0) {
         throw new BadRequestException(
@@ -97,11 +114,23 @@ export class ValidationService {
         );
       }
     } catch (e: any) {
-      // FFprobe 실행 또는 파일 접근 오류
+      // 오류 발생 시(FFprobe 오류, S3 오류 등)
       console.error(`FFprobe execution error for ${file.originalname}:`, e);
+
+      // BadRequestException은 그대로 throw, 다른 에러는 InternalServerException으로 변환
+      if (e instanceof BadRequestException) throw e;
       throw new InternalServerErrorException(
         '비디오 검증 시스템 실행 중 오류가 발생했습니다.',
       );
+    } finally {
+      // 다운로드된 임시 파일 삭제
+      if (isDownloaded) {
+        try {
+          await fsPromises.unlink(tempLocalPath);
+        } catch (e) {
+          console.warn(`Failed to clean up local file ${tempLocalPath}`);
+        }
+      }
     }
   }
 }
