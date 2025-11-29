@@ -166,6 +166,21 @@ export interface EachContent {
   height: number;
 }
 
+export interface FileMetadata {
+  name: string;
+  size: number;
+  type: string;
+}
+
+// S3 Presigned URL 발급 요청
+export interface GetMediaPresignedUrlRequest {
+  files: FileMetadata[];
+  title: string;
+  description: string;
+  tags: string[];
+  isAlbumUpload: boolean;
+}
+
 /********** Response dto *********/
 export interface ResponseDto<T> {
   data: T;

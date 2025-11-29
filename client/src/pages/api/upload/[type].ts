@@ -3,7 +3,7 @@
  * 파일 역할: 중앙 업로드 BFF (Backend-for-Frontend) 프록시
  * =================================================================
  * * 이 파일은 Next.js Pages Router의 Dynamic API Route를 활용하여,
- * '/api/upload/images'와 '/api/upload/video' 요청을 통합 처리한다.
+ * '/api/upload/request-urls'와 '/api/upload/request-processing' 요청을 통합 처리한다.
  * * 1. 존재 이유 (핵심 목표): 보안 및 인증 토큰 전달
  * - 브라우저 보안 정책상 (Same-Origin Policy), HttpOnly 쿠키('accessToken')는
  * NestJS 서버(다른 도메인)로 직접 전송되지 않는다.
@@ -19,27 +19,12 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import axios from "axios";
-import { IncomingForm, Files, File as FormidableFile } from "formidable";
-import * as fs from "fs";
-import FormData from "form-data";
 import { ResponseDto } from "@/lib/ResponseDto";
 
 const serverAxiosInstance = axios.create();
 
-// Next.js body parser 비활성화
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 // multipart/form-data를 파싱하고 벡엔드 서버로 포워딩한다.
-const processUploadProxy = async (
-  req: NextApiRequest,
-  res: NextApiResponse,
-  targetSegment: string, // 'images' or 'video'
-  isSingleFileRequired: boolean // 비디오 전용: 단일 파일 필수 확인
-) => {
+const processUploadProxy = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "POST") {
     return res.status(405).json(ResponseDto.fail(405, "Method Not Allowed", null));
   }
@@ -50,103 +35,30 @@ const processUploadProxy = async (
     return res.status(401).json(ResponseDto.fail(401, "Authorization required", null));
   }
 
-  // Formidable Parsing
-  const form = new IncomingForm({ multiples: true });
-
-  const { fields, files } = await new Promise<{ fields: any; files: Files }>((resolve, reject) => {
-    form.parse(req, (err, fields, files) => {
-      if (err) return reject(err);
-      resolve({ fields, files: files });
-    });
-  });
-
-  console.log("[upload BFF]fields : ", fields);
-  console.log("[upload BFF]files : ", files);
-
-  const uploadedFiles = files.files || files.file;
-  const fileArray = Array.isArray(uploadedFiles)
-    ? uploadedFiles
-    : uploadedFiles
-    ? [uploadedFiles]
-    : [];
-  const tempFilesToClean: FormidableFile[] = [];
-
-  console.log("[upload BFF]uploadedFiles : ", uploadedFiles);
-
-  // 파일 수량 확인
-  if (!uploadedFiles || fileArray.length === 0) {
-    return res.status(400).json(ResponseDto.fail(400, "No files received for upload", null));
-  }
-  if (isSingleFileRequired && fileArray.length !== 1) {
-    return res
-      .status(400)
-      .json(ResponseDto.fail(400, "Video upload requires exactly one file.", null));
-  }
-
-  // FormData 재생성
-  const forwardFormData = new FormData();
-
-  forwardFormData.append("title", fields.title?.[0] || "");
-  forwardFormData.append("description", fields.description?.[0] || "");
-  forwardFormData.append("tags", fields.tags?.[0] || "");
-
-  //if (!isSingleFileRequired) {
-  forwardFormData.append("isAlbumUpload", fields.isAlbumUpload?.[0] || "false");
-  //}
-
-  // 파일 스트림 추가
-  for (const file of fileArray as FormidableFile[]) {
-    tempFilesToClean.push(file);
-    const fileStream = fs.createReadStream(file.filepath);
-
-    // key("files")는 백엔드 서버의 FilesInterceptor('files') 키와 일치해야 한다.
-    forwardFormData.append("files", fileStream, {
-      filename: file.originalFilename || "upload",
-      contentType: file.mimetype || "application/octet-stream",
-      knownLength: file.size,
-    });
-  }
-
-  console.log("[upload BFF]forwardFormData : ", forwardFormData);
+  const apiPath = req.url?.split("/api/upload/")[1];
+  console.log("[upload BFF]apiPath : ", apiPath);
+  console.log("[upload BFF]req.body : ", req.body);
 
   // API 호출
   try {
-    const targetUrl = `${process.env.SERVER_ADDRESS}/api/v1/upload/${targetSegment}`;
+    const targetUrl = `${process.env.SERVER_ADDRESS}/api/v1/upload/${apiPath}`;
     console.log("[upload BFF]targetUrl : ", targetUrl);
-    const apiRes = await serverAxiosInstance.post(targetUrl, forwardFormData, {
+    const apiRes = await serverAxiosInstance.post(targetUrl, req.body, {
       headers: {
-        ...forwardFormData.getHeaders(),
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
     const responseData = apiRes.data;
+    console.log("[upload BFF]apiRes : ", apiRes);
     console.log("[upload BFF]responseData : ", responseData);
     return res.status(apiRes.status).json(responseData);
   } catch (error) {
-    console.error(`BFF Upload Proxy Error (${targetSegment}):`, error);
+    console.error(`BFF Upload Proxy Error (${apiPath}):`, error);
     if (axios.isAxiosError(error) && error.response) {
       return res.status(error.response.status).json(error.response.data);
-    }
-  } finally {
-    // Formidable 이 생성한 로컬 임시 파일 삭제
-    for (const file of tempFilesToClean) {
-      fs.unlinkSync(file.filepath);
     }
   }
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { type } = req.query as { type: string };
-  console.log("[upload BFF]handler. type : ", type);
-  if (type === "images") {
-    return processUploadProxy(req, res, "images", false);
-  }
-  if (type === "video") {
-    return processUploadProxy(req, res, "video", true);
-  }
-
-  return res
-    .status(404)
-    .json(ResponseDto.fail(404, `API segment not found: /upload/${type}`, null));
-}
+export default processUploadProxy;

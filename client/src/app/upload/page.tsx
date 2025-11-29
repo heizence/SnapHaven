@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { Upload, X, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import DropZone from "@/components/DropZone";
-import { getTagsAPI, uploadImagesAPI, uploadVideoAPI } from "@/lib/APIs";
-import { getImageDimensions, getVideoDimensions } from "@/lib/utils";
+import { requestFileUploadAPI, getTagsAPI, getMediaPresignedUrlsAPI } from "@/lib/APIs";
+import { getImageDimensions, getVideoDimensions, validateVideoFile } from "@/lib/utils";
 import { Tag } from "@/lib/interfaces";
 import { useLoading } from "@/contexts/LoadingProvider";
 
@@ -53,12 +53,24 @@ export default function Page() {
     // 유효성 검사 (이미지/비디오만 허용)
     const validFiles: File[] = [];
     const invalidFileNames: string[] = [];
+
+    const maxSizeMB = 200;
+    const maxDurationSec = 60;
+
     for (const file of selectedFiles) {
-      if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
-        validFiles.push(file);
-      } else {
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
         invalidFileNames.push(file.name);
+        continue;
       }
+
+      if (file.type.startsWith("video/")) {
+        const videoCheck = await validateVideoFile(file, maxSizeMB, maxDurationSec);
+        if (!videoCheck.valid) {
+          setUploadError(`${videoCheck.reason}`);
+          continue;
+        }
+      }
+      validFiles.push(file);
     }
 
     // 유효하지 않은 파일이 있을 경우 에러 표시
@@ -204,32 +216,54 @@ export default function Page() {
     }
 
     showLoading();
-    const formData = new FormData();
-    files.forEach((file) => {
-      formData.append("files", file.fileOrigin);
-    });
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("tags", tags.join(","));
-    formData.append("isAlbumUpload", files.length > 1 ? "true" : "false");
+
+    // 2. NestJS로 보낼 파일 메타데이터 준비
+    const fileMetadata = files.map((f) => ({ name: f.name, size: f.size, type: f.type }));
 
     try {
-      let res: any; // 응답 타입을 추론하기 어려우므로 any 사용
+      const res = await getMediaPresignedUrlsAPI({
+        files: fileMetadata,
+        title: title,
+        description: description,
+        tags: tags,
+        isAlbumUpload: files.length > 1 ? true : false,
+      });
 
-      if (videoUploaded) {
-        res = await uploadVideoAPI(formData);
-      } else {
-        res = await uploadImagesAPI(formData);
+      if (res.code === 202) {
+        const { urls: signedUrls, albumId } = res.data;
+        console.log("signedUrls : ", signedUrls);
+        console.log("albumId : ", albumId);
+
+        // S3 Presigned URL로 파일 PUT 요청 보내서 s3 key 생성하기
+        const uploadedKeys: string[] = [];
+        const uploadPromises = signedUrls.map(async (urlInfo, index) => {
+          const originalFile = files[index].fileOrigin;
+          const s3Response = await fetch(urlInfo.signedUrl, {
+            method: "PUT",
+            headers: { "Content-Type": originalFile.type },
+            body: originalFile,
+          });
+          console.log("s3Response : ", s3Response);
+          if (!s3Response.ok) {
+            // S3 업로드 실패 시 에러 처리
+            throw new Error(`S3 업로드 실패: 파일 ${index + 1} (${s3Response.status})`);
+          }
+          uploadedKeys.push(urlInfo.s3Key);
+          // S3에 저장된 최종 키 수집
+        });
+        await Promise.all(uploadPromises);
+
+        alert("업로드 접수 완료! 미디어 처리가 백그라운드에서 시작되었습니다.");
+        clearAll();
+
+        // s3 key 발급 후 서버에 파일 처리 요청 보내기
+        await requestFileUploadAPI({
+          s3Keys: uploadedKeys,
+          albumId: albumId,
+        });
       }
-
-      // 응답 처리
-      const idCount = res.data?.mediaIds?.length || res.data?.mediaId || 0; // 응답 데이터 확인
-
-      alert(`업로드 접수 완료! ${idCount}개의 파일이 백그라운드에서 처리됩니다.`);
-
-      clearAll();
     } catch (apiError) {
-      // 서버에서 400, 413, 500 에러 반환 시 처리
+      console.error(apiError); // 서버에서 400, 413, 500 에러 반환 시 처리
       const errorMessage =
         (apiError as any).message || "업로드 처리 중 알 수 없는 오류가 발생했습니다.";
       setUploadError(errorMessage);

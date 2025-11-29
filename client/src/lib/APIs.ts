@@ -19,6 +19,7 @@ import {
   forgotPasswordRequest,
   GoogleAuthRequest,
   GetTagsResponse,
+  GetMediaPresignedUrlRequest,
 } from "./interfaces";
 
 /** 기본적인 API 요청 method 형식
@@ -153,11 +154,21 @@ export const resetPasswordAPI = (requestBody: ResetPasswordRequest) =>
 // 태그 목록 불러오기
 export const getTagsAPI = () => getRequest<null, GetTagsResponse>("tags", null);
 
-export const uploadImagesAPI = (formData: FormData) =>
-  multipartRequest<FormData, { mediaIds: number[] }>("upload/images", formData);
+// 업로드할 파일 S3 Presigned URL 발급 요청
+export const getMediaPresignedUrlsAPI = (requestBody: GetMediaPresignedUrlRequest) =>
+  postRequest<GetMediaPresignedUrlRequest, null>("upload/request-urls", requestBody);
 
-export const uploadVideoAPI = (formData: FormData) =>
-  multipartRequest<FormData, { mediaId: number }>("upload/video", formData);
+// S3 key 생성 후 파일 처리 요청
+export const requestFileUploadAPI = (body: { s3Keys: string[]; albumId?: number }) =>
+  postRequest<
+    {
+      s3Keys: string[];
+      albumId?: number;
+    },
+    {
+      message: string;
+    }
+  >("upload/request-processing", body);
 
 export const getContentsAPI = (requestBody: GetContentsRequest) =>
   getRequest<GetContentsRequest, null>("getContents", requestBody);
