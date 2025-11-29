@@ -104,29 +104,99 @@ export const renderContentsCb = (file: EachContent) => {
   };
 };
 
-// 영상 파일 용량 및 길이 검증
+export const ALLOWED_VIDEO_EXTENSIONS = [
+  "mp4", // 표준 — 대부분의 기기
+  "mov", // iPhone/Apple 계열
+  "m4v", // mp4 파생 컨테이너
+  "webm", // 브라우저 기반 캡처
+  "mkv", // 강력한 컨테이너 — FFmpeg 안정적
+];
+
+export const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+
+// 확장자 추출 함수
+function getFileExtension(filename: string) {
+  return filename.split(".").pop()?.toLowerCase() || "";
+}
+
+// 이미지 파일 검증
+export function validateImageFile(
+  file: File,
+  maxSizeMB: number = 10
+): { valid: boolean; reason?: string } {
+  const extension = getFileExtension(file.name);
+
+  // 0. 확장자 체크
+  if (!ALLOWED_IMAGE_EXTENSIONS.includes(extension)) {
+    return {
+      valid: false,
+      reason: `지원하지 않는 이미지 형식입니다: .${extension}`,
+    };
+  }
+
+  // 1. MIME 체크 (이미지인지)
+  if (!file.type.startsWith("image/")) {
+    return { valid: false, reason: "이미지 파일이 아닙니다." };
+  }
+
+  // 2. 용량 체크
+  const fileSizeMB = file.size / (1024 * 1024);
+  if (fileSizeMB > maxSizeMB) {
+    return {
+      valid: false,
+      reason: `파일 용량 초과: ${fileSizeMB.toFixed(2)}MB`,
+    };
+  }
+
+  return { valid: true };
+}
+
+// 영상 파일 검증
 export function validateVideoFile(
   file: File,
-  maxSizeMB: number = 200,
+  maxSizeMB: number = 100,
   maxDurationSec: number = 60
 ): Promise<{ valid: boolean; reason?: string }> {
   return new Promise((resolve) => {
-    // 1. 파일 용량 확인
-    const fileSizeMB = file.size / (1024 * 1024);
-    if (fileSizeMB > maxSizeMB) {
-      resolve({ valid: false, reason: `파일 용량 초과: ${fileSizeMB.toFixed(2)}MB` });
+    const extension = getFileExtension(file.name);
+
+    // 확장자 체크
+    if (!ALLOWED_VIDEO_EXTENSIONS.includes(extension)) {
+      resolve({
+        valid: false,
+        reason: `지원하지 않는 영상 형식입니다: .${extension}`,
+      });
       return;
     }
 
-    // 2. 영상 길이 확인
+    // 용량 체크
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > maxSizeMB) {
+      resolve({
+        valid: false,
+        reason: `파일 용량 초과: ${fileSizeMB.toFixed(2)}MB`,
+      });
+      return;
+    }
+
+    // 영상 길이 체크
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");
     video.preload = "metadata";
 
     video.onloadedmetadata = () => {
       URL.revokeObjectURL(url);
+
+      if (isNaN(video.duration)) {
+        resolve({ valid: false, reason: "영상 길이를 확인할 수 없습니다." });
+        return;
+      }
+
       if (video.duration > maxDurationSec) {
-        resolve({ valid: false, reason: `영상 길이 초과: ${video.duration.toFixed(1)}초` });
+        resolve({
+          valid: false,
+          reason: `영상 길이 초과: ${video.duration.toFixed(1)}초`,
+        });
       } else {
         resolve({ valid: true });
       }
