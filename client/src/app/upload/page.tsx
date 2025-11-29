@@ -5,9 +5,15 @@ import { Upload, X, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import DropZone from "@/components/DropZone";
 import { requestFileUploadAPI, getTagsAPI, getMediaPresignedUrlsAPI } from "@/lib/APIs";
-import { getImageDimensions, getVideoDimensions, validateVideoFile } from "@/lib/utils";
+import {
+  getImageDimensions,
+  getVideoDimensions,
+  validateImageFile,
+  validateVideoFile,
+} from "@/lib/utils";
 import { Tag } from "@/lib/interfaces";
 import { useLoading } from "@/contexts/LoadingProvider";
+import { uploadFilesToS3 } from "./utils/uploadToS3";
 
 interface FileToUpload {
   fileOrigin: File;
@@ -39,7 +45,6 @@ export default function Page() {
   const getAllTags = async () => {
     try {
       const res = await getTagsAPI();
-      console.log("gettags res : ", res);
       setTagRendered(res.data);
     } catch (error) {
       console.error(error);
@@ -54,22 +59,26 @@ export default function Page() {
     const validFiles: File[] = [];
     const invalidFileNames: string[] = [];
 
-    const maxSizeMB = 200;
-    const maxDurationSec = 60;
-
     for (const file of selectedFiles) {
-      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+
+      if (!isImage && !isVideo) {
         invalidFileNames.push(file.name);
         continue;
       }
 
-      if (file.type.startsWith("video/")) {
-        const videoCheck = await validateVideoFile(file, maxSizeMB, maxDurationSec);
-        if (!videoCheck.valid) {
-          setUploadError(`${videoCheck.reason}`);
-          continue;
+      const fileCheck = isImage ? validateImageFile(file) : await validateVideoFile(file);
+
+      if (!fileCheck.valid) {
+        setUploadError(`${fileCheck.reason}`);
+
+        if (isImage) {
+          invalidFileNames.push(file.name);
         }
+        continue;
       }
+
       validFiles.push(file);
     }
 
@@ -234,26 +243,12 @@ export default function Page() {
         console.log("signedUrls : ", signedUrls);
         console.log("albumId : ", albumId);
 
-        // S3 Presigned URL로 파일 PUT 요청 보내서 s3 key 생성하기
-        const uploadedKeys: string[] = [];
-        const uploadPromises = signedUrls.map(async (urlInfo, index) => {
-          const originalFile = files[index].fileOrigin;
-          const s3Response = await fetch(urlInfo.signedUrl, {
-            method: "PUT",
-            headers: { "Content-Type": originalFile.type },
-            body: originalFile,
-          });
-          console.log("s3Response : ", s3Response);
-          if (!s3Response.ok) {
-            // S3 업로드 실패 시 에러 처리
-            throw new Error(`S3 업로드 실패: 파일 ${index + 1} (${s3Response.status})`);
-          }
-          uploadedKeys.push(urlInfo.s3Key);
-          // S3에 저장된 최종 키 수집
+        const uploadedKeys = await uploadFilesToS3({
+          files: files.map((f) => f.fileOrigin),
+          presignedData: signedUrls,
         });
-        await Promise.all(uploadPromises);
 
-        alert("업로드 접수 완료! 미디어 처리가 백그라운드에서 시작되었습니다.");
+        alert("파일 업로드가 접수되었습니다. 잠시 후 업로드가 완료됩니다.");
         clearAll();
 
         // s3 key 발급 후 서버에 파일 처리 요청 보내기
@@ -322,8 +317,11 @@ export default function Page() {
                   여기에 사진이나 동영상을 끌어다 놓으세요.
                 </p>
                 <p className="mt-1 text-sm text-gray-400">
-                  최대 60초 길이의 영상 / 파일당 200MB 이하
+                  이미지 : 최대 100장 / 1장당 10MB 이하
+                  <br />
+                  영상 : 최대 60초 길이 / 200MB 이하
                 </p>
+
                 <label
                   htmlFor="fileInput"
                   className="inline-block px-4 py-2 mt-4 text-white bg-blue-600 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors"
@@ -332,7 +330,7 @@ export default function Page() {
                 </label>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,video/*"
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/mov,video/m4v,video/mwebm,video/mkv"
                   multiple={uploadMode === "ALBUM"}
                   className="hidden"
                   id="fileInput"
