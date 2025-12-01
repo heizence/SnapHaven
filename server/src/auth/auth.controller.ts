@@ -81,22 +81,17 @@ export class AuthController {
   async refreshTokens(
     @Req() req,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseDto<{ access_token: string }>> {
-    console.log('refresh controller');
+  ): Promise<ResponseDto<{ access_token: string; refresh_token: string }>> {
     const user = req.user as User;
 
     const { access_token, refresh_token, message } =
       await this.authService.refreshTokens(user);
 
     // Refresh Token 재설정
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'prod',
-      path: '/api/v1/auth',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+    return ResponseDto.success(HttpStatus.OK, message, {
+      access_token,
+      refresh_token,
     });
-
-    return ResponseDto.success(HttpStatus.OK, message, { access_token });
   }
 
   // **************** 회원가입 ****************

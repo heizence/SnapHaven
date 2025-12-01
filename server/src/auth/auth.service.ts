@@ -47,20 +47,20 @@ export class AuthService {
   }
 
   // 토큰 2개(Access, Refresh)를 생성하는 헬퍼 함수
-  private async getTokens(user: User) {
-    const accessPayload = {
+  private async getTokens(user: User, isRefresh: boolean = false) {
+    const tokenPayload = {
       sub: user.id,
-      email: user.email,
-      nickname: user.nickname,
+      token_version: isRefresh ? user.token_version + 1 : user.token_version,
     };
 
-    const refreshPayload = {
-      sub: user.id,
-      token_version: user.token_version, // 로그아웃 시 무효화를 위함
-    };
-
-    const accessToken = await this.jwtService.signAsync(accessPayload);
-    const refreshToken = await this.jwtService.signAsync(refreshPayload);
+    const accessToken = await this.jwtService.signAsync(tokenPayload, {
+      secret: this.configService.get<string>('JWT_SECRET_KEY')!,
+      expiresIn: '15Min',
+    });
+    const refreshToken = await this.jwtService.signAsync(tokenPayload, {
+      secret: this.configService.get<string>('JWT_REFRESH_SECRET_KEY')!,
+      expiresIn: '7d',
+    });
 
     return {
       access_token: accessToken,
@@ -72,8 +72,7 @@ export class AuthService {
   async refreshTokens(user: User) {
     // user는 JwtRefreshStrategy.validate()에서 전달받은 값
     // (이 시점에 이미 Refresh Token 검증 및 token_version 검증이 완료됨)
-
-    const tokens = await this.getTokens(user);
+    const tokens = await this.getTokens(user, true);
     await this.usersService.update(user.id, {
       token_version: user.token_version + 1,
     });
@@ -93,7 +92,6 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
-    console.log('#user : ', user);
     // 비밀번호 확인 (Bcrypt)
     const isPasswordMatching = await bcrypt.compare(
       password,
@@ -103,13 +101,12 @@ export class AuthService {
     if (!isPasswordMatching) {
       throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
-    console.log('#isPasswordMatching : ', isPasswordMatching);
     const tokens = await this.getTokens(user);
-    console.log('#tokens : ', tokens);
+
     return {
       message: '로그인 성공',
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token, // 컨트롤러가 이 토큰을 쿠키에 담음
+      refresh_token: tokens.refresh_token,
     };
   }
 
@@ -184,48 +181,43 @@ export class AuthService {
       email,
       provider,
     );
-    console.log('#user : ', user);
+
     if (user) {
-      // 7. 로그인 처리 (JWT 반환)
       const tokens = await this.getTokens(user);
 
       return {
         message: '구글 로그인 성공',
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token, // 컨트롤러가 이 토큰을 쿠키에 담음
+        refresh_token: tokens.refresh_token,
       };
     }
 
-    // 3-B. 계정 없음: 자동 회원가입 처리
+    // 계정 없음: 자동 회원가입 처리
 
-    // 4. 닉네임 중복 처리
     const baseNickname = snsName.substring(0, 15);
     const uniqueNickname =
       baseNickname + '#' + Math.floor(Math.random() * 10000); // 닉네임 중복등록 방지를 위해 랜덤 숫자값과 결합
 
-    // 5. 더미 비밀번호 생성 및 해싱
+    // 더미 비밀번호 생성 및 해싱
     const dummyPassword =
       Math.random().toString(36).substring(2, 15) + Date.now();
     const password_hash = await bcrypt.hash(dummyPassword, 10);
 
-    // 6. 사용자 생성 (자동 가입)
+    // 사용자 생성 (자동 가입)
     const newUser = await this.usersService.create({
       email,
       nickname: uniqueNickname,
       password_hash: password_hash,
-      auth_provider: provider, // GOOGLE로 저장
+      auth_provider: provider,
       sns_id: providerId,
     });
 
-    console.log('## newUser : ', newUser);
-
-    // 7. 로그인 처리 (JWT 반환)
     const tokens = await this.getTokens(newUser);
 
     return {
       message: '구글 로그인 성공',
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token, // 컨트롤러가 이 토큰을 쿠키에 담음
+      refresh_token: tokens.refresh_token,
     };
   }
 

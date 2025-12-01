@@ -32,6 +32,11 @@ export class JwtStrategy extends PassportStrategy(
     if (!user) {
       throw new UnauthorizedException('유효하지 않은 토큰입니다.');
     }
+
+    if (user.token_version !== payload.token_version) {
+      throw new UnauthorizedException('무효화된 토큰입니다.');
+    }
+
     // password_hash 필드는 제외하고 반환
     const { password_hash, ...result } = user;
     return result;
