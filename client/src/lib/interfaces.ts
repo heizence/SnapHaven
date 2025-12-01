@@ -18,6 +18,11 @@ export interface SignUpResponse {
   user: User;
 }
 
+export interface RefreshTokenResponse {
+  access_token: string;
+  refresh_token: string;
+}
+
 export interface GoogleAuthRequest {
   accessToken: string;
 }

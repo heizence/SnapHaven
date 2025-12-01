@@ -2,7 +2,6 @@ const MAX_RETRIES = 5;
 
 // 개별 part 업로드 요청
 async function uploadPartWithRetry(url: string, blob: Blob, attempt = 1): Promise<Response> {
-  console.log("uploadPartWithRetry. url : ", url);
   try {
     const res = await fetch(url, {
       method: "PUT",
@@ -31,7 +30,6 @@ export async function uploadFilesToS3({
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const info = presignedData[i];
-    console.log("file.size : ", file.size);
 
     // 단일 파일 PUT 업로드
     await uploadPartWithRetry(info.signedUrl, file);

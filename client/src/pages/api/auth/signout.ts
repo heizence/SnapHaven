@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const accessToken = req.cookies.accessToken;
   let apiResStatus = 200; // 기본 성공 상태
-  let responseData = ResponseDto.successWithoutData(200, "로그아웃 되었습니다.");
+  let responseData = ResponseDto.success(200, "로그아웃 되었습니다.");
 
   if (accessToken) {
     try {

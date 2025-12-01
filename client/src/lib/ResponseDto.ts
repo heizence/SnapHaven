@@ -36,18 +36,12 @@ export class ResponseDto<T> {
    * @param message [Optional] 커스텀 성공 메시지
    * @returns ResponseDto<T>
    */
-  public static success<T>(code: number, message: string = "Success", data: T): ResponseDto<T> {
+  public static success<T>(
+    code: number,
+    message: string = "Success",
+    data: T | null = null
+  ): ResponseDto<T | null> {
     return new ResponseDto(code, message, data);
-  }
-
-  /**
-   * [정적 팩토리 메소드]
-   * 성공 응답 (데이터 미포함)
-   * @param message [Optional] 커스텀 성공 메시지
-   * @returns ResponseDto<null>
-   */
-  public static successWithoutData(code: number, message: string = "Success"): ResponseDto<null> {
-    return new ResponseDto(code, message, null);
   }
 
   /**

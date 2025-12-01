@@ -20,7 +20,9 @@ import {
   GoogleAuthRequest,
   GetTagsResponse,
   GetMediaPresignedUrlRequest,
+  RefreshTokenResponse,
 } from "./interfaces";
+import { ResponseDto } from "./ResponseDto";
 
 /** 기본적인 API 요청 method 형식
  * 응답값(성공, 실패)을 return 하도록 되어 있음. await 를 이용하여 값을 받으면 됨.
@@ -42,9 +44,9 @@ const interceptorErrorHandler = async (error) => {
   if (error.status === 401) {
     console.log("axios interceptors 401 error : ", error);
     console.log("path : ", error.request.responseURL || "");
-    const res = await reissueToken();
-    console.log("reissue token res : ", res);
-    if (res.success) {
+    const res: ResponseDto<RefreshTokenResponse> = await refreshToken();
+    console.log("refresh token res : ", res);
+    if (res.code === 200) {
       return retryRequest(error);
     }
   }
@@ -60,7 +62,7 @@ const commonAPI = async <TRequest, TResponse>(
   method: string = "POST",
   path: string,
   reqParamsOrBody: TRequest
-): Promise<TResponse> => {
+): Promise<ResponseDto<TResponse>> => {
   return axiosInstance({
     baseURL: "/api",
     url: path,
@@ -87,8 +89,7 @@ const commonAPI = async <TRequest, TResponse>(
 const commonMultipartAPI = async <TRequest, TResponse>(
   path: string,
   formData: TRequest
-): Promise<TResponse> => {
-  console.log("path : ", path);
+): Promise<ResponseDto<TResponse>> => {
   return axiosInstance({
     baseURL: "/api",
     url: path,
@@ -191,4 +192,4 @@ export const editPasswordAPI = (requestBody: EditPasswordRequest) =>
 export const deleteAccountAPI = (requestBody: DeleteAccountRequest) =>
   postRequest<DeleteAccountRequest, null>("delete", requestBody);
 
-export const reissueToken = () => postRequest<null, null>("auth/reissueToken", null);
+export const refreshToken = () => postRequest<null, RefreshTokenResponse>("auth/refresh", null);
