@@ -13,6 +13,10 @@ import * as ffmpegStatic from '@ffmpeg-installer/ffmpeg';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
+import { ContentStatus } from 'src/common/enums';
+import { Repository } from 'typeorm';
+import { MediaItem } from 'src/media-items/entities/media-item.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 // ProcessedUrls 인터페이스는 media_items 엔티티의 URL 컬럼과 일치해야 한다.
 export interface ProcessedUrls {
@@ -35,7 +39,11 @@ ffmpeg.setFfprobePath(ffprobeStatic.path);
 export class MediaProcessorService {
   private readonly logger = new Logger(MediaProcessorService.name);
 
-  constructor(private readonly s3UtilityService: S3UtilityService) {}
+  constructor(
+    private readonly s3UtilityService: S3UtilityService,
+    @InjectRepository(MediaItem)
+    private readonly mediaItemRepository: Repository<MediaItem>,
+  ) {}
 
   // 이미지 리사이징 (L, M, S) 및 Public S3 업로드
   async processImage(
@@ -43,8 +51,6 @@ export class MediaProcessorService {
     mediaId: number,
     mimeType: string,
   ): Promise<ProcessedUrls> {
-    console.log('[media-processor.service]processImage start.');
-
     const urls: ProcessedUrls = {};
 
     const uniqueFolderName = `${mediaId}_${Date.now()}`;
@@ -53,8 +59,6 @@ export class MediaProcessorService {
       TEMP_DIR,
       `img_proc_${mediaId}_${Date.now()}`,
     );
-    console.log('[media-processor.service]tempBaseKey : ', tempBaseKey);
-    console.log('[media-processor.service]tempLocalDir : ', tempLocalDir);
     await fs.mkdir(tempLocalDir, { recursive: true });
 
     try {
@@ -64,14 +68,8 @@ export class MediaProcessorService {
 
       const resizeTasks = Object.entries(IMAGE_SIZES).map(
         async ([key, size]) => {
-          console.log('[media-processor.service]resize each files in map loop');
           const suffix = key.toLowerCase();
           const tempOutputPath = path.join(tempLocalDir, `${suffix}.jpg`);
-          console.log('[media-processor.service]suffix : ', suffix);
-          console.log(
-            '[media-processor.service]tempOutputPath : ',
-            tempOutputPath,
-          );
 
           // 리사이징 및 로컬 저장
           await sharp(localPath)
@@ -88,8 +86,6 @@ export class MediaProcessorService {
             s3Key,
             'image/jpeg',
           );
-          console.log('[media-processor.service]s3Key : ', s3Key);
-          console.log('[media-processor.service]publicUrl : ', publicUrl);
 
           // URL 맵 업데이트
           if (suffix === 'large') urls.urlLarge = publicUrl;
@@ -97,20 +93,20 @@ export class MediaProcessorService {
           if (suffix === 'small') urls.urlSmall = publicUrl;
         },
       );
-      console.log('[media-processor.service]urls : ', urls);
 
       await Promise.all(resizeTasks);
       return urls;
     } catch (error) {
-      console.error(
+      this.logger.error(
         '[media-processor.service]error in resizing image. mediaId : ',
         mediaId,
       );
-      console.error(error);
-      // this.logger.error(
-      //   `Image processing failed for Media ID ${mediaId}:`,
-      //   error,
-      // );
+      this.logger.error(error);
+
+      await this.mediaItemRepository.update(mediaId, {
+        status: ContentStatus.FAILED,
+      });
+
       throw new InternalServerErrorException(
         'Image resizing and S3 upload failed.',
       );
@@ -134,8 +130,6 @@ export class MediaProcessorService {
       TEMP_DIR,
       `vid_proc_${mediaId}_${Date.now()}`,
     );
-    console.log('[media-processor.service]tempBaseKey : ', tempBaseKey);
-    console.log('[media-processor.service]tempLocalDir : ', tempLocalDir);
     await fs.mkdir(tempLocalDir, { recursive: true });
 
     const outputPaths = {
@@ -143,7 +137,7 @@ export class MediaProcessorService {
       thumbnail: path.join(tempLocalDir, 'thumbnail.jpg'),
       preview: path.join(tempLocalDir, 'preview.mp4'),
     };
-    console.log('[media-processor.service]outputPaths : ', outputPaths);
+
     try {
       const processingTasks: Promise<void>[] = [];
 
@@ -238,21 +232,24 @@ export class MediaProcessorService {
           'video/mp4',
         ),
       ]);
-      console.log('[media-processor.service]uploadResults : ', uploadResults);
 
       // URL 맵 업데이트
       urls.urlVideoPlayback = uploadResults[0];
       urls.urlSmall = uploadResults[1]; // urlSmall 컬럼을 썸네일 경로로 사용
       urls.urlVideoPreview = uploadResults[2];
 
-      console.log('[media-processor.service]urls : ', urls);
       return urls;
     } catch (error) {
-      console.error('[media-processor.service]error : ', error);
-      // this.logger.error(
-      //   `Video processing failed for Media ID ${mediaId}:`,
-      //   error,
-      // );
+      this.logger.error(
+        '[media-processor.service Error]error in processing video. MediaId : ',
+        mediaId,
+      );
+      this.logger.error('[media-processor.service] : ', error);
+
+      await this.mediaItemRepository.update(mediaId, {
+        status: ContentStatus.FAILED,
+      });
+
       throw error;
     } finally {
       // 생성된 임시 폴더 및 파일 삭제

@@ -35,40 +35,6 @@ export class S3UtilityService {
   }
 
   /**
-   * [WRITE] Private S3에 원본 파일을 업로드 (UploadController의 동기적 S3 저장)
-   * @param key 파일 키 (DB에 저장될 경로)
-   * @param body 파일 내용 (Buffer, Stream 등)
-   * @param contentType MIME 타입
-   * @returns 파일 키 (s3KeyOriginal)
-   * ! will be deprecated soon.
-   */
-  async uploadOriginal(
-    key: string,
-    body: Buffer | Readable | Blob,
-    contentType: string,
-  ): Promise<string> {
-    try {
-      console.log('[s3-utility.service]uploadOriginal start.');
-      console.log('[s3-utility.service]key : ', key);
-      console.log('[s3-utility.service]body : ', body);
-      console.log('[s3-utility.service]contentType : ', contentType);
-      const command = new PutObjectCommand({
-        Bucket: this.ORIGINALS_BUCKET,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-      });
-      await this.s3Client.send(command);
-      return key;
-    } catch (error) {
-      this.handleS3Error('uploadOriginal', error);
-      throw new InternalServerErrorException(
-        'Private S3 원본 파일 업로드 실패',
-      );
-    }
-  }
-
-  /**
    * S3에 파일 직접 업로드를 위한 Presigned PUT URL을 생성
    * @param key S3에 저장될 최종 키 (ex: media_items/uuid.jpg)
    * @param contentType 파일의 MIME 타입 (클라이언트 PUT 요청의 Content-Type과 일치해야 함)
@@ -113,17 +79,12 @@ export class S3UtilityService {
     localTargetPath: string,
   ): Promise<void> {
     try {
-      console.log('[s3-utility.service]downloadoriginal start.');
-      console.log('[s3-utility.service]s3Key : ', s3Key);
-      console.log('[s3-utility.service]localTargetPath : ', localTargetPath);
-
       const command = new GetObjectCommand({
         Bucket: this.ORIGINALS_BUCKET,
         Key: s3Key,
       });
       const { Body } = await this.s3Client.send(command);
 
-      console.log('[s3-utility.service]Body : ', Body);
       if (Body instanceof Readable) {
         // 스트림 파이프라인을 사용하여 메모리 효율적으로 로컬 파일에 저장
         await pipeline(Body, fs.createWriteStream(localTargetPath));
@@ -150,10 +111,6 @@ export class S3UtilityService {
     targetKey: string,
     contentType: string,
   ): Promise<string> {
-    console.log('[s3-utility.service]uploadProcessedFile start.');
-    console.log('[s3-utility.service]localSourcePath : ', localSourcePath);
-    console.log('[s3-utility.service]targetKey : ', targetKey);
-    console.log('[s3-utility.service]contentType : ', contentType);
     try {
       // fs.promises의 open을 사용해 파일 디스크립터를 얻습니다.
       const fileHandle = await fsPromises.open(localSourcePath, 'r');
@@ -165,10 +122,7 @@ export class S3UtilityService {
       });
       await this.s3Client.send(command);
       await fileHandle.close(); // 파일 핸들 닫기
-      console.log(
-        '[s3-utility.service]public URL : ',
-        `${this.CDN_BASE_URL}/${targetKey}`,
-      );
+
       // Public URL 반환
       return `${this.CDN_BASE_URL}/${targetKey}`;
     } catch (error) {
@@ -184,13 +138,9 @@ export class S3UtilityService {
     bucket: 'originals' | 'assets',
     key: string,
   ): Promise<void> {
-    console.log('[s3-utility.service]deleteObject start.');
-    console.log('[s3-utility.service]bucket : ', bucket);
-    console.log('[s3-utility.service]key : ', key);
     const Bucket =
       bucket === 'originals' ? this.ORIGINALS_BUCKET : this.ASSETS_BUCKET;
 
-    console.log('[s3-utility.service]Bucket : ', Bucket);
     try {
       const command = new DeleteObjectCommand({
         Bucket,
