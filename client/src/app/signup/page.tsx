@@ -8,6 +8,7 @@ import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
 import LinkText from "@/components/ui/LinkText";
 import { signupAPI, checkNicknameAPI } from "@/lib/APIs";
 import { CheckNicknameRequest, SignUpRequest } from "@/lib/interfaces";
+import { isValidPassword } from "@/lib/utils";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -101,8 +102,8 @@ export default function SignupPage() {
       setNicknameStatus("error");
       setNicknameMessage("닉네임 중복 확인을 완료해주세요.");
     }
-    if (password.length < 8) {
-      setPasswordError("비밀번호는 8자 이상이어야 합니다.");
+    if (!isValidPassword(password)) {
+      setPasswordError("비밀번호는 8자 이상이고 영문, 숫자, 특수문자를 포함해야 합니다.");
     }
     if (password !== passwordConfirm) {
       setPasswordConfirmError("비밀번호가 일치하지 않습니다.");
