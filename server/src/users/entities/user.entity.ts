@@ -26,11 +26,11 @@ export class User {
 
   @Column({
     type: 'varchar',
-    name: 'profile_image_url',
+    name: 'profile_image_key',
     length: 255,
     nullable: true,
   })
-  profileImageUrl: string | null;
+  profileImageKey: string | null;
 
   @Column({
     type: 'enum',

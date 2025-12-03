@@ -79,7 +79,7 @@ export class UsersService {
       select: [
         'authProvider',
         'nickname',
-        'profileImageUrl',
+        'profileImageKey',
         'mediaItems',
         'likedMediaItems',
         'collections',
@@ -184,7 +184,7 @@ export class UsersService {
   async updateProfileImage(
     userId: number,
     file: Express.Multer.File,
-  ): Promise<{ message: string; profileImageUrl: string }> {
+  ): Promise<{ message: string; profileImageKey: string }> {
     if (!file || !file.buffer) {
       throw new BadRequestException('업로드할 파일이 없습니다.');
     }
@@ -195,12 +195,12 @@ export class UsersService {
 
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      select: ['profileImageUrl'],
+      select: ['profileImageKey'],
     });
 
-    const oldImageUrl = user?.profileImageUrl;
+    const oldImageUrl = user?.profileImageKey;
 
-    const imageUrl = await this.s3UtilityService.uploadProfileImage(
+    const imageKey = await this.s3UtilityService.uploadProfileImage(
       file.buffer,
       file.mimetype,
       oldImageUrl,
@@ -208,13 +208,13 @@ export class UsersService {
 
     await this.usersRepository.update(
       { id: userId },
-      { profileImageUrl: imageUrl },
+      { profileImageKey: imageKey },
     );
 
     // 4. 새 이미지 URL 반환
     return {
       message: '프로필 이미지가 변경되었습니다.',
-      profileImageUrl: imageUrl,
+      profileImageKey: imageKey,
     };
   }
 

@@ -39,30 +39,45 @@ export class MediaItem {
   @Column({ name: 's3_key_original', type: 'varchar', length: 2048 })
   s3KeyOriginal: string; // Private S3 Key
 
-  @Column({ name: 'url_large', type: 'varchar', length: 2048, nullable: true })
-  urlLarge: string | null;
-
-  @Column({ name: 'url_medium', type: 'varchar', length: 2048, nullable: true })
-  urlMedium: string | null;
-
-  @Column({ name: 'url_small', type: 'varchar', length: 2048, nullable: true })
-  urlSmall: string | null; // Thumbnail URL
-
   @Column({
-    name: 'url_video_playback',
+    name: 'key_image_large',
     type: 'varchar',
     length: 2048,
     nullable: true,
   })
-  urlVideoPlayback: string | null;
+  keyImageLarge: string | null;
 
   @Column({
-    name: 'url_video_preview',
+    name: 'key_image_medium',
     type: 'varchar',
     length: 2048,
     nullable: true,
   })
-  urlVideoPreview: string | null;
+  keyImageMedium: string | null;
+
+  @Column({
+    name: 'key_image_small',
+    type: 'varchar',
+    length: 2048,
+    nullable: true,
+  })
+  keyImageSmall: string | null; // 비디오의 경우 Thumbnail 이미지
+
+  @Column({
+    name: 'key_video_playback',
+    type: 'varchar',
+    length: 2048,
+    nullable: true,
+  })
+  keyVideoPlayback: string | null;
+
+  @Column({
+    name: 'key_video_preview',
+    type: 'varchar',
+    length: 2048,
+    nullable: true,
+  })
+  keyVideoPreview: string | null;
 
   @Column({ name: 'download_count', type: 'bigint', default: 0 })
   downloadCount: number;

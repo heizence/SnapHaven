@@ -13,7 +13,7 @@ export class ProfileInfoDto {
     example: 'https://cdn.snaphaven.com/profile/1.jpg',
     nullable: true,
   })
-  profileImageUrl: string | null;
+  profileImageKey: string | null;
 
   @ApiProperty({ description: '업로드한 총 미디어 항목 개수', example: 42 })
   mediaItemCount: number; // 통계 데이터 포함
@@ -21,7 +21,7 @@ export class ProfileInfoDto {
   constructor(user: User, mediaItemCount: number) {
     this.id = user.id;
     this.nickname = user.nickname;
-    this.profileImageUrl = user.profileImageUrl;
+    this.profileImageKey = user.profileImageKey;
     this.mediaItemCount = mediaItemCount;
   }
 }

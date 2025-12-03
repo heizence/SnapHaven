@@ -20,7 +20,7 @@ import { Album } from 'src/albums/entities/album.entity';
 import { S3UtilityService } from './s3-utility.service';
 import {
   MediaProcessorService,
-  ProcessedUrls,
+  ProcessedKeys,
 } from './media-processor.service';
 import { RequestUrlsDto } from 'src/upload/dto/request-urls.dto';
 
@@ -94,7 +94,7 @@ export class MediaPipelineService {
         dto.files.map(async (file, index) => {
           const contentType = this.determineContentType(file.type);
           const fileExtension = file.name.split('.').pop() || 'dat';
-          const s3Key = `media_items/${this.getS3KeyPrefix(contentType)}/${uuidv4()}.${fileExtension}`;
+          const s3Key = `media-items/${uuidv4()}.${fileExtension}`;
 
           const signedUrl = await this.s3UtilityService.getPresignedPutUrl(
             s3Key,
@@ -213,19 +213,19 @@ export class MediaPipelineService {
       // Private S3에서 원본 파일 다운로드
       await this.s3UtilityService.downloadOriginal(s3Key, originalLocalPath);
 
-      let processedUrls: ProcessedUrls;
+      let processedkeys: ProcessedKeys;
 
       // 미디어 타입 분기 및 처리 실행
       if (contentType === ContentType.IMAGE) {
         // 이미지 처리: L, M, S 생성 및 Public S3 업로드 (sharp)
-        processedUrls = await this.mediaProcessorService.processImage(
+        processedkeys = await this.mediaProcessorService.processImage(
           originalLocalPath,
           mediaId,
           mimeType,
         );
       } else {
         // 비디오 처리: 트랜스코딩, 썸네일, 클립 생성 (FFmpeg)
-        processedUrls = await this.mediaProcessorService.processVideo(
+        processedkeys = await this.mediaProcessorService.processVideo(
           originalLocalPath,
           mediaId,
         );
@@ -233,7 +233,7 @@ export class MediaPipelineService {
 
       // DB URL 및 최종 상태 업데이트
       await this.mediaItemRepository.update(mediaId, {
-        ...processedUrls,
+        ...processedkeys,
         status: ContentStatus.ACTIVE,
       });
 

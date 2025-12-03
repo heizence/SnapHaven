@@ -108,7 +108,7 @@ export class UsersController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: '프로필 이미지 업로드 성공',
-    type: ResponseDto<{ profileImageUrl: string }>,
+    type: ResponseDto<{ profileImageKey: string }>,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -121,10 +121,10 @@ export class UsersController {
     const userId = (req.user as User).id;
 
     this.validationService.validateFileArray([file], ContentType.IMAGE, 1);
-    const { message, profileImageUrl } =
+    const { message, profileImageKey } =
       await this.usersService.updateProfileImage(userId, file);
 
-    return ResponseDto.success(HttpStatus.ACCEPTED, message, profileImageUrl);
+    return ResponseDto.success(HttpStatus.ACCEPTED, message, profileImageKey);
   }
 
   // **************** 사용자 계정 삭제(회원 탈퇴) ****************

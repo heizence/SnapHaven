@@ -105,7 +105,7 @@ export class S3UtilityService {
    * @param localSourcePath EC2 임시 경로
    * @param targetKey Public S3에 저장될 최종 키 (파일 이름/경로)
    * @param contentType MIME 타입
-   * @returns Public Access URL (FR-SYS-006)
+   * @returns S3 key
    */
   async uploadProcessedFile(
     localSourcePath: string,
@@ -124,8 +124,7 @@ export class S3UtilityService {
       await this.s3Client.send(command);
       await fileHandle.close(); // 파일 핸들 닫기
 
-      // Public URL 반환
-      return `${this.CDN_BASE_URL}/${targetKey}`;
+      return targetKey;
     } catch (error) {
       this.handleS3Error('uploadProcessedFile', error);
       throw new InternalServerErrorException('Public S3 처리 파일 업로드 실패');
@@ -137,7 +136,7 @@ export class S3UtilityService {
    * @param fileBuffer 업로드할 파일의 Buffer
    * @param mimeType 파일의 MIME 타입 (예: 'image/jpeg')
    * @param userId 사용자 ID (S3 Key 구성에 사용)
-   * @returns 업로드된 이미지의 CDN 접근 URL
+   * @returns S3 Key
    */
   async uploadProfileImage(
     fileBuffer: Buffer,
@@ -167,7 +166,7 @@ export class S3UtilityService {
           }),
         );
       }
-      return `${this.CDN_BASE_URL}/${key}`;
+      return key;
     } catch (error) {
       console.error('S3 프로필 이미지 업로드 실패:', error);
       throw new InternalServerErrorException(

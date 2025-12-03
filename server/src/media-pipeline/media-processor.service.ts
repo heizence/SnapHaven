@@ -18,13 +18,14 @@ import { Repository } from 'typeorm';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 
-// ProcessedUrls 인터페이스는 media_items 엔티티의 URL 컬럼과 일치해야 한다.
-export interface ProcessedUrls {
-  urlLarge?: string;
-  urlMedium?: string;
-  urlSmall?: string; // Thumbnail URL 포함
-  urlVideoPlayback?: string;
-  urlVideoPreview?: string;
+// ProcessedKeys 인터페이스는 media_items 엔티티의 URL 컬럼과 일치해야 한다.
+
+export interface ProcessedKeys {
+  keyImageLarge?: string;
+  keyImageMedium?: string;
+  keyImageSmall?: string; // Thumbnail URL 포함
+  keyVideoPlayback?: string;
+  keyVideoPreview?: string;
 }
 
 const TEMP_DIR = os.tmpdir(); // 시스템의 임시 디렉토리 사용
@@ -50,11 +51,11 @@ export class MediaProcessorService {
     localPath: string,
     mediaId: number,
     mimeType: string,
-  ): Promise<ProcessedUrls> {
-    const urls: ProcessedUrls = {};
+  ): Promise<ProcessedKeys> {
+    const keys: ProcessedKeys = {};
 
     const uniqueFolderName = `${mediaId}_${Date.now()}`;
-    const tempBaseKey = `media_items/${uniqueFolderName}`;
+    const tempBaseKey = `media-items/${uniqueFolderName}`;
     const tempLocalDir = path.join(
       TEMP_DIR,
       `img_proc_${mediaId}_${Date.now()}`,
@@ -88,14 +89,14 @@ export class MediaProcessorService {
           );
 
           // URL 맵 업데이트
-          if (suffix === 'large') urls.urlLarge = publicUrl;
-          if (suffix === 'medium') urls.urlMedium = publicUrl;
-          if (suffix === 'small') urls.urlSmall = publicUrl;
+          if (suffix === 'large') keys.keyImageLarge = publicUrl;
+          if (suffix === 'medium') keys.keyImageMedium = publicUrl;
+          if (suffix === 'small') keys.keyImageSmall = publicUrl;
         },
       );
 
       await Promise.all(resizeTasks);
-      return urls;
+      return keys;
     } catch (error) {
       this.logger.error(
         '[media-processor.service]error in resizing image. mediaId : ',
@@ -122,10 +123,11 @@ export class MediaProcessorService {
   async processVideo(
     localPath: string,
     mediaId: number,
-  ): Promise<ProcessedUrls> {
+  ): Promise<ProcessedKeys> {
     console.log('[media-processor.service]processVideo start.');
-    const urls: ProcessedUrls = {};
-    const tempBaseKey = `processed/videos/${mediaId}`;
+    const keys: ProcessedKeys = {};
+    const uniqueFolderName = `${mediaId}_${Date.now()}`;
+    const tempBaseKey = `media-items/${uniqueFolderName}`;
     const tempLocalDir = path.join(
       TEMP_DIR,
       `vid_proc_${mediaId}_${Date.now()}`,
@@ -234,11 +236,11 @@ export class MediaProcessorService {
       ]);
 
       // URL 맵 업데이트
-      urls.urlVideoPlayback = uploadResults[0];
-      urls.urlSmall = uploadResults[1]; // urlSmall 컬럼을 썸네일 경로로 사용
-      urls.urlVideoPreview = uploadResults[2];
+      keys.keyVideoPlayback = uploadResults[0];
+      keys.keyImageSmall = uploadResults[1]; // keyImageSmall 컬럼을 썸네일 경로로 사용
+      keys.keyVideoPreview = uploadResults[2];
 
-      return urls;
+      return keys;
     } catch (error) {
       this.logger.error(
         '[media-processor.service Error]error in processing video. MediaId : ',
