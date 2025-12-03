@@ -36,9 +36,8 @@ export interface CheckNicknameResponse {
 }
 
 export interface GetProfileInfoResponse {
-  email: string;
-  username: string;
-  profileImgUrl: string;
+  nickname: string;
+  profileImageUrl: string;
 }
 
 export interface GetProfileInfoRequest {
@@ -111,18 +110,13 @@ export interface CheckResetPwInfoRequest {
   token: string;
 }
 
-export interface EditProfileRequest {
-  username: string;
-  email: string;
-  profileImg?: File;
+export interface EditProfileInfoRequest {
+  currentPassword?: string;
+  newNickname?: string;
+  newPassword?: string;
 }
 
-export interface EditPasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface DeleteAccountRequest {
+export interface DeleteUserRequest {
   currentPassword: string;
 }
 
@@ -155,9 +149,8 @@ export interface ResetPasswordRecord {
 }
 
 export interface ProfileInfo {
-  email: string;
-  username: string;
-  profileImgUrl?: string;
+  nickname: string;
+  profileImageUrl?: string;
 }
 
 export interface EachContent {

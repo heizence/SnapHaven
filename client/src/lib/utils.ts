@@ -13,16 +13,6 @@ export const hashString = async (password: string): Promise<string> => {
   return hashedPassword;
 };
 
-export const generateRandomToken = (bytes: number = 32): string => {
-  const arr = new Uint8Array(bytes);
-  crypto.getRandomValues(arr);
-  return Array.from(arr)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  //return crypto.randomBytes(byte).toString("hex");
-};
-
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -35,22 +25,14 @@ export const isValidEmail = (email: string): boolean => {
 
 // 사용자 이름 형식 검증 함수
 export const isValidUsername = (username: string): boolean => {
-  // ^           start of string
-  // [A-Za-z0-9] any upper/lower letter or digit
-  // {1,19}      repeat 1 up to 19 times
-  // $           end of string
   const re = /^[A-Za-z0-9]{1,19}$/;
   return re.test(username);
 };
 
-export const generateRandomString = (length: number = 8): string => {
-  const chars = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789";
-  const bytes = randomBytes(length);
-  let code = "";
-  for (let i = 0; i < length; i++) {
-    code += chars[bytes[i] % chars.length];
-  }
-  return code;
+// 비밀번호 형식 검증 함수(비밀번호는 8자 이상, 영문, 숫자, 특수문자를 포함해야 함)
+export const isValidPassword = (password: string) => {
+  const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
+  return passwordRegex.test(password);
 };
 
 export const generateUUID = () => {
@@ -88,21 +70,6 @@ export function getVideoDimensions(file: File): Promise<{ width: number; height:
     video.src = url;
   });
 }
-
-export const renderContentsCb = (file: EachContent) => {
-  const contentsUrl = `https://${process.env.NEXT_PUBLIC_AWS_S3_CONTENTS_BUCKET}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${file.s3fileKey}`;
-
-  return {
-    id: file.id,
-    src: contentsUrl,
-    name: file.name,
-    type: file.type,
-    isInList: file.isInList,
-    listId: file.listId,
-    width: file.width,
-    height: file.height,
-  };
-};
 
 export const ALLOWED_VIDEO_EXTENSIONS = [
   "mp4", // 표준 — 대부분의 기기

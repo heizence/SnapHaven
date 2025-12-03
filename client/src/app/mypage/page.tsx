@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getProfileInfoAPI } from "@/lib/APIs";
 import { ProfileInfo } from "@/lib/interfaces";
-// [수정] Pencil, LayoutGrid 아이콘 임포트
-import { CircleUserRound, LayoutGrid, Pencil, User } from "lucide-react";
+import { LayoutGrid, Pencil, User } from "lucide-react";
 
 // 컬렉션 카드용 인터페이스
 interface CollectionPreview {
@@ -21,7 +20,10 @@ interface CollectionPreview {
 export default function MyProfilePage() {
   const router = useRouter();
 
-  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({ email: "", username: "", bio: "" });
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
+    nickname: "",
+    profileImageUrl: "",
+  });
   const [data, setData] = useState<CollectionPreview[]>([]);
   const [isReady, setIsReady] = useState(false);
 
@@ -29,13 +31,11 @@ export default function MyProfilePage() {
     try {
       // 1. 프로필 정보 가져오기 (기존과 동일)
       const res = await getProfileInfoAPI();
-      if (res.success) {
+      console.log("### getProfileInfo res : ", res);
+      if (res.code === 202) {
         setProfileInfo({
           ...res.data,
-          bio: (res.data as any).bio || "자기소개를 입력해주세요.",
         });
-      } else {
-        alert("프로필 정보를 불러오는데 실패했습니다.");
       }
 
       // 2. [수정] 데이터를 "내 업로드", "내 좋아요", "내 컬렉션" 3개로 고정
@@ -75,7 +75,7 @@ export default function MyProfilePage() {
       setIsReady(true);
     } catch (error) {
       console.log(error);
-      alert("에러가 발생하였습니다.");
+      alert(error.message);
       setIsReady(true);
     }
   };
@@ -90,9 +90,9 @@ export default function MyProfilePage() {
     <div className="flex flex-col items-center justify-center w-full min-h-[calc(100vh-56px)] px-4 py-8">
       {/* Profile */}
       <div className="flex flex-col items-center text-center">
-        {profileInfo.profileImgUrl ? (
+        {profileInfo.profileImageUrl ? (
           <Image
-            src={profileInfo.profileImgUrl}
+            src={profileInfo.profileImageUrl}
             alt="preview"
             width={128}
             height={128}
@@ -105,7 +105,7 @@ export default function MyProfilePage() {
             <User size={80} className="text-gray-500" />
           </div>
         )}
-        <h1 className="text-2xl font-semibold mt-4">{profileInfo.username}내 이름</h1>
+        <h1 className="text-2xl font-semibold mt-4">{profileInfo.nickname}</h1>
 
         <button
           className="mt-5 flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-lm font-semibold text-white transition-colors hover:bg-blue-700"

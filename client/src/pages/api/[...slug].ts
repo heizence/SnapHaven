@@ -16,51 +16,156 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import { ResponseDto } from "@/lib/ResponseDto";
+import { IncomingForm, Files, File as FormidableFile } from "formidable";
+import * as fs from "fs";
+import axios from "axios";
+import FormData from "form-data";
+import getRawBody from "raw-body";
+import { clearAuthCookies } from "@/utils/authCookieUtils";
+
+export const config = {
+  api: {
+    bodyParser: false, // multipart/form-data 처리를 위해 비활성화
+  },
+};
 
 const BASE_URL = `${process.env.SERVER_ADDRESS}/api/v1`;
+const serverAxiosInstance = axios.create();
 
+// multipart 요청 포워딩
+async function handleMultipart(req: NextApiRequest, res: NextApiResponse, targetUrl: string) {
+  console.log("[...slug.ts]handleMultipart start.");
+  console.log("targetUrl : ", targetUrl);
+  const accessToken = req.cookies.accessToken;
+  const form = new IncomingForm({ multiples: true });
+
+  const { fields, files } = await new Promise<{ fields: any; files: Files }>((resolve, reject) => {
+    form.parse(req, (err, fields, files) => {
+      if (err) return reject(err);
+      resolve({ fields, files });
+    });
+  });
+
+  console.log("[...slug.ts]fields : ", fields);
+  console.log("[...slug.ts]files : ", files);
+
+  const uploadedFiles = files.files || files.file;
+  const fileArray = Array.isArray(uploadedFiles)
+    ? uploadedFiles
+    : uploadedFiles
+    ? [uploadedFiles]
+    : [];
+
+  if (fileArray.length === 0) {
+    return res.status(400).json(ResponseDto.fail(400, "No files received", null));
+  }
+
+  const formData = new FormData();
+  const tempFilesToClean: FormidableFile[] = [];
+
+  // 텍스트 필드 추가
+  Object.keys(fields).forEach((key) => {
+    const value = Array.isArray(fields[key]) ? fields[key][0] : fields[key];
+    formData.append(key, value);
+  });
+
+  // 파일 추가
+  for (const file of fileArray as FormidableFile[]) {
+    tempFilesToClean.push(file);
+
+    const stream = await fs.createReadStream(file.filepath);
+    console.log("[...slug.ts]stream : ", stream);
+    formData.append("file", stream, {
+      filename: file.originalFilename || "upload",
+      contentType: file.mimetype || "application/octet-stream",
+      knownLength: file.size,
+    });
+  }
+
+  console.log("[...slug.ts]req.method :", req.method);
+  console.log("[...slug.ts]formData :", formData);
+  // NestJS 호출
+  let apiRes;
+  try {
+    apiRes = await serverAxiosInstance.post(targetUrl, formData, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...formData.getHeaders(),
+      },
+    });
+  } finally {
+    // 임시 파일 삭제
+    tempFilesToClean.forEach((f) => fs.unlinkSync(f.filepath));
+  }
+
+  return res.status(apiRes.status).json(apiRes.data);
+}
+
+// JSON 요청 포워딩
+async function handleJson(req: NextApiRequest, res: NextApiResponse, targetUrl: string) {
+  console.log("[...slug.ts]handleJson start.");
+  const accessToken = req.cookies.accessToken;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
+  let body: any = undefined;
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    const raw = await getRawBody(req);
+    body = raw.length ? JSON.parse(raw.toString("utf-8")) : undefined;
+  }
+
+  console.log("[...slug.ts]body :", body);
+
+  const apiRes = await serverAxiosInstance(targetUrl, {
+    method: req.method,
+    headers,
+    data: body,
+  });
+  console.log("[...slug.ts]apiRes :", apiRes);
+
+  // 계정 삭제 요청일 경우 저장된 쿠키(토큰) 삭제해 주기
+  if (targetUrl.includes("users/me/delete")) {
+    console.log("[...slug.ts]clear cookies");
+    // NestJS 요청 성공 여부와 "상관없이" 쿠키를 삭제
+    const deletedCookies = clearAuthCookies();
+    res.setHeader("Set-Cookie", deletedCookies);
+  }
+  return res.status(apiRes.status).json(apiRes.data);
+}
+
+// main proxy handler
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // /api/users/me -> ['users', 'me'] -> 'users/me'로 변환
+  console.log("[...slug.ts]start handler");
   const { slug } = req.query;
   const path = (slug as string[]).join("/");
 
-  // 요청 URL에서 쿼리 스트링 부분을 추출
-  const queryIndex = req.url?.indexOf("?") || -1;
-  const queryString = queryIndex !== -1 ? req.url!.substring(queryIndex) : "";
+  const queryIndex = req.url?.indexOf("?") ?? -1;
+  const queryString = queryIndex >= 0 ? req.url!.substring(queryIndex) : "";
 
-  // 브라우저가 보낸 HttpOnly 쿠키('accessToken')를 읽음
-  const accessToken = req.cookies.accessToken;
+  const targetUrl = `${BASE_URL}/${path}${queryString}`;
+  console.log("[...slug.ts]targeturl :", targetUrl);
 
   try {
-    // NestJS 서버로 보낼 URL 조합
-    const targetUrl = `${BASE_URL}/${path}${queryString}`;
+    const contentType = req.headers["content-type"] || "";
+    console.log("[...slug.ts]contentType :", contentType);
 
-    // 요청 헤더 준비
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    //  accessToken 있다면 Authorization 헤더에 추가
-    if (accessToken) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
+    // multipart/form-data
+    if (contentType.includes("multipart/form-data")) {
+      return await handleMultipart(req, res, targetUrl);
     }
 
-    // NestJS 서버로 요청을 그대로 전달 (forward)
-    const apiRes = await fetch(targetUrl, {
-      method: req.method,
-      headers: headers,
-      // GET, HEAD가 아닐 때만 body를 포함
-      body:
-        req.method !== "GET" && req.method !== "HEAD" && req.body
-          ? JSON.stringify(req.body)
-          : undefined,
-    });
-
-    // NestJS 서버의 응답을 클라이언트로 그대로 전달 (pipe)
-    const responseData = await apiRes.json();
-    return res.status(apiRes.status).json(responseData);
+    // 그 외 → JSON 포워딩
+    return await handleJson(req, res, targetUrl);
   } catch (error) {
-    console.error(`BFF Proxy Error (${path}):`, error);
-    return res.status(500).json(ResponseDto.fail(500, "Internal Server Error", null));
+    console.error("BFF Proxy Error:", error.response.data);
+    return res
+      .status(error.status)
+      .json(
+        ResponseDto.fail(error.status, error.response?.data.message || "에러가 발생했습니다.", null)
+      );
   }
 }

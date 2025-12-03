@@ -12,8 +12,7 @@ import {
   SignUpResponse,
   GetContentsRequest,
   CheckResetPwInfoRequest,
-  EditPasswordRequest,
-  DeleteAccountRequest,
+  DeleteUserRequest,
   GetEachContentRequest,
   GetCollectionRequest,
   forgotPasswordRequest,
@@ -21,8 +20,10 @@ import {
   GetTagsResponse,
   GetMediaPresignedUrlRequest,
   RefreshTokenResponse,
+  EditProfileInfoRequest,
 } from "./interfaces";
 import { ResponseDto } from "./ResponseDto";
+import { cloneDeep } from "lodash";
 
 /** 기본적인 API 요청 method 형식
  * 응답값(성공, 실패)을 return 하도록 되어 있음. await 를 이용하여 값을 받으면 됨.
@@ -30,13 +31,33 @@ import { ResponseDto } from "./ResponseDto";
  */
 const axiosInstance = axios.create({ withCredentials: true });
 
+const cloneFormData = (formData: FormData) => {
+  const newFormData = new FormData();
+  formData.forEach((value, key) => {
+    newFormData.append(key, value as any);
+  });
+  return newFormData;
+};
+
 const retryRequest = (error) => {
   console.log("\n[retryRequest]");
-  if (error.config && !error.config.__isRetryRequest) {
-    error.config.__isRetryRequest = true;
-    return axiosInstance.request(error.config);
+  const originalConfig = error.config;
+  if (!originalConfig || originalConfig.__isRetryRequest) return Promise.reject(error);
+
+  originalConfig.__isRetryRequest = true;
+
+  if (originalConfig.data instanceof FormData) {
+    originalConfig.data = cloneFormData(originalConfig.data);
+  } else if (originalConfig.data) {
+    originalConfig.data = cloneDeep(originalConfig.data);
   }
-  return Promise.reject(error);
+  return axiosInstance.request(originalConfig);
+
+  // if (error.config && !error.config.__isRetryRequest) {
+  //   error.config.__isRetryRequest = true;
+  //   return axiosInstance.request(error.config);
+  // }
+  // return Promise.reject(error);
 };
 
 const interceptorErrorHandler = async (error) => {
@@ -70,7 +91,9 @@ const commonAPI = async <TRequest, TResponse>(
     headers: {
       Accept: "application/json",
     },
-    data: method === "POST" ? reqParamsOrBody : undefined,
+    //data: method !== "GET" ? reqParamsOrBody : undefined,
+    //params: method === "GET" ? reqParamsOrBody : undefined,
+    data: reqParamsOrBody,
     params: method === "GET" ? reqParamsOrBody : undefined,
     timeout: 40000,
   })
@@ -78,6 +101,7 @@ const commonAPI = async <TRequest, TResponse>(
       return response?.data;
     })
     .catch((error) => {
+      console.error("[commomAPI]error : ", error);
       throw error.response?.data || error;
     });
 };
@@ -115,6 +139,9 @@ const getRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest
 const postRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
   commonAPI<TRequest, TResponse>("POST", path, reqParamsOrBody);
 
+const patchRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
+  commonAPI<TRequest, TResponse>("PATCH", path, reqParamsOrBody);
+
 const multipartRequest = <TRequest, TResponse>(path: string, formData: TRequest) =>
   commonMultipartAPI<TRequest, TResponse>(path, formData);
 
@@ -138,8 +165,9 @@ export const checkNicknameAPI = (requestBody: CheckNicknameRequest) =>
 export const signupAPI = (requestBody: SignUpRequest) =>
   postRequest<SignUpRequest, SignUpResponse>("auth/signup", requestBody);
 
+// 프로필 정보 불러오기
 export const getProfileInfoAPI = () =>
-  getRequest<null, GetProfileInfoResponse>("getProfileInfo", null);
+  getRequest<null, GetProfileInfoResponse>("users/me/profile", null);
 
 export const getUserContentsAPI = (requestBody: GetProfileInfoRequest) =>
   getRequest<GetProfileInfoRequest, GetProfileInfoResponse>("getProfileInfo", requestBody);
@@ -183,13 +211,15 @@ export const GetCollectionAPI = (requestBody: GetCollectionRequest) =>
 export const checkResetPasswordInfoAPI = (requestBody: CheckResetPwInfoRequest) =>
   postRequest<CheckResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);
 
-export const editProfileAPI = (requestBody: FormData) =>
-  multipartRequest<FormData, null>("editProfile", requestBody);
+// 프로필 닉네임, 비밀번호 변경
+export const editProfileInfoAPI = (requestBody: EditProfileInfoRequest) =>
+  patchRequest<EditProfileInfoRequest, null>("users/me/profile", requestBody);
 
-export const editPasswordAPI = (requestBody: EditPasswordRequest) =>
-  postRequest<EditPasswordRequest, null>("editPassword", requestBody);
+// 프로필 이미지 수정
+export const editProfileImageAPI = (requestBody: FormData) =>
+  multipartRequest<FormData, null>("users/me/profile-image", requestBody);
 
-export const deleteAccountAPI = (requestBody: DeleteAccountRequest) =>
-  postRequest<DeleteAccountRequest, null>("delete", requestBody);
+export const deleteUserAPI = (requestBody: DeleteUserRequest) =>
+  postRequest<DeleteUserRequest, null>("users/me/delete", requestBody);
 
 export const refreshToken = () => postRequest<null, RefreshTokenResponse>("auth/refresh", null);
