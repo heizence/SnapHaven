@@ -4,8 +4,9 @@ import { Pencil, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { editProfileImageAPI, editProfileInfoAPI, getProfileInfoAPI } from "@/lib/APIs";
-import { isValidPassword, isValidUsername } from "@/lib/utils";
+import { isValidPassword, isValidUsername, validateImageFile } from "@/lib/utils";
 import { EditProfileInfoRequest } from "@/lib/interfaces";
+import { AWS_BASE_URL } from "@/lib/consts";
 
 interface EditFormState {
   nickname: string;
@@ -42,7 +43,7 @@ export default function EditProfilePage() {
           ...form,
           nickname: data.nickname,
         });
-        setProfileImgPreview(data.profileImageUrl);
+        setProfileImgPreview(AWS_BASE_URL + data.profileImageKey);
         setAuthProvider(data.authProvider);
       }
 
@@ -68,6 +69,12 @@ export default function EditProfilePage() {
     const selectedFile = e.target.files;
     console.log("#handleImgChange. selectedFile : ", selectedFile);
     if (!selectedFile || selectedFile.length === 0) return;
+
+    const fileCheck = validateImageFile(selectedFile[0]);
+    if (!fileCheck.valid) {
+      alert(fileCheck.reason);
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -183,7 +190,7 @@ export default function EditProfilePage() {
             <input
               type="file"
               multiple={false}
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               className="hidden"
               id="fileInput"
               onChange={handleProfileImgChange}

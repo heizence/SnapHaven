@@ -37,7 +37,8 @@ export interface CheckNicknameResponse {
 
 export interface GetProfileInfoResponse {
   nickname: string;
-  profileImageUrl: string;
+  profileImageKey: string;
+  authProvider: "EMAIL" | "GOOGLE" | "APPLE";
 }
 
 export interface GetProfileInfoRequest {

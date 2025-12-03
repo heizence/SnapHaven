@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { getProfileInfoAPI } from "@/lib/APIs";
 import { ProfileInfo } from "@/lib/interfaces";
 import { LayoutGrid, Pencil, User } from "lucide-react";
+import { AWS_BASE_URL } from "@/lib/consts";
 
 // 컬렉션 카드용 인터페이스
 interface CollectionPreview {
@@ -29,12 +30,12 @@ export default function MyProfilePage() {
 
   const loadProfileData = async () => {
     try {
-      // 1. 프로필 정보 가져오기 (기존과 동일)
       const res = await getProfileInfoAPI();
-      console.log("### getProfileInfo res : ", res);
+
       if (res.code === 202) {
         setProfileInfo({
           ...res.data,
+          profileImageUrl: AWS_BASE_URL + res.data.profileImageKey,
         });
       }
 

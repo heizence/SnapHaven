@@ -1,13 +1,11 @@
 import type { NextConfig } from "next";
-
-const { AWS_S3_CONTENTS_BUCKET, AWS_REGION } = process.env;
-const AWS_S3_CONTENTS_URL = `https://${AWS_S3_CONTENTS_BUCKET}.s3.${AWS_REGION}.amazonaws.com`;
+import { AWS_BASE_URL } from "@/lib/consts";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   images: {
     remotePatterns: [
-      new URL(`${AWS_S3_CONTENTS_URL}/**`),
+      new URL(`${AWS_BASE_URL}/**`),
       {
         protocol: "https",
         hostname: "images.unsplash.com",
