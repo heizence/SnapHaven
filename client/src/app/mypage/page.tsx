@@ -33,9 +33,10 @@ export default function MyProfilePage() {
       const res = await getProfileInfoAPI();
 
       if (res.code === 202) {
+        const { nickname, profileImageKey } = res.data;
         setProfileInfo({
-          ...res.data,
-          profileImageUrl: AWS_BASE_URL + res.data.profileImageKey,
+          nickname,
+          profileImageUrl: profileImageKey ? AWS_BASE_URL + res.data.profileImageKey : undefined,
         });
       }
 

@@ -21,7 +21,7 @@ export default async function googleSignInHandler(req: NextApiRequest, res: Next
     return res.status(405).end();
   }
 
-  const { accessToken } = req.body;
+  const { accessToken } = req.body; // google sdk 에서 제공해주는 accessToken
   if (!accessToken) {
     return res.status(400).json(ResponseDto.fail(400, "accessToken이 필요합니다.", null));
   }
@@ -44,10 +44,10 @@ export default async function googleSignInHandler(req: NextApiRequest, res: Next
     }
 
     // 서버에서 받은 JWT 추출
-    const { access_token, refresh_token } = responseData.data;
+    const tokens = responseData.data;
 
     // HttpOnly 쿠키 설정
-    const cookies = serializeAuthCookies(access_token, refresh_token);
+    const cookies = serializeAuthCookies(tokens.accessToken, tokens.refreshToken);
     res.setHeader("Set-Cookie", cookies);
 
     return res.status(apiRes.status).json(responseData);

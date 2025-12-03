@@ -40,10 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 서버에서 받은 JWT 추출
-    const { access_token, refresh_token } = responseData.data;
+    const { accessToken, refreshToken } = responseData.data;
 
     // HttpOnly 쿠키 설정
-    const cookies = serializeAuthCookies(access_token, refresh_token);
+    const cookies = serializeAuthCookies(accessToken, refreshToken);
     res.setHeader("Set-Cookie", cookies);
 
     return res.status(apiRes.status).json(responseData);

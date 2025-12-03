@@ -7,6 +7,7 @@ import { editProfileImageAPI, editProfileInfoAPI, getProfileInfoAPI } from "@/li
 import { isValidPassword, isValidUsername, validateImageFile } from "@/lib/utils";
 import { EditProfileInfoRequest } from "@/lib/interfaces";
 import { AWS_BASE_URL } from "@/lib/consts";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 interface EditFormState {
   nickname: string;
@@ -30,7 +31,7 @@ export default function EditProfilePage() {
 
   const [nicknameError, setNicknameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [profileImgPreview, setProfileImgPreview] = useState<string>("");
+  const [profileImgPreview, setProfileImgPreview] = useState<string | undefined>("");
   const [isReady, setIsReady] = useState(false);
 
   // 현재 프로필 데이터 불러오기
@@ -38,12 +39,13 @@ export default function EditProfilePage() {
     try {
       const res = await getProfileInfoAPI();
       if (res.code === 202) {
+        const { nickname, profileImageKey } = res.data;
         const data = res.data;
         setForm({
           ...form,
-          nickname: data.nickname,
+          nickname,
         });
-        setProfileImgPreview(AWS_BASE_URL + data.profileImageKey);
+        setProfileImgPreview(profileImageKey ? AWS_BASE_URL + profileImageKey : undefined);
         setAuthProvider(data.authProvider);
       }
 
@@ -83,8 +85,12 @@ export default function EditProfilePage() {
       const res = await editProfileImageAPI(formData);
       console.log("res : ", res);
       if (res.code === 202) {
-        setProfileImgPreview(res.data);
+        setProfileImgPreview(AWS_BASE_URL + res.data);
+        CustomLocalStorage.updateUserInfo({
+          profileImageKey: res.data!,
+        });
         alert(res.message);
+        router.refresh();
       }
     } catch (error) {
       console.error(error);
@@ -175,8 +181,8 @@ export default function EditProfilePage() {
               <Image
                 src={profileImgPreview}
                 alt="preview"
-                width={128}
-                height={128}
+                width={0} // width 및 height 속성은 필수값이라서 형식적으로 넣어둠
+                height={0}
                 priority={true}
                 className="w-32 h-32 rounded-full object-cover"
                 unoptimized

@@ -9,6 +9,7 @@ import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
 import LinkText from "@/components/ui/LinkText";
 import { signinAPI } from "@/lib/APIs";
 import { SignInRequest } from "@/lib/interfaces";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 export default function Page() {
   const router = useRouter();
@@ -55,7 +56,11 @@ export default function Page() {
         password,
       };
       const res = await signinAPI(request);
+
       if (res.code === 200) {
+        const { nickname, profileImageKey } = res.data;
+        CustomLocalStorage.saveUserInfo({ nickname, profileImageKey });
+
         router.push("/");
         router.refresh();
       }

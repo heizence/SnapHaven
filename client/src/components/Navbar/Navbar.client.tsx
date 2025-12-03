@@ -6,6 +6,9 @@ import { Menu, X, User, Search, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signoutAPI } from "@/lib/APIs";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
+import Image from "next/image";
+import { AWS_BASE_URL } from "@/lib/consts";
 
 export default function Navbar({ accessToken }: { accessToken: string }) {
   const router = useRouter();
@@ -17,8 +20,6 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
 
   const [searchTerm, setSearchTerm] = useState(searchParams?.get("keyword") || "");
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  //accessToken = true; // for test
 
   // 바깥쪽 클릭 처리
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
     setIsMypageMenuOpen(false);
     try {
       const res = await signoutAPI();
-      console.log("signout res : ", res);
+      CustomLocalStorage.clearUserInfo();
       if (res.code === 200) {
         router.push("/signin");
         router.refresh();
@@ -77,6 +78,7 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
 
   const MyProfileMenuComp = (isMobile: boolean) => {
     if (!accessToken) return null;
+    const userState = CustomLocalStorage.getUserInfo();
     return (
       <div
         className="relative p-1"
@@ -87,7 +89,19 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
           onClick={() => isMobile && setIsMypageMenuOpen(!isMypageMenuOpen)}
           className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
         >
-          <User size={20} className="text-gray-500" />
+          {userState?.profileImageKey ? (
+            <Image
+              src={AWS_BASE_URL + userState?.profileImageKey}
+              alt="preview"
+              width={0} // width 및 height 속성은 필수값이라서 형식적으로 넣어둠
+              height={0}
+              priority={true}
+              className="w-11 h-11 rounded-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <User size={20} className="text-gray-500" />
+          )}
         </button>
 
         {isMypageMenuOpen && (
