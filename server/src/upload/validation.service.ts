@@ -17,9 +17,65 @@ export class ValidationService {
   private readonly MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
   private readonly MAX_VIDEO_DURATION = 60; // 60초
 
+  private readonly ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+  private readonly ALLOWED_VIDEO_EXTENSIONS = [
+    'mp4',
+    'mov',
+    'm4v',
+    'webm',
+    'mkv',
+  ];
+
+  private readonly ALLOWED_IMAGE_MIME = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  ];
+
+  private readonly ALLOWED_VIDEO_MIME = [
+    'video/mp4',
+    'video/quicktime', // mov
+    'video/webm',
+    'video/x-matroska', // mkv
+  ];
+
   constructor(private readonly s3UtilityService: S3UtilityService) {
     // ffprobe 바이너리 경로 설정
     ffmpeg.setFfprobePath(ffprobeStatic.path);
+  }
+
+  private validateFileType(
+    file: Express.Multer.File,
+    contentType: ContentType,
+  ) {
+    const originalName = file.originalname.toLowerCase();
+    const extension = originalName.split('.').pop();
+
+    const mime = file.mimetype;
+
+    const allowedExt =
+      contentType === ContentType.IMAGE
+        ? this.ALLOWED_IMAGE_EXTENSIONS
+        : this.ALLOWED_VIDEO_EXTENSIONS;
+
+    const allowedMime =
+      contentType === ContentType.IMAGE
+        ? this.ALLOWED_IMAGE_MIME
+        : this.ALLOWED_VIDEO_MIME;
+
+    // 확장자 검사
+    if (!extension || !allowedExt.includes(extension)) {
+      throw new BadRequestException(
+        `허용되지 않은 파일 형식입니다. (${allowedExt.join(', ')})`,
+      );
+    }
+
+    // MIME 검사
+    if (!allowedMime.includes(mime)) {
+      throw new BadRequestException(
+        `파일 MIME 타입이 올바르지 않습니다. (${allowedMime.join(', ')})`,
+      );
+    }
   }
 
   // 최대 파일 갯수 검증, 각 파일 최대 용량 검증
@@ -48,6 +104,7 @@ export class ValidationService {
 
     console.log('[validation.service]maxSize : ', maxSize);
     for (const file of files) {
+      this.validateFileType(file, contentType);
       if (file.size > maxSize) {
         // 413 Payload Too Large 대신 400 BadRequest 사용 (Multer에서 이미 413을 던졌을 수도 있음)
         throw new BadRequestException(
