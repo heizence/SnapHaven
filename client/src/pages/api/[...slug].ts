@@ -21,7 +21,7 @@ import * as fs from "fs";
 import axios from "axios";
 import FormData from "form-data";
 import getRawBody from "raw-body";
-import { clearAuthCookies } from "@/utils/authCookieUtils";
+import { clearAuthCookies } from "@/lib/authCookieUtils";
 
 export const config = {
   api: {
