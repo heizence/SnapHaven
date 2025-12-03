@@ -7,6 +7,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
+import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import { Readable } from 'stream';
@@ -128,6 +129,50 @@ export class S3UtilityService {
     } catch (error) {
       this.handleS3Error('uploadProcessedFile', error);
       throw new InternalServerErrorException('Public S3 처리 파일 업로드 실패');
+    }
+  }
+
+  /**
+   * S3 Public 에 프로필 사진 업로드
+   * @param fileBuffer 업로드할 파일의 Buffer
+   * @param mimeType 파일의 MIME 타입 (예: 'image/jpeg')
+   * @param userId 사용자 ID (S3 Key 구성에 사용)
+   * @returns 업로드된 이미지의 CDN 접근 URL
+   */
+  async uploadProfileImage(
+    fileBuffer: Buffer,
+    mimeType: string,
+    oldImageUrl?: string | null,
+  ): Promise<string> {
+    const fileExtension = mimeType.split('/')[1] || 'jpeg';
+    const key = `profiles/${uuidv4()}.${fileExtension}`;
+
+    const putCommand = new PutObjectCommand({
+      Bucket: this.ASSETS_BUCKET,
+      Key: key,
+      Body: fileBuffer,
+      ContentType: mimeType,
+    });
+
+    try {
+      await this.s3Client.send(putCommand);
+
+      // 기존 프로필 이미지는 삭제해 주기
+      if (oldImageUrl) {
+        const oldKey = oldImageUrl.split(this.CDN_BASE_URL + '/')[1];
+        await this.s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: this.ASSETS_BUCKET,
+            Key: oldKey,
+          }),
+        );
+      }
+      return `${this.CDN_BASE_URL}/${key}`;
+    } catch (error) {
+      console.error('S3 프로필 이미지 업로드 실패:', error);
+      throw new InternalServerErrorException(
+        '프로필 이미지 업로드 중 오류가 발생했습니다.',
+      );
     }
   }
 

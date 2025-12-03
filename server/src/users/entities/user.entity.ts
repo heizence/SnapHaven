@@ -1,5 +1,6 @@
 import {
   Column,
+  DeleteDateColumn,
   Entity,
   ManyToMany,
   OneToMany,
@@ -24,20 +25,21 @@ export class User {
   nickname: string;
 
   @Column({
-    name: 'profile_image_url',
     type: 'varchar',
+    name: 'profile_image_url',
     length: 255,
     nullable: true,
   })
-  profile_image_url: string | null;
+  profileImageUrl: string | null;
 
   @Column({
     type: 'enum',
+    name: 'auth_provider',
     enum: AuthProvider,
     default: AuthProvider.EMAIL,
     nullable: false,
   })
-  auth_provider: AuthProvider;
+  authProvider: AuthProvider;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   sns_id: string;
@@ -55,6 +57,13 @@ export class User {
     default: () => 'CURRENT_TIMESTAMP',
   })
   updatedAt: Date;
+
+  @DeleteDateColumn({
+    type: 'timestamp',
+    name: 'deleted_at',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
+  deletedAt: Date;
 
   @Column({ type: 'int', default: 0 })
   token_version: number;
