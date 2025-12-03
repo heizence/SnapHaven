@@ -13,8 +13,8 @@ import * as path from 'path';
 
 @Injectable()
 export class ValidationService {
-  private readonly MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
-  private readonly MAX_VIDEO_SIZE = 200 * 1024 * 1024; // 200MB
+  private readonly MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+  private readonly MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
   private readonly MAX_VIDEO_DURATION = 60; // 60초
 
   constructor(private readonly s3UtilityService: S3UtilityService) {
@@ -22,7 +22,7 @@ export class ValidationService {
     ffmpeg.setFfprobePath(ffprobeStatic.path);
   }
 
-  // 최대 파일 갯수 검증
+  // 최대 파일 갯수 검증, 각 파일 최대 용량 검증
   validateFileArray(
     files: Express.Multer.File[],
     contentType: ContentType,

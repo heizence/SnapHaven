@@ -143,7 +143,7 @@ export class AuthService {
       email,
       nickname,
       password_hash,
-      auth_provider: AuthProvider.EMAIL,
+      authProvider: AuthProvider.EMAIL,
     });
 
     return { message: '회원가입이 완료되었습니다.' };
@@ -208,7 +208,7 @@ export class AuthService {
       email,
       nickname: uniqueNickname,
       password_hash: password_hash,
-      auth_provider: provider,
+      authProvider: provider,
       sns_id: providerId,
     });
 
