@@ -94,25 +94,27 @@ export default function SignupPage() {
 
   // 폼 제출(회원가입) 핸들러
   const handleSubmit = async () => {
-    let isValid = false;
     if (!email) {
       setEmailError("이메일을 입력해주세요.");
+      return;
     }
     if (nicknameStatus !== "ok") {
       setNicknameStatus("error");
       setNicknameMessage("닉네임 중복 확인을 완료해주세요.");
+      return;
     }
     if (!isValidPassword(password)) {
       setPasswordError("비밀번호는 8자 이상이고 영문, 숫자, 특수문자를 포함해야 합니다.");
+      return;
     }
     if (password !== passwordConfirm) {
       setPasswordConfirmError("비밀번호가 일치하지 않습니다.");
+      return;
     }
     if (!termsChecked) {
       setTermsError("약관에 동의해주세요.");
+      return;
     }
-    isValid = true;
-    if (!isValid) return;
 
     setFormStatus("submitting");
 
