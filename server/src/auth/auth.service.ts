@@ -20,15 +20,10 @@ import { CheckNicknameDto } from './dto/check-nickname.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { SigninResponseDto } from './dto/signin-response.dto';
 
 interface ServiceResDto {
   message: string;
-}
-
-interface ServiceSignInDto {
-  message: string;
-  access_token: string;
-  refresh_token: string;
 }
 
 @Injectable()
@@ -63,8 +58,8 @@ export class AuthService {
     });
 
     return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
+      accessToken,
+      refreshToken,
     };
   }
 
@@ -79,19 +74,22 @@ export class AuthService {
 
     return {
       message: '토큰 갱신 성공',
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     };
   }
 
   // 로그인
-  async signin(signinDto: SigninDto): Promise<ServiceSignInDto> {
+  async signin(
+    signinDto: SigninDto,
+  ): Promise<ServiceResDto & SigninResponseDto> {
     const { email, password } = signinDto;
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
+
     // 비밀번호 확인 (Bcrypt)
     const isPasswordMatching = await bcrypt.compare(
       password,
@@ -102,11 +100,12 @@ export class AuthService {
       throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
     const tokens = await this.getTokens(user);
-
     return {
       message: '로그인 성공',
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      nickname: user.nickname,
+      profileImageKey: user.profileImageKey,
     };
   }
 
@@ -150,7 +149,9 @@ export class AuthService {
   }
 
   // 구글 로그인, 회원가입
-  async googleAuth(googleAuthDto: GoogleAuthDto): Promise<ServiceSignInDto> {
+  async googleAuth(
+    googleAuthDto: GoogleAuthDto,
+  ): Promise<ServiceResDto & SigninResponseDto> {
     const { accessToken } = googleAuthDto;
 
     const response = await fetch(
@@ -181,14 +182,15 @@ export class AuthService {
       email,
       provider,
     );
-
     if (user) {
       const tokens = await this.getTokens(user);
 
       return {
         message: '구글 로그인 성공',
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        nickname: user.nickname,
+        profileImageKey: user.profileImageKey,
       };
     }
 
@@ -216,8 +218,10 @@ export class AuthService {
 
     return {
       message: '구글 로그인 성공',
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      nickname: uniqueNickname,
+      profileImageKey: null,
     };
   }
 

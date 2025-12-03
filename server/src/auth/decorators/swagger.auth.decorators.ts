@@ -17,7 +17,7 @@ export function ApiSignin() {
     ApiOperation({
       summary: '로그인',
       description:
-        '이메일과 비밀번호로 로그인하고 JWT(access_token)를 발급받습니다.',
+        '이메일과 비밀번호로 로그인하고 JWT(accessToken)를 발급받습니다.',
     }),
 
     ApiOkResponse({
@@ -39,8 +39,8 @@ export function ApiSignin() {
           code: 200,
           message: '로그인 성공',
           data: {
-            access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-            refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           },
         },
       },
@@ -112,7 +112,7 @@ export function ApiGoogleAuth() {
     ApiOperation({
       summary: 'Google 로그인(회원가입)',
       description:
-        'Google 계정으로 로그인(회원가입)하고 JWT(access_token)를 발급받습니다.',
+        'Google 계정으로 로그인(회원가입)하고 JWT(accessToken)를 발급받습니다.',
     }),
     ApiOkResponse({
       description: '로그인 성공',
@@ -133,8 +133,8 @@ export function ApiGoogleAuth() {
           code: 200,
           message: '로그인 성공',
           data: {
-            access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-            refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           },
         },
       },
@@ -253,8 +253,8 @@ export function ApiRefreshToken() {
           code: 200,
           message: '토큰 갱신 성공',
           data: {
-            access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-            refresh_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+            refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           },
         },
       },

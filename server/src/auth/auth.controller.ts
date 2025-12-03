@@ -34,6 +34,7 @@ import { CheckNicknameDto } from './dto/check-nickname.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { SigninResponseDto } from './dto/signin-response.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -48,13 +49,15 @@ export class AuthController {
   async signin(
     @Body() signinDto: SigninDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseDto<{ access_token: string; refresh_token: string }>> {
-    const { access_token, refresh_token, message } =
+  ): Promise<ResponseDto<SigninResponseDto>> {
+    const { message, accessToken, refreshToken, nickname, profileImageKey } =
       await this.authService.signin(signinDto);
 
     return ResponseDto.success(HttpStatus.OK, message, {
-      access_token,
-      refresh_token,
+      accessToken,
+      refreshToken,
+      nickname,
+      profileImageKey,
     });
   }
 
@@ -81,16 +84,16 @@ export class AuthController {
   async refreshTokens(
     @Req() req,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseDto<{ access_token: string; refresh_token: string }>> {
+  ): Promise<ResponseDto<{ accessToken: string; refreshToken: string }>> {
     const user = req.user as User;
 
-    const { access_token, refresh_token, message } =
+    const { accessToken, refreshToken, message } =
       await this.authService.refreshTokens(user);
 
     // Refresh Token 재설정
     return ResponseDto.success(HttpStatus.OK, message, {
-      access_token,
-      refresh_token,
+      accessToken,
+      refreshToken,
     });
   }
 
@@ -115,16 +118,18 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<
     ResponseDto<{
-      access_token: string;
-      refresh_token: string;
+      accessToken: string;
+      refreshToken: string;
     }>
   > {
-    const { access_token, refresh_token, message } =
+    const { message, accessToken, refreshToken, nickname, profileImageKey } =
       await this.authService.googleAuth(googleAuthDto);
 
     return ResponseDto.success(HttpStatus.OK, message, {
-      access_token,
-      refresh_token,
+      accessToken,
+      refreshToken,
+      nickname,
+      profileImageKey,
     });
   }
 
