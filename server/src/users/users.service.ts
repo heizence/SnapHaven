@@ -198,12 +198,12 @@ export class UsersService {
       select: ['profileImageKey'],
     });
 
-    const oldImageUrl = user?.profileImageKey;
+    const oldImageKey = user?.profileImageKey;
 
     const imageKey = await this.s3UtilityService.uploadProfileImage(
       file.buffer,
       file.mimetype,
-      oldImageUrl,
+      oldImageKey,
     );
 
     await this.usersRepository.update(

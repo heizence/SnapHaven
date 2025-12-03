@@ -141,11 +141,10 @@ export class S3UtilityService {
   async uploadProfileImage(
     fileBuffer: Buffer,
     mimeType: string,
-    oldImageUrl?: string | null,
+    oldImageKey?: string | null,
   ): Promise<string> {
     const fileExtension = mimeType.split('/')[1] || 'jpeg';
     const key = `profiles/${uuidv4()}.${fileExtension}`;
-
     const putCommand = new PutObjectCommand({
       Bucket: this.ASSETS_BUCKET,
       Key: key,
@@ -157,8 +156,8 @@ export class S3UtilityService {
       await this.s3Client.send(putCommand);
 
       // 기존 프로필 이미지는 삭제해 주기
-      if (oldImageUrl) {
-        const oldKey = oldImageUrl.split(this.CDN_BASE_URL + '/')[1];
+      if (oldImageKey) {
+        const oldKey = oldImageKey;
         await this.s3Client.send(
           new DeleteObjectCommand({
             Bucket: this.ASSETS_BUCKET,

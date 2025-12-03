@@ -9,8 +9,8 @@ export class ProfileInfoDto {
   nickname: string;
 
   @ApiProperty({
-    description: '프로필 이미지 URL',
-    example: 'https://cdn.snaphaven.com/profile/1.jpg',
+    description: '프로필 이미지 key',
+    example: 'profile/1.jpg',
     nullable: true,
   })
   profileImageKey: string | null;
