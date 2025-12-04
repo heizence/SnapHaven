@@ -10,7 +10,7 @@ import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import Image from "next/image";
 import { AWS_BASE_URL } from "@/lib/consts";
 
-export default function Navbar({ accessToken }: { accessToken: string }) {
+export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
   const router = useRouter();
   const path = usePathname() || "";
   const searchParams = useSearchParams();
@@ -77,7 +77,7 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
   };
 
   const MyProfileMenuComp = (isMobile: boolean) => {
-    if (!accessToken) return null;
+    if (!isSignedIn) return null;
     const userState = CustomLocalStorage.getUserInfo();
     return (
       <div
@@ -165,7 +165,7 @@ export default function Navbar({ accessToken }: { accessToken: string }) {
 
         {/* Desktop menu */}
         <div className="hidden md:flex justify-self-end items-center space-x-3">
-          {accessToken ? (
+          {isSignedIn ? (
             <>
               {/* 로그인 상태 */}
               <Link
