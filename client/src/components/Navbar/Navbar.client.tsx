@@ -231,7 +231,7 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
               />
             </div>
 
-            {accessToken ? (
+            {isSignedIn ? (
               <>
                 <Link
                   href="/upload"
