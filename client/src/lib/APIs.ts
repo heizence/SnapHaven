@@ -10,7 +10,7 @@ import {
   SignInResponse,
   SignUpRequest,
   SignUpResponse,
-  GetContentsRequest,
+  GetMediaItemsRequest,
   CheckResetPwInfoRequest,
   DeleteUserRequest,
   GetEachContentRequest,
@@ -199,8 +199,9 @@ export const requestFileUploadAPI = (body: { s3Keys: string[]; albumId?: number 
     }
   >("upload/request-processing", body);
 
-export const getContentsAPI = (requestBody: GetContentsRequest) =>
-  getRequest<GetContentsRequest, null>("getContents", requestBody);
+// 미디어 콘텐츠 목록 불러오기
+export const getMediaItemsAPI = (requestBody: GetMediaItemsRequest) =>
+  getRequest<GetMediaItemsRequest, null>("media/items", requestBody);
 
 export const GetEachContentAPI = (requestBody: GetEachContentRequest) =>
   getRequest<GetEachContentRequest, null>("getEachContent", requestBody);

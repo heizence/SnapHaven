@@ -131,7 +131,7 @@ export default function RenderAlbum({ photos, onClick }) {
       onClick={onClick}
       render={{
         photo: ({ onClick }, { photo }) => (
-          <RenderEachContent key={photo.title} photo={photo} onClick={onClick} />
+          <RenderEachContent key={photo.key} photo={photo} onClick={onClick} />
         ),
       }}
     />

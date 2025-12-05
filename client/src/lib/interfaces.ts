@@ -1,3 +1,5 @@
+import { FilterType, OrderType } from "./consts";
+
 /******************* Request & Response Objects ******************/
 export interface SignInRequest {
   email: string;
@@ -69,10 +71,11 @@ export interface UploadFileRequest {
   files: any;
 }
 
-export interface GetContentsRequest {
-  type: string;
-  page: number; // starts with 1
+export interface GetMediaItemsRequest {
+  page?: number; // starts with 1
+  sort?: OrderType;
   keyword?: string;
+  type?: FilterType;
 }
 
 export interface GetEachContentRequest {
