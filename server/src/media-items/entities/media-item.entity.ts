@@ -27,6 +27,12 @@ export class MediaItem {
   @Column({ type: 'enum', enum: ContentType, default: ContentType.IMAGE })
   type: ContentType;
 
+  @Column({ type: 'int', nullable: false })
+  width: number | null;
+
+  @Column({ type: 'int', nullable: false })
+  height: number | null;
+
   @Column({ type: 'varchar', length: 30 })
   title: string;
 
@@ -126,7 +132,17 @@ export class MediaItem {
 
   // UserLikes 와의 Many-to-Many 관계
   @ManyToMany(() => User, (user) => user.likedMediaItems)
-  @JoinTable({ name: 'user_media_likes' })
+  @JoinTable({
+    name: 'user_media_likes',
+    joinColumn: {
+      name: 'media_id', // 이 엔티티(MediaItem)의 PK를 'media_id'로 저장
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'user_id', // 연결된 엔티티(User)의 PK를 'user_id'로 저장 (DB 표준)
+      referencedColumnName: 'id',
+    },
+  })
   likedByUsers: User[];
 
   // Collection 과의 Many-to-Many 관계

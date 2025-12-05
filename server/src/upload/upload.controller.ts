@@ -27,7 +27,6 @@ export class UploadController {
   @Post('request-urls')
   @HttpCode(HttpStatus.ACCEPTED)
   async requesturls(
-    @UploadedFiles() files: Express.Multer.File[],
     @Body() body: RequestUrlsDto,
     @Req() req: Request,
   ): Promise<

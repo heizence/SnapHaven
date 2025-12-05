@@ -54,10 +54,6 @@ export class MediaPipelineService {
     throw new InternalServerErrorException('지원하지 않는 형식입니다.');
   }
 
-  private getS3KeyPrefix(contentType: ContentType): string {
-    return contentType === ContentType.VIDEO ? 'videos' : 'images';
-  }
-
   // 파일 업로드 준비(presigned url 발급 및 메타데이터 저장)
   async readyToUpload(
     ownerId: number,
@@ -115,6 +111,8 @@ export class MediaPipelineService {
               s3KeyOriginal: s3Key,
               tags: tagEntities,
               status: ContentStatus.PENDING,
+              width: file.width,
+              height: file.height,
             },
           };
         }),

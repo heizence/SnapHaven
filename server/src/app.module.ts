@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TagsModule } from './tags/tags.module';
 import { UploadModule } from './upload/upload.module';
+import { MediaItemsModule } from './media-items/media-items.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { UploadModule } from './upload/upload.module';
     UsersModule,
     TagsModule,
     UploadModule,
+    MediaItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -24,6 +24,14 @@ export class RequestFileDto {
   @IsNotEmpty()
   @IsString()
   type: string; // MIME 타입
+
+  @IsNotEmpty()
+  @IsNumber()
+  width: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  height: number;
 }
 
 // S3 Presigned Url 생성 요청 dto
