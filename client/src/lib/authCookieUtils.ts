@@ -5,7 +5,7 @@ import { serialize } from "cookie";
 //const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7일
 
 // for test
-const ACCESS_TOKEN_MAX_AGE = 60 * 1; // 1분
+const ACCESS_TOKEN_MAX_AGE = 60 * 1;
 const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7일
 
 // Access Token과 Refresh Token을 HttpOnly 쿠키로 직렬화

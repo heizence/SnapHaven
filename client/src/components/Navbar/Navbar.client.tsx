@@ -144,9 +144,15 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
     <nav className="fixed w-full shadow-sm z-50 " style={{ backgroundColor: "#fff" }}>
       <div className="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
         <div className="justify-self-start">
-          <Link href="/" className="text-2xl font-bold text-gray-800">
+          <div
+            onClick={() => {
+              router.push("/");
+              router.refresh();
+            }}
+            className="text-2xl font-bold text-gray-800 cursor-pointer"
+          >
             SnapHaven
-          </Link>
+          </div>
         </div>
 
         <div className="hidden md:flex justify-self-center w-full max-w-lg">

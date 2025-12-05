@@ -44,8 +44,10 @@ export default function Page() {
 
   const getAllTags = async () => {
     try {
+      showLoading();
       const res = await getTagsAPI();
       setTagRendered(res.data);
+      hideLoading();
     } catch (error) {
       console.error(error);
     }
@@ -227,8 +229,13 @@ export default function Page() {
     showLoading();
 
     // 2. NestJS로 보낼 파일 메타데이터 준비
-    const fileMetadata = files.map((f) => ({ name: f.name, size: f.size, type: f.type }));
-
+    const fileMetadata = files.map((f) => ({
+      name: f.name,
+      size: f.size,
+      type: f.type,
+      width: f.width,
+      height: f.height,
+    }));
     try {
       const res = await getMediaPresignedUrlsAPI({
         files: fileMetadata,
