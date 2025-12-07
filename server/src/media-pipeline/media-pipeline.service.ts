@@ -71,7 +71,9 @@ export class MediaPipelineService {
       let albumId: number | undefined = undefined;
       const tagsArray = dto.tags || [];
       const tagEntities = await this.tagsService.findTagsByName(tagsArray);
-      const isAlbum = dto.isAlbumUpload || dto.files.length > 1;
+      const isAlbum = dto.isAlbumUpload && dto.files.length > 1;
+
+      console.log('ready to upload. dto : ', dto);
 
       // 1. 앨범 생성
       if (isAlbum) {
