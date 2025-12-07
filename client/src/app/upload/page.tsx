@@ -27,6 +27,15 @@ interface FileToUpload {
 
 type UploadMode = "SINGLE" | "ALBUM";
 
+const UploadModeArr = [
+  { type: "SINGLE", label: "단일 사진 또는 영상" },
+  { type: "ALBUM", label: "묶음(앨범)" },
+];
+
+// (개발 환경)테스트용 콘텐츠 업로드 기능 추가
+if (process.env.NODE_ENV === "development")
+  UploadModeArr.push({ type: "TEST", label: "테스트용 콘텐츠 업로드" });
+
 export default function Page() {
   const [files, setFiles] = useState<FileToUpload[]>([]);
   const [videoUploaded, setVideoUploaded] = useState(false);
@@ -242,11 +251,11 @@ export default function Page() {
         title: title,
         description: description,
         tags: tags,
-        isAlbumUpload: files.length > 1 ? true : false,
+        isAlbumUpload: Boolean(files.length > 1 && uploadMode === "ALBUM") ? true : false,
       });
 
       if (res.code === 202) {
-        const { urls: signedUrls, albumId } = res.data;
+        const { urls: signedUrls, albumId } = res.data!;
         console.log("signedUrls : ", signedUrls);
         console.log("albumId : ", albumId);
 
@@ -290,17 +299,17 @@ export default function Page() {
           <h1 className="text-3xl font-bold text-center text-gray-900">새 게시물 만들기</h1>
 
           <div className="flex justify-center space-x-2 border-b pb-4 mt-5">
-            {["SINGLE", "ALBUM"].map((mode) => (
+            {UploadModeArr.map((mode) => (
               <button
-                key={mode}
-                onClick={() => handleSelectUploadMode(mode as UploadMode)}
+                key={mode.type}
+                onClick={() => handleSelectUploadMode(mode.type as UploadMode)}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                  uploadMode === mode
+                  uploadMode === mode.type
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                {mode === "ALBUM" ? "묶음 (앨범)" : "단일 사진 또는 영상"}
+                {mode.label}
               </button>
             ))}
           </div>
@@ -338,7 +347,8 @@ export default function Page() {
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,video/mp4,video/mov,video/m4v,video/mwebm,video/mkv"
-                  multiple={uploadMode === "ALBUM"}
+                  //multiple={uploadMode === "ALBUM"}
+                  multiple={uploadMode !== "SINGLE"}
                   className="hidden"
                   id="fileInput"
                   onChange={handleFileChange}
