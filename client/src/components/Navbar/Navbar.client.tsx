@@ -15,11 +15,17 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
   const path = usePathname() || "";
   const searchParams = useSearchParams();
 
+  const [isClient, setIsClient] = useState(false); // 컴포넌트가 브라우저에 마운트된 상태 여부. hydration 에러 방지용
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMypageMenuOpen, setIsMypageMenuOpen] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState(searchParams?.get("keyword") || "");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 컴포넌트가 브라우저에 마운트된 후 isClient를 true로 설정
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // 바깥쪽 클릭 처리
   useEffect(() => {
@@ -78,7 +84,7 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
 
   const MyProfileMenuComp = (isMobile: boolean) => {
     if (!isSignedIn) return null;
-    const userState = CustomLocalStorage.getUserInfo();
+    const userState = isClient ? CustomLocalStorage.getUserInfo() : null;
     return (
       <div
         className="relative p-1"
@@ -89,7 +95,7 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
           onClick={() => isMobile && setIsMypageMenuOpen(!isMypageMenuOpen)}
           className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
         >
-          {userState?.profileImageKey ? (
+          {isClient && userState?.profileImageKey ? (
             <Image
               src={AWS_BASE_URL + userState?.profileImageKey}
               alt="preview"
