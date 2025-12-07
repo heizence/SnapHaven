@@ -1,13 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { MediaItem } from './entities/media-item.entity';
 import { GetMediaItemsDto, MediaSort } from './dto/get-media-items.dto';
 import { ContentStatus } from 'src/common/enums';
-import {
-  PaginatedMediaItemsDto,
-  MediaItemResponseDto,
-} from './dto/media-item-response.dto';
+import { MediaItemResponseDto } from './dto/media-item-response.dto';
+import { MediaItemDetailDto } from './dto/media-item-detail.dto';
+
+interface RawMediaItemDetailResult {
+  media_id: number;
+  media_title: string;
+  media_description: string | null;
+  media_type: 'IMAGE' | 'VIDEO';
+  media_width: number;
+  media_height: number;
+  media_download_count: string;
+  media_key_image_large: string | null;
+  media_key_image_medium: string | null;
+  media_key_image_small: string | null;
+  media_key_video_playback: string | null;
+  media_key_video_preview: string | null;
+  media_created_at: Date;
+  owner_nickname: string;
+  owner_profile_image_key: string | null;
+
+  // 계산된 필드
+  likeCount: string; // SQL COUNT 결과는 문자열로 반환될 수 있음
+  isLiked: number; // MAX(CASE WHEN ...) 결과
+}
 
 @Injectable()
 export class MediaItemsService {
@@ -16,10 +36,12 @@ export class MediaItemsService {
     private mediaRepository: Repository<MediaItem>,
   ) {}
 
-  /**
-   * 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
-   */
-  async findAll(query: GetMediaItemsDto): Promise<PaginatedMediaItemsDto> {
+  // 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
+  async findAll(query: GetMediaItemsDto): Promise<{
+    message: string;
+    items: MediaItemResponseDto[];
+    totalCounts: number;
+  }> {
     const limit = 40;
     const { page, sort, type, keyword } = query;
     const offset = (page - 1) * limit;
@@ -44,7 +66,7 @@ export class MediaItemsService {
       // 타입 필터링
       .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type });
 
-    // 3. [키워드 필터링] 제목 또는 설명에 키워드가 포함된 경우
+    // [키워드 필터링] 제목 또는 설명에 키워드가 포함된 경우
     if (keyword) {
       const searchPattern = `%${keyword}%`;
       qb.andWhere(
@@ -60,7 +82,7 @@ export class MediaItemsService {
 
     qb.leftJoin('media.owner', 'user')
       .leftJoin('media.likedByUsers', 'likes')
-      .leftJoin('media.album', 'album') // ⭐ album join 추가
+      .leftJoin('media.album', 'album')
       .select([
         'media.id',
         'media.title',
@@ -73,7 +95,7 @@ export class MediaItemsService {
         'media.keyVideoPreview',
         'media.createdAt',
         'user.nickname',
-        'album.id', // ⭐ albumId 조회
+        'album.id',
       ])
       .addSelect('COUNT(likes.id)', 'likeCount')
       .groupBy('media.id, user.id, user.nickname, media.createdAt');
@@ -94,9 +116,6 @@ export class MediaItemsService {
       keyImageMedium: rawItem.keyImageMedium,
       keyImageLarge: rawItem.keyImageLarge,
       keyVideoPreview: rawItem.keyVideoPreview,
-      //ownerNickname: rawItem.owner.nickname,
-      //likeCount: parseInt(rawItem., 10) || 0,
-
       type: rawItem.type,
       width: rawItem.width,
       height: rawItem.height,
@@ -104,8 +123,102 @@ export class MediaItemsService {
     }));
 
     return {
+      message: '',
       items: mappedItems,
-      total,
+      totalCounts: total,
+    };
+  }
+
+  /**
+   * 단일 미디어 아이템 상세 정보를 조회합니다.
+   * @param mediaId 조회할 미디어 ID
+   * @param currentUserId 좋아요 상태 확인을 위한 현재 사용자 ID (선택 사항)
+   */
+  async findOne(
+    mediaId: number,
+    currentUserId?: number,
+  ): Promise<{ message: string; item: MediaItemDetailDto }> {
+    // QueryBuilder를 사용하여 통계 및 소유자 정보를 한 번에 조회
+    const qb = this.mediaRepository
+      .createQueryBuilder('media')
+      .where('media.id = :id', { id: mediaId })
+      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE }) // [Soft Delete] ACTIVE만 조회
+
+      .leftJoin('media.owner', 'owner')
+      .leftJoin('media.likedByUsers', 'likes')
+
+      .select([
+        'media.id',
+        'media.title',
+        'media.description',
+        'media.type',
+        'media.width',
+        'media.height',
+        'media.downloadCount',
+        'media.keyImageLarge',
+        'media.keyImageMedium',
+        'media.keyImageSmall',
+        'media.keyVideoPlayback',
+        'media.keyVideoPreview',
+        'media.createdAt',
+        'owner.nickname',
+        'owner.profileImageKey',
+      ])
+      // 좋아요 수 계산
+      .addSelect('COUNT(likes.id)', 'likeCount')
+      // 현재 사용자의 좋아요 여부 확인
+      .addSelect(
+        currentUserId
+          ? `MAX(CASE WHEN likes.id = ${currentUserId} THEN 1 ELSE 0 END)`
+          : `0`,
+        'isLiked',
+      )
+      .groupBy('media.id, owner.id');
+
+    const rawResult = (await qb.getRawOne()) as RawMediaItemDetailResult;
+    console.log('## rawResult : ', rawResult);
+
+    if (!rawResult) {
+      throw new NotFoundException(
+        '요청하신 콘텐츠를 찾을 수 없거나 삭제되었습니다.',
+      );
+    }
+
+    // ManyToMany 관계인 Tags는 별도 쿼리로 가져오는 것이 가장 안정적이다.
+    const tagsResult = await this.mediaRepository.findOne({
+      where: { id: mediaId },
+      relations: ['tags'],
+    });
+    const tags = tagsResult?.tags.map((t) => t.name) || [];
+
+    // DTO 변환 및 반환
+    const item = {
+      id: rawResult.media_id,
+      title: rawResult.media_title,
+      description: rawResult.media_description,
+      type: rawResult.media_type,
+      width: rawResult.media_width,
+      height: rawResult.media_height,
+
+      keyImageLarge: rawResult.media_key_image_large,
+      keyImageMedium: rawResult.media_key_image_medium,
+      keyImageSmall: rawResult.media_key_image_small,
+      keyVideoPlayback: rawResult.media_key_video_playback,
+      createdAt: rawResult.media_created_at.toISOString(), // Date 객체를 문자열로 변환
+
+      likeCount: parseInt(rawResult.likeCount, 10) || 0,
+      downloadCount: parseInt(rawResult.media_download_count, 10) || 0,
+      ownerNickname: rawResult.owner_nickname,
+      ownerProfileImageKey: rawResult.owner_profile_image_key,
+      tags: tags,
+      isLikedByCurrentUser: rawResult.isLiked === 1,
+    } as MediaItemDetailDto;
+
+    console.log('## item : ', item);
+
+    return {
+      message: '미디어 아이템 상세 조회 성공',
+      item,
     };
   }
 }

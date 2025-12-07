@@ -50,5 +50,5 @@ export class PaginatedMediaItemsDto {
   items: MediaItemResponseDto[];
 
   @ApiProperty({ description: '총 항목 수', example: 100 })
-  total: number;
+  totalCounts: number;
 }
