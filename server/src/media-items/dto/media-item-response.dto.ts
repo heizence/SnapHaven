@@ -8,10 +8,22 @@ export class MediaItemResponseDto {
   title: string;
 
   @ApiProperty({
-    description: '썸네일 이미지 key',
-    example: 'small/123.jpg',
+    description: '썸네일 이미지(small) key',
+    example: 'media-items/1234_1234567890123/small.jpg',
   })
-  keyImageSmall: string | null;
+  keyImageSmall: string;
+
+  @ApiProperty({
+    description: '이미지(medium) key',
+    example: 'media-items/1234_1234567890123/medium.jpg',
+  })
+  keyImageMedium: string | null;
+
+  @ApiProperty({
+    description: '이미지(large) key',
+    example: 'media-items/1234_1234567890123/large.jpg',
+  })
+  keyImageLarge: string | null;
 
   @ApiProperty({
     description: '비디오 미리보기 클립',

@@ -40,6 +40,8 @@ export class MediaItemsService {
         'media.width',
         'media.height',
         'media.keyImageSmall',
+        'media.keyImageMedium',
+        'media.keyImageLarge',
         'media.keyVideoPreview',
         'media.createdAt',
         'user.nickname',
@@ -49,9 +51,16 @@ export class MediaItemsService {
 
     // 정렬 적용
     if (sort === MediaSort.LATEST) {
-      qb.orderBy('media.createdAt', 'DESC');
+      qb.orderBy({
+        'media.createdAt': 'DESC',
+        'media.id': 'DESC', // 안정 정렬
+      });
     } else if (sort === MediaSort.POPULAR) {
-      qb.orderBy('likeCount', 'DESC');
+      qb.orderBy({
+        likeCount: 'DESC',
+        'media.createdAt': 'DESC',
+        'media.id': 'DESC',
+      });
       // 추후 수정
     }
 
@@ -62,7 +71,9 @@ export class MediaItemsService {
     const mappedItems: MediaItemResponseDto[] = items.map((item) => ({
       id: item.id,
       title: item.title,
-      keyImageSmall: item.keyImageSmall,
+      keyImageSmall: item.keyImageSmall!,
+      keyImageMedium: item.keyImageMedium,
+      keyImageLarge: item.keyImageLarge,
       keyVideoPreview: item.keyVideoPreview,
       type: item.type,
       width: item.width,
