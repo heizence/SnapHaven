@@ -17,7 +17,7 @@ const RenderEachContent = ({ photo, onClick }) => {
 
   const handleActionClick = (e, action) => {
     e.stopPropagation();
-    alert(`${action} photo by ${photo.authorName}`);
+    alert(`${action}`);
   };
 
   const handleMouseEnter = () => {
@@ -46,11 +46,11 @@ const RenderEachContent = ({ photo, onClick }) => {
       onClick={(e) => onClick({ event: e, photo })}
     >
       {photo.type === ContentType.IMAGE ? (
-        <img className="w-full h-auto bg-black/40" src={photo.src} alt={photo.name || ""} />
+        <img className="w-full h-auto bg-black/40" src={photo.src} alt={photo.title || ""} />
       ) : (
         <video
           ref={videoRef}
-          key={photo.id}
+          key={photo.key}
           style={{
             width: "100%",
             height: "100%",
@@ -80,7 +80,7 @@ const RenderEachContent = ({ photo, onClick }) => {
       >
         <div>
           {photo.type === ContentType.IMAGE ? (
-            photo.isInList === 1 ? (
+            photo.albumId ? (
               <ListIcon size={30} />
             ) : (
               <ImageIcon size={30} />

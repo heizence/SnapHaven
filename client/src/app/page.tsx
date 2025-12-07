@@ -9,13 +9,15 @@ import { AWS_BASE_URL, ContentType, FilterType, ITEM_REQUEST_LIMIT, OrderType } 
 import { getMediaItemsAPI } from "@/lib/APIs";
 import { useLoading } from "@/contexts/LoadingProvider";
 
-interface MediaItem {
-  src: string;
-  width: number;
-  height: number;
+export interface MediaItem {
   key: number;
   type: ContentType;
   title: string;
+  src: string;
+  videoPreview: string | undefined;
+  width: number;
+  height: number;
+  albumId: number;
 }
 
 export default function HomePage() {
@@ -54,6 +56,7 @@ export default function HomePage() {
         const res = await getMediaItemsAPI(request);
 
         if (res.code === 200) {
+          console.log("[getFeeds]items : ", res.data.items);
           const items = res.data.items;
           const photos = items.map((item) => ({
             src: AWS_BASE_URL + item.keyImageSmall,
@@ -63,6 +66,7 @@ export default function HomePage() {
             key: item.id,
             type: item.type,
             title: item.title,
+            albumId: item.albumId,
           }));
 
           // 스크롤 중에는 기존 내용 유지 + append
@@ -85,6 +89,14 @@ export default function HomePage() {
     },
     [page, orderType, filterType]
   );
+
+  const handleItemOnclick = (photo) => {
+    if (photo.albumId) {
+      router.push(`/album/${photo.albumId}`);
+    } else {
+      router.push(`/content/${photo.key}`);
+    }
+  };
 
   // 데이터 최초 불러오기, 필터/정렬 변경 시 데이터 새로 불러오기 모두 포함
   useEffect(() => {
@@ -162,7 +174,7 @@ export default function HomePage() {
       {mediaItems.length > 0 && (
         <RenderAlbum
           photos={mediaItems}
-          onClick={({ index }) => router.push(`/content/${index}`)}
+          onClick={({ photo }: { photo: MediaItem }) => handleItemOnclick(photo)}
         />
       )}
 
