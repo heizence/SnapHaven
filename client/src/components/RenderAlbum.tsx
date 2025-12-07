@@ -4,15 +4,35 @@ import React, { useState } from "react";
 import { MasonryPhotoAlbum } from "react-photo-album";
 import { BookmarkIcon, DownloadIcon, ImageIcon, ListIcon, VideoIcon } from "./ui/SvgIcons";
 import "react-photo-album/masonry.css";
+import { LikeButtonForFeeds } from "./ui/LikeButton";
+import { ContentType } from "@/lib/consts";
 
 const RenderEachContent = ({ photo, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isLikeHovered, setIsLikeHovered] = useState(false);
   const [isBookmarkHovered, setIsBookmarkHovered] = useState(false);
   const [isDownloadHovered, setIsDownloadHovered] = useState(false);
+
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const handleActionClick = (e, action) => {
     e.stopPropagation();
     alert(`${action} photo by ${photo.authorName}`);
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0; // optional: 처음 프레임으로 리셋
+    }
   };
 
   const bottmBtnStyle = `bg-none border-none cursor-pointer p-[10px] 
@@ -21,14 +41,15 @@ const RenderEachContent = ({ photo, onClick }) => {
   return (
     <div
       className="relative cursor-pointer overflow-hidden rounded w-full h-auto"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onClick={(e) => onClick({ event: e, photo })}
     >
-      {photo.type === "IMAGE" ? (
+      {photo.type === ContentType.IMAGE ? (
         <img className="w-full h-auto bg-black/40" src={photo.src} alt={photo.name || ""} />
       ) : (
         <video
+          ref={videoRef}
           key={photo.id}
           style={{
             width: "100%",
@@ -39,12 +60,11 @@ const RenderEachContent = ({ photo, onClick }) => {
           width={photo.width}
           height={photo.height}
           controls={false}
-          autoPlay={false}
           muted
           loop
           playsInline // Important for playback on iOS
         >
-          <source src={photo.src} type={photo.type} />
+          <source src={photo.videoPreview} type={"video/mp4"} />
           Your browser does not support the video tag.
         </video>
       )}
@@ -59,7 +79,7 @@ const RenderEachContent = ({ photo, onClick }) => {
         }}
       >
         <div>
-          {photo.type === "IMAGE" ? (
+          {photo.type === ContentType.IMAGE ? (
             photo.isInList === 1 ? (
               <ListIcon size={30} />
             ) : (
@@ -70,9 +90,10 @@ const RenderEachContent = ({ photo, onClick }) => {
           )}
         </div>
       </div>
+
       <div
         className={`
-        absolute inset-0 bg-black/20 text-white 
+        absolute inset-0 text-white 
         flex flex-col justify-end p-4
         transition-opacity duration-200 ease-in-out
         ${isHovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
@@ -87,6 +108,17 @@ const RenderEachContent = ({ photo, onClick }) => {
             alignItems: "center",
           }}
         >
+          <div
+            className={`
+              flex
+            ${bottmBtnStyle}
+            ${isLikeHovered ? "bg-black/70" : ""}
+            `}
+            onMouseEnter={() => setIsLikeHovered(true)}
+            onMouseLeave={() => setIsLikeHovered(false)}
+          >
+            <LikeButtonForFeeds isLiked={false} />
+          </div>
           <button
             className={`
             ${bottmBtnStyle}

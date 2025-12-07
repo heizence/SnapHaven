@@ -1,4 +1,7 @@
+"use client";
+
 import { Heart } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Props {
   isLiked: boolean;
@@ -18,6 +21,27 @@ export function LikeButton({ isLiked = false }: Props) {
         }`}
     >
       <Heart size={20} fill={isLiked ? "currentColor" : "none"} strokeWidth={1.5} />
+    </button>
+  );
+}
+
+export function LikeButtonForFeeds({ isLiked = false }: { isLiked: boolean }) {
+  const [_isLiked, setIsLiked] = useState(isLiked);
+
+  const toggleLike = (e) => {
+    e.stopPropagation();
+    setIsLiked((prev) => !prev);
+
+    // 추후 좋아요 처리 API 추가하기
+  };
+
+  useEffect(() => {
+    setIsLiked(false);
+  }, []);
+
+  return (
+    <button onClick={(e) => toggleLike(e)}>
+      <Heart size={22} fill={_isLiked ? "red" : "none"} strokeWidth={_isLiked ? 0 : 1.5} />
     </button>
   );
 }
