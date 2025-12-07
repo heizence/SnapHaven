@@ -1,11 +1,16 @@
 import type { NextConfig } from "next";
-import { AWS_BASE_URL } from "@/lib/consts";
+import { AWS_HOST_NAME } from "@/lib/consts";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   images: {
     remotePatterns: [
-      new URL(`${AWS_BASE_URL}/**`),
+      {
+        protocol: "https",
+        hostname: AWS_HOST_NAME,
+        port: "", // 포트 미사용
+        pathname: "/**", // 모든 경로 허용 (경로가 키 이름이므로)
+      },
       {
         protocol: "https",
         hostname: "images.unsplash.com",
