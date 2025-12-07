@@ -55,9 +55,9 @@ export default function HomePage() {
 
         if (res.code === 200) {
           const items = res.data.items;
-
           const photos = items.map((item) => ({
             src: AWS_BASE_URL + item.keyImageSmall,
+            videoPreview: item.type === ContentType.VIDEO && AWS_BASE_URL + item.keyVideoPreview, // only for video
             width: item.width,
             height: item.height,
             key: item.id,
