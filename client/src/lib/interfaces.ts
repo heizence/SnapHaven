@@ -78,6 +78,10 @@ export interface GetMediaItemsRequest {
   type?: FilterType;
 }
 
+export interface GetSingleMediaItemRequest {
+  id: number;
+}
+
 export interface GetEachContentRequest {
   id: string;
 }

@@ -1,17 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { randomBytes } from "crypto";
-import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
-import { EachContent } from "./interfaces";
-
-const HASH_SECRET = process.env.HASH_SECRET || process.env.NEXT_PUBLIC_HASH_SECRET || "";
-
-// Hash string(especially password)
-export const hashString = async (password: string): Promise<string> => {
-  const hashedPassword = crypto.createHmac("sha256", HASH_SECRET).update(password).digest("hex");
-  return hashedPassword;
-};
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -177,3 +166,20 @@ export function validateVideoFile(
     video.src = url;
   });
 }
+
+export const formatDate = (dateString: string) => {
+  // dateString 은 서버에서 받은 ISO 8601 형식의 날짜 문자열
+  // 예) "2025-11-14T10:30:00.000Z";
+  const date = new Date(dateString);
+
+  // 한국어/숫자만 사용하는 포맷 (원하시는 '2025.11.14' 형식)
+  const formatterKR = new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+  // 결과: "2025. 11. 14." (일부 브라우저에서 공백이 포함될 수 있음)
+
+  const formattedDate = formatterKR.replace(/\s/g, "").slice(0, -1);
+  return formattedDate;
+};

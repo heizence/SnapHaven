@@ -10,172 +10,78 @@ import { TagButtons } from "@/components/ui/TagButton";
 import { DownloadBtn } from "@/components/ui/DownloadBtn";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { AddToCollectionBtn } from "@/components/ui/AddToCollectionBtn";
+import { getSingleMediaItemAPI } from "@/lib/APIs";
+import { GetSingleMediaItemRequest } from "@/lib/interfaces";
+import { AWS_BASE_URL, ContentType } from "@/lib/consts";
+import { useLoading } from "@/contexts/LoadingProvider";
+import { formatDate } from "@/lib/utils";
 
 interface MediaDetail {
   id: string;
-  type: "IMAGE" | "ALBUM" | "VIDEO";
-  imageUrl?: string; // [수정] 이미지는 선택 사항
-  videoUrl?: string; // [수정] 비디오도 선택 사항
-  width: number; // [신규] 렌더링 최적화를 위한 원본 너비
-  height: number; // [신규] 렌더링 최적화를 위한 원본 높이
+  type: ContentType;
+  keyImageLarge: string;
+  keyImageMedium: string;
+  keyImageSmall: string;
+  keyVideoPlayback: string | null;
+  width: number;
+  height: number;
   title: string;
   description: string;
   tags: string[];
-  user: {
-    name: string;
-    handle: string;
-    avatarUrl: string;
-  };
+  downloadCount: number;
+  likeCount: number;
+  ownerNickname: string;
+  ownerProfileImageKey: string;
+  createdAt: string;
 }
 
-async function getMediaDetails(id: string): Promise<MediaDetail | null> {
-  console.log(`Fetching details for ID: ${id}...`);
-
-  // [신규] 다양한 비율의 데이터를 포함하는 모의 데이터베이스
-  const mockDatabase = new Map<string, MediaDetail>();
-
-  // 데이터 1: 가로 이미지 (기존)
-  mockDatabase.set("image-landscape", {
-    id: "image-landscape",
-    type: "IMAGE",
-    imageUrl:
-      "https://images.unsplash.com/photo-1544198365-f5d60b6d8190?q=80&w=2070&auto=format&fit=crop",
-    width: 2070,
-    height: 1380, // 3:2
-    title: "Exploring the Serene Alps",
-    description:
-      "A breathtaking journey through the Swiss Alps, capturing the tranquil beauty of the mountains and crystal-clear lakes.",
-    tags: ["alps", "switzerland", "landscape"],
-    user: {
-      name: "Alex Doe",
-      handle: "@alexdoe_photos",
-      avatarUrl: "https://placehold.co/100x100/FFD1B9/522B09?text=AD",
-    },
-  });
-
-  // 데이터 2: 세로 이미지
-  mockDatabase.set("image-portrait", {
-    id: "image-portrait",
-    type: "IMAGE",
-    imageUrl:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2070&auto=format&fit=crop",
-    width: 2070,
-    height: 3105, // 2:3
-    title: "Vertical Waves",
-    description:
-      "A drone shot capturing the mesmerizing patterns of waves crashing on a tropical beach.",
-    tags: ["beach", "ocean", "drone", "vertical"],
-    user: {
-      name: "Jane Doe",
-      handle: "@janedoe_photos",
-      avatarUrl: "https://placehold.co/100x100/E2E8F0/333?text=JD",
-    },
-  });
-
-  // 데이터 3: 정사각형 이미지
-  mockDatabase.set("image-square", {
-    id: "image-square",
-    type: "IMAGE",
-    imageUrl:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1780&auto=format&fit=crop",
-    width: 1780,
-    height: 1780, // 1:1
-    title: "Healthy Bowl",
-    description: "A vibrant and healthy poke bowl, perfect for a fresh meal.",
-    tags: ["food", "healthy", "poke", "square"],
-    user: {
-      name: "Foodie Alex",
-      handle: "@foodiealex",
-      avatarUrl: "https://placehold.co/100x100/D1FAE5/064E3B?text=FA",
-    },
-  });
-
-  // 데이터 4: 가로 비디오 (기존)
-  mockDatabase.set("video-landscape", {
-    id: "video-landscape",
-    type: "VIDEO",
-    videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    width: 1920,
-    height: 1080, // 16:9
-    title: "Big Buck Bunny",
-    description: "A short animated film by the Blender Foundation.",
-    tags: ["animation", "blender", "funny"],
-    user: {
-      name: "Alex Doe",
-      handle: "@alexdoe_photos",
-      avatarUrl: "https://placehold.co/100x100/FFD1B9/522B09?text=AD",
-    },
-  });
-
-  // 데이터 5: 세로 비디오 (Tears of Steel 썸네일 예시 - 실제론 가로 영상)
-  // (참고: 실제 9:16 비디오 URL은 테스트용으로 구하기 어렵습니다)
-  mockDatabase.set("video-portrait", {
-    id: "video-portrait",
-    type: "VIDEO",
-    videoUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    width: 1080,
-    height: 1920, // 9:16 (데이터상 비율)
-    title: "Portrait Video Test (Tears of Steel)",
-    description:
-      "Simulating a portrait video (9:16) using a landscape source. This tests how a tall video fits the player.",
-    tags: ["test", "portrait", "vfx"],
-    user: {
-      name: "Tech Lead",
-      handle: "@techlead",
-      avatarUrl: "https://placehold.co/100x100/E0E7FF/312E81?text=TL",
-    },
-  });
-
-  await new Promise((res) => setTimeout(res, 100));
-
-  // [수정] ID로 데이터베이스에서 조회하여 반환
-  return mockDatabase.get(id) || null;
-}
-
-// 3. (메인 페이지 컴포넌트)
 export default function ContentDetailPage() {
   const params = useParams();
-  //const id = params.id as string;
+  const id = params.id as number;
 
-  // for test
-  //const id = "image-portrait";
-  const id = "image-square";
-  //const id = "video-landscape";
-  //const id = "video-portrait";
-
+  const [isInit, setIsInit] = useState(true); // 첫 랜더링 여부. 데이터 불러오고 나면 false.
   const [mediaDetail, setMediaDetail] = useState<MediaDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showSlideshow, setShowSlideshow] = useState(false);
+
+  const { showLoading, hideLoading } = useLoading();
 
   // [수정] 데이터 페칭 (URL의 ID를 사용)
   useEffect(() => {
-    if (!id) return; // ID가 없으면 로드하지 않음
-
-    async function loadData() {
-      setIsLoading(true);
-      const data = await getMediaDetails(id); // URL의 id로 데이터 요청
-      setMediaDetail(data);
-      setIsLoading(false);
-    }
-    loadData();
+    getSingleMediaItem();
   }, [id]);
 
-  // [신규] 3. 슬라이드쇼 열기 핸들러
+  const getSingleMediaItem = async () => {
+    const request: GetSingleMediaItemRequest = {
+      id,
+    };
+    try {
+      showLoading();
+      const res = await getSingleMediaItemAPI(request);
+
+      if (res.code === 200) {
+        console.log("[getSingleMediaItem]res : ", res.data);
+        const item = res.data;
+        setMediaDetail(item);
+      }
+    } catch (error) {
+      console.error("[getFeeds]error", error);
+      alert(error?.response?.message || "에러가 발생했습니다.");
+    } finally {
+      setIsInit(false);
+      hideLoading();
+    }
+  };
+
+  // 슬라이드쇼 열기 핸들러
   const onOpenSlideshow = () => {
-    // 이미지만 슬라이드쇼를 엽니다.
-    if (mediaDetail.type === "IMAGE") {
+    if (mediaDetail!.type === "IMAGE") {
       setShowSlideshow(true);
     }
   };
 
   // 로딩 및 404
-  if (isLoading) {
-    return (
-      <main className="flex min-h-screen w-full items-center justify-center pt-16">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
-      </main>
-    );
-  }
+  if (isInit) return null;
+
   if (!mediaDetail) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 pt-16">
@@ -195,11 +101,11 @@ export default function ContentDetailPage() {
         <div className="flex w-full flex-col overflow-hidden rounded-xl bg-white">
           {/* 이미지/비디오 렌더링 영역 */}
           <div className="flex w-full max-h-screen items-center justify-center">
-            {mediaDetail.type === "IMAGE" && mediaDetail.imageUrl && (
+            {mediaDetail.type === "IMAGE" && mediaDetail.keyImageLarge && (
               <div onClick={onOpenSlideshow} className="cursor-pointer">
                 <Image
-                  src={mediaDetail.imageUrl}
-                  alt={mediaDetail.title}
+                  src={AWS_BASE_URL + mediaDetail.keyImageLarge}
+                  alt={mediaDetail.title || ""}
                   width={mediaDetail.width}
                   height={mediaDetail.height}
                   className={mediaClassName}
@@ -208,11 +114,11 @@ export default function ContentDetailPage() {
               </div>
             )}
 
-            {mediaDetail.type === "VIDEO" && mediaDetail.videoUrl && (
+            {mediaDetail.type === "VIDEO" && mediaDetail.keyVideoPlayback && (
               <video
                 // 비디오 비율에 맞게 스타일 적용 (object-contain)
                 className={mediaClassName}
-                src={mediaDetail.videoUrl}
+                src={AWS_BASE_URL + mediaDetail.keyVideoPlayback}
                 controls
                 playsInline
                 preload="metadata"
@@ -246,9 +152,9 @@ export default function ContentDetailPage() {
 
             {/* 유저 정보 */}
             <UserInfoArea
-              avatarUrl={mediaDetail.user.avatarUrl}
-              name={mediaDetail.user.name}
-              uploadedDate="2025.11.14"
+              avatarUrl={AWS_BASE_URL + mediaDetail.ownerProfileImageKey}
+              name={mediaDetail.ownerNickname}
+              uploadedDate={formatDate(mediaDetail.createdAt)}
             />
             {/* 설명 */}
             <ContentDesc description={mediaDetail.description || ""} />
@@ -258,9 +164,9 @@ export default function ContentDetailPage() {
         </div>
       </div>
 
-      {showSlideshow && mediaDetail.type === "IMAGE" && mediaDetail.imageUrl && (
+      {showSlideshow && mediaDetail.type === "IMAGE" && mediaDetail.keyImageLarge && (
         <Slideshow
-          images={[{ src: mediaDetail.imageUrl, name: mediaDetail.title }]}
+          images={[{ src: AWS_BASE_URL + mediaDetail.keyImageLarge, name: mediaDetail.title }]}
           startIndex={0}
           onClose={() => setShowSlideshow(false)}
         />
