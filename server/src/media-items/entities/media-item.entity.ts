@@ -28,10 +28,10 @@ export class MediaItem {
   type: ContentType;
 
   @Column({ type: 'int', nullable: false })
-  width: number | null;
+  width: number;
 
   @Column({ type: 'int', nullable: false })
-  height: number | null;
+  height: number;
 
   @Column({ type: 'varchar', length: 30 })
   title: string;
@@ -67,7 +67,7 @@ export class MediaItem {
     length: 2048,
     nullable: true,
   })
-  keyImageSmall: string | null; // 비디오의 경우 Thumbnail 이미지
+  keyImageSmall: string;
 
   @Column({
     name: 'key_video_playback',
@@ -110,7 +110,7 @@ export class MediaItem {
   // Album 과의 Many-to-One 관계
   @ManyToOne(() => Album, (album) => album.mediaItems)
   @JoinColumn({ name: 'album_id' })
-  album: Album;
+  album: Album | null;
 
   // Tag 와의 Many-to-Many 관계
   @ManyToMany(() => Tag, (tag) => tag.mediaItems, {

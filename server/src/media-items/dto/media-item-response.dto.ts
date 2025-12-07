@@ -40,6 +40,9 @@ export class MediaItemResponseDto {
 
   @ApiProperty({ description: '콘텐츠 유형', example: 'IMAGE' })
   type: 'IMAGE' | 'VIDEO';
+
+  @ApiProperty({ description: '앨범 id', example: 1234 })
+  albumId: number | null;
 }
 
 export class PaginatedMediaItemsDto {

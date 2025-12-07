@@ -35,4 +35,13 @@ export class GetMediaItemsDto {
   @IsString()
   @IsOptional()
   type: 'ALL' | ContentType.IMAGE | ContentType.VIDEO = 'ALL';
+
+  @ApiProperty({
+    description: '검색 키워드',
+    default: '',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  keyword: string;
 }
