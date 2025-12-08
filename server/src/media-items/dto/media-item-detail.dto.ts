@@ -22,7 +22,6 @@ export class MediaItemDetailDto {
   @ApiProperty({ description: '미디어 세로 길이', example: 1080 })
   height: number;
 
-  // URL Keys (가공된 Public S3 키)
   @ApiProperty({
     description: '이미지(large) key',
     example: 'media-items/1234_1234567890123/large.jpg',
@@ -57,6 +56,18 @@ export class MediaItemDetailDto {
 
   @ApiProperty({ description: '업로드 사용자 닉네임', example: 'PhotoMaster' })
   ownerNickname: string;
+
+  @ApiProperty({
+    description: '업로드 사용자 프로필 이미지 키',
+    example: 'profiles/a1234567-1a2b-12cd-a123-a1bc12345678.jpeg',
+  })
+  ownerProfileImageKey: string;
+
+  @ApiProperty({
+    description: '미디어 생성 일시',
+    example: '2025-01-01 18:48:51',
+  })
+  createdAt: string;
 
   // Tags
   @ApiProperty({
