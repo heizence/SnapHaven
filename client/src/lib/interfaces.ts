@@ -78,39 +78,14 @@ export interface GetMediaItemsRequest {
   type?: FilterType;
 }
 
-export interface GetSingleMediaItemRequest {
+// 단일 미디어 아이템 또는 앨범 상세 조회 시 사용
+export interface GetSingleItemRequest {
   id: number;
-}
-
-export interface GetEachContentRequest {
-  id: string;
 }
 
 export interface GetCollectionRequest {
   id: string;
   page: number; // starts with 1
-}
-
-export interface GetContentsResponse {
-  data: Array<EachContentObj>;
-}
-
-export interface EachContentObj {
-  id: string;
-  name: string;
-  type: string;
-  isInList: boolean;
-  listId: string;
-  fileUrl: string;
-  fileKey: string;
-}
-
-export interface SendMailRequest {
-  from: string;
-  to: string;
-  subject: string;
-  text?: string;
-  html: string;
 }
 
 export interface CheckResetPwInfoRequest {
@@ -140,45 +115,19 @@ export interface CommonResDto<T> {
 }
 
 /******************* Data ******************/
-export interface User {
-  id: number;
-  email: string;
-  password: string;
-  profileImgUrl?: string;
-  s3fileKey?: string;
-}
-
-export interface ResetPasswordRecord {
-  userId: number;
-  email: string;
-  token: string;
-  expiresAt: string;
-  plainPassword: string;
-}
 
 export interface ProfileInfo {
   nickname: string;
   profileImageUrl?: string;
 }
 
-export interface EachContent {
-  id: string | number;
-  name: string;
-  src: string;
-  type: string;
-  isInList: number;
-  listId: string;
-  width: number;
-  height: number;
-}
-
-export interface FileMetadata {
+// S3 Presigned URL 발급 요청
+interface FileMetadata {
   name: string;
   size: number;
   type: string;
 }
 
-// S3 Presigned URL 발급 요청
 export interface GetMediaPresignedUrlRequest {
   files: FileMetadata[];
   title: string;
