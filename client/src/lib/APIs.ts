@@ -13,7 +13,6 @@ import {
   GetMediaItemsRequest,
   CheckResetPwInfoRequest,
   DeleteUserRequest,
-  GetEachContentRequest,
   GetCollectionRequest,
   forgotPasswordRequest,
   GoogleAuthRequest,
@@ -21,7 +20,7 @@ import {
   GetMediaPresignedUrlRequest,
   RefreshTokenResponse,
   EditProfileInfoRequest,
-  GetSingleMediaItemRequest,
+  GetSingleItemRequest,
 } from "./interfaces";
 import { ResponseDto } from "./ResponseDto";
 import { cloneDeep } from "lodash";
@@ -205,11 +204,12 @@ export const getMediaItemsAPI = (requestBody: GetMediaItemsRequest) =>
   getRequest<GetMediaItemsRequest, null>("media/items", requestBody);
 
 // 단일 미디어 콘텐츠 불러오기
-export const getSingleMediaItemAPI = (requestBody: GetSingleMediaItemRequest) =>
-  getRequest<GetSingleMediaItemRequest, null>(`media/item/${requestBody.id}`, requestBody);
+export const getSingleMediaItemAPI = (requestBody: GetSingleItemRequest) =>
+  getRequest<GetSingleItemRequest, null>(`media/item/${requestBody.id}`, requestBody);
 
-export const GetEachContentAPI = (requestBody: GetEachContentRequest) =>
-  getRequest<GetEachContentRequest, null>("getEachContent", requestBody);
+// 앨범 상세 데이터 불러오기
+export const getAlbumDetailAPI = (requestBody: GetSingleItemRequest) =>
+  getRequest<GetSingleItemRequest, null>(`media/album/${requestBody.id}`, requestBody);
 
 export const GetCollectionAPI = (requestBody: GetCollectionRequest) =>
   getRequest<GetCollectionRequest, null>("getCollection", requestBody);

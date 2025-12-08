@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import NextImage from "next/image";
 import { ChevronLeft, ChevronRight, X, Play, Pause, Maximize, Minimize } from "lucide-react";
 
-interface SlideshowImage {
+export interface SlideshowImage {
   src: string;
   name?: string;
 }

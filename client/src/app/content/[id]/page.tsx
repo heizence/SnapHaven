@@ -11,7 +11,7 @@ import { DownloadBtn } from "@/components/ui/DownloadBtn";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { AddToCollectionBtn } from "@/components/ui/AddToCollectionBtn";
 import { getSingleMediaItemAPI } from "@/lib/APIs";
-import { GetSingleMediaItemRequest } from "@/lib/interfaces";
+import { GetSingleItemRequest } from "@/lib/interfaces";
 import { AWS_BASE_URL, ContentType } from "@/lib/consts";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { formatDate } from "@/lib/utils";
@@ -51,7 +51,7 @@ export default function ContentDetailPage() {
   }, [id]);
 
   const getSingleMediaItem = async () => {
-    const request: GetSingleMediaItemRequest = {
+    const request: GetSingleItemRequest = {
       id,
     };
     try {
@@ -86,9 +86,6 @@ export default function ContentDetailPage() {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 pt-16">
         <h1 className="text-2xl font-bold text-gray-800">404 - 콘텐츠를 찾을 수 없습니다.</h1>
-        <p className="text-gray-600 mt-2">
-          `content/[id]` 경로에서 ID를 확인하세요. (예: /content/image-landscape)
-        </p>
       </main>
     );
   }
@@ -98,7 +95,7 @@ export default function ContentDetailPage() {
   return (
     <main className="w-full h-full py-5">
       <div className="container mx-auto">
-        <div className="flex w-full flex-col overflow-hidden rounded-xl bg-white">
+        <div className="flex w-full flex-col overflow-hidden bg-white">
           {/* 이미지/비디오 렌더링 영역 */}
           <div className="flex w-full max-h-screen items-center justify-center">
             {mediaDetail.type === "IMAGE" && mediaDetail.keyImageLarge && (
