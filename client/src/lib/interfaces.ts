@@ -76,6 +76,7 @@ export interface GetMediaItemsRequest {
   sort?: OrderType;
   keyword?: string;
   type?: FilterType;
+  tag?: string;
 }
 
 // 단일 미디어 아이템 또는 앨범 상세 조회 시 사용
