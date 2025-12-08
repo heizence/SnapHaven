@@ -3,9 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { MediaItem } from './entities/media-item.entity';
 import { GetMediaItemsDto, MediaSort } from './dto/get-media-items.dto';
-import { ContentStatus } from 'src/common/enums';
+import { ContentStatus, ContentType } from 'src/common/enums';
 import { MediaItemResponseDto } from './dto/media-item-response.dto';
 import { MediaItemDetailDto } from './dto/media-item-detail.dto';
+import {
+  AlbumDetailResponseDto,
+  AlbumMediaItemDto,
+} from 'src/albums/dto/album-detail.dto';
+import { Album } from 'src/albums/entities/album.entity';
 
 interface RawMediaItemDetailResult {
   media_id: number;
@@ -34,6 +39,9 @@ export class MediaItemsService {
   constructor(
     @InjectRepository(MediaItem)
     private mediaRepository: Repository<MediaItem>,
+
+    @InjectRepository(Album)
+    private albumRepository: Repository<Album>,
   ) {}
 
   // 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
@@ -129,11 +137,7 @@ export class MediaItemsService {
     };
   }
 
-  /**
-   * 단일 미디어 아이템 상세 정보를 조회합니다.
-   * @param mediaId 조회할 미디어 ID
-   * @param currentUserId 좋아요 상태 확인을 위한 현재 사용자 ID (선택 사항)
-   */
+  // 단일 미디어 아이템 상세 정보를 조회
   async findOne(
     mediaId: number,
     currentUserId?: number,
@@ -142,7 +146,7 @@ export class MediaItemsService {
     const qb = this.mediaRepository
       .createQueryBuilder('media')
       .where('media.id = :id', { id: mediaId })
-      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE }) // [Soft Delete] ACTIVE만 조회
+      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
 
       .leftJoin('media.owner', 'owner')
       .leftJoin('media.likedByUsers', 'likes')
@@ -219,6 +223,81 @@ export class MediaItemsService {
     return {
       message: '미디어 아이템 상세 조회 성공',
       item,
+    };
+  }
+
+  // 특정 앨범 ID의 상세 정보와 포함된 모든 ACTIVE 미디어 아이템을 조회
+  async findAlbumContents(
+    albumId: number,
+    currentUserId?: number,
+  ): Promise<{
+    message: string;
+    album: AlbumDetailResponseDto;
+  }> {
+    const qb = this.albumRepository
+      .createQueryBuilder('album')
+      .where('album.id = :id AND album.status = :activeStatus', {
+        id: albumId,
+        activeStatus: ContentStatus.ACTIVE,
+      })
+      .leftJoinAndSelect('album.owner', 'owner')
+      .leftJoinAndSelect('album.tags', 'tag')
+      .leftJoinAndSelect(
+        'album.mediaItems',
+        'media',
+        'media.status = :activeStatus',
+        { activeStatus: ContentStatus.ACTIVE },
+      );
+
+    if (currentUserId) {
+      qb.addSelect(
+        `MAX(CASE WHEN albumLikes.id = ${currentUserId} THEN 1 ELSE 0 END)`,
+        'isLiked',
+      );
+    }
+
+    const filteredAlbum = await qb.getOne();
+
+    if (!filteredAlbum) {
+      throw new NotFoundException(
+        '요청하신 앨범을 찾을 수 없거나 삭제되었습니다.',
+      );
+    }
+
+    // IID 기준 오름차순으로 정렬
+    const sortedMediaItems = filteredAlbum.mediaItems.sort(
+      (a, b) => a.id - b.id,
+    );
+
+    const itemsDto: AlbumMediaItemDto[] = sortedMediaItems.map((item) => ({
+      id: item.id,
+      type: ContentType.IMAGE,
+      width: item.width,
+      height: item.height,
+      keyImageSmall: item.keyImageSmall,
+      keyImageMedium: item.keyImageMedium,
+      keyImageLarge: item.keyImageLarge,
+    }));
+
+    const isLikedByCurrentUser = currentUserId
+      ? filteredAlbum.likedByUsers.some((user) => user.id === currentUserId)
+      : false;
+
+    const album = {
+      id: filteredAlbum.id,
+      title: filteredAlbum.title,
+      description: filteredAlbum.description,
+      ownerNickname: filteredAlbum.owner.nickname,
+      ownerProfileImageKey: filteredAlbum.owner.profileImageKey,
+      createdAt: filteredAlbum.createdAt.toISOString(),
+      tags: filteredAlbum.tags.map((t) => t.name),
+      isLikedByCurrentUser: isLikedByCurrentUser,
+      items: itemsDto,
+    } as AlbumDetailResponseDto;
+
+    return {
+      message: '앨범 상세 조회 성공',
+      album,
     };
   }
 }

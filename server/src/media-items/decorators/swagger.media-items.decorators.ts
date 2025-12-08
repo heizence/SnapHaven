@@ -1,4 +1,4 @@
-import { applyDecorators, Get, HttpStatus } from '@nestjs/common';
+import { applyDecorators, HttpStatus } from '@nestjs/common';
 import {
   ApiOperation,
   ApiOkResponse,
@@ -10,13 +10,13 @@ import { MediaSort } from 'src/media-items/dto/get-media-items.dto';
 import {
   PaginatedMediaItemsExample,
   MediaItemDetailExample,
+  AlbumDetailExample,
 } from 'src/media-items/decorators/media-swagger.examples';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
-// 메인 피드 목록 조회 엔드포인트 Swagger 통합
+// 메인 피드 목록 조회
 export function ApiMediaFeed() {
   return applyDecorators(
-    Get('items'),
     ApiOperation({
       summary: '메인 피드 콘텐츠 목록 조회',
       description:
@@ -68,10 +68,9 @@ export function ApiMediaFeed() {
   );
 }
 
-// 단일 콘텐츠 상세 조회 엔드포인트 Swagger 통합
+// 단일 콘텐츠 상세 조회
 export function ApiMediaDetail() {
   return applyDecorators(
-    Get('item/:id'),
     ApiOperation({
       summary: '단일 콘텐츠 상세 조회',
       description:
@@ -113,6 +112,56 @@ export function ApiMediaDetail() {
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
         '요청하신 콘텐츠를 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+  );
+}
+
+// 앨범 상세 조회
+export function ApiAlbumDetail() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '앨범 상세 조회',
+      description:
+        '앨범 ID를 사용하여 앨범 정보와 포함된 모든 ACTIVE 콘텐츠 목록을 조회합니다. 로그인된 경우 좋아요 상태를 포함합니다.',
+    }),
+
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: '앨범 상세 정보 조회 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          {
+            properties: {
+              data: {
+                type: 'AlbumDetailResponseDto',
+              },
+            },
+          },
+        ],
+      },
+      example: ResponseDto.success(
+        HttpStatus.OK,
+        '앨범 상세 정보 조회 성공',
+        AlbumDetailExample,
+      ),
+    }),
+
+    // 응답 실패 형식
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '앨범을 찾을 수 없음.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '요청하신 앨범을 찾을 수 없습니다.',
         null,
       ),
     }),

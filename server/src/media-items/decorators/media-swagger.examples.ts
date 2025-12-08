@@ -4,6 +4,8 @@ import {
   MediaItemResponseDto,
 } from '../dto/media-item-response.dto';
 import { MediaItemDetailDto } from '../dto/media-item-detail.dto';
+import { AlbumDetailResponseDto } from 'src/albums/dto/album-detail.dto';
+import { ContentType } from 'src/common/enums';
 
 const mediaItemFeedExample: MediaItemResponseDto = {
   id: 1494,
@@ -30,7 +32,7 @@ export const MediaItemDetailExample: MediaItemDetailDto = {
   id: 1494,
   title: '파리 에펠탑의 새벽',
   description: '2025년 5월에 촬영된 에펠탑 사진입니다. 새벽 5시에 담았습니다.',
-  type: 'IMAGE',
+  type: ContentType.IMAGE,
   width: 1920,
   height: 1080,
   keyImageSmall: 'media-items/1234_1234567890123/small.jpg',
@@ -40,7 +42,7 @@ export const MediaItemDetailExample: MediaItemDetailDto = {
   likeCount: 89,
   downloadCount: 12,
   ownerNickname: 'PhotoMaster',
-  ownerProfileImageKey: 'user/profile/master_2025.jpg',
+  ownerProfileImageKey: 'profiles/a1234567-1a2b-12cd-a123-a1bc12345678.jpeg',
   createdAt: '2025-11-20T10:00:00.000Z',
   tags: ['여행', '파리', '새벽'],
   isLikedByCurrentUser: true,
@@ -56,4 +58,32 @@ export const MediaNotFoundResponse = {
       data: null,
     },
   },
+};
+
+const albumMediaItemExample = {
+  id: 1240,
+  type: ContentType.IMAGE,
+  width: 1920,
+  height: 1080,
+  keyImageSmall: 'media-items/1234_1234567890123/small.jpg',
+  keyImageMedium: 'media-items/1234_1234567890123/medium.jpg',
+  keyImageLarge: 'media-items/1234_1234567890123/large.jpg',
+};
+
+export const AlbumDetailExample: AlbumDetailResponseDto = {
+  id: 101,
+  title: '파리 여행 모음',
+  description: '2025년 여름 파리에서 찍은 모든 사진.',
+  ownerNickname: 'PhotoMaster',
+  ownerProfileImageKey: 'profiles/a1234567-1a2b-12cd-a123-a1bc12345678.jpeg',
+  createdAt: '2025-11-20T10:00:00.000Z',
+  tags: ['여행', '파리', '유럽'],
+  isLikedByCurrentUser: true,
+  items: [
+    albumMediaItemExample,
+    {
+      ...albumMediaItemExample,
+      id: 1241,
+    },
+  ],
 };

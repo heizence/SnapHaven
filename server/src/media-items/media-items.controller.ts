@@ -7,9 +7,11 @@ import { PaginatedMediaItemsDto } from './dto/media-item-response.dto';
 import { MediaItemDetailDto } from './dto/media-item-detail.dto';
 import { User } from 'src/users/entities/user.entity';
 import {
+  ApiAlbumDetail,
   ApiMediaDetail,
   ApiMediaFeed,
 } from './decorators/swagger.media-items.decorators';
+import { AlbumDetailResponseDto } from 'src/albums/dto/album-detail.dto';
 
 @ApiTags('Media Items')
 @Controller('media')
@@ -43,5 +45,21 @@ export class MediaItemsController {
     );
 
     return ResponseDto.success(HttpStatus.OK, message, item);
+  }
+
+  @Get('album/:id')
+  @ApiAlbumDetail()
+  async getAlbumDetail(
+    @Param('id') albumId: number,
+    @Req() req: { user?: User },
+  ): Promise<ResponseDto<AlbumDetailResponseDto>> {
+    const id = Number(albumId);
+    const currentUserId = req.user ? req.user.id : undefined;
+    const { message, album } = await this.mediaItemsService.findAlbumContents(
+      id,
+      currentUserId,
+    );
+
+    return ResponseDto.success(HttpStatus.OK, message, album);
   }
 }
