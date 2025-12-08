@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ContentType } from 'src/common/enums';
 
 export class MediaItemDetailDto {
   @ApiProperty({ description: '미디어 고유 ID', example: 1494 })
@@ -13,8 +14,8 @@ export class MediaItemDetailDto {
   })
   description: string | null;
 
-  @ApiProperty({ description: '콘텐츠 유형', example: 'IMAGE' })
-  type: 'IMAGE' | 'VIDEO';
+  @ApiProperty({ description: '콘텐츠 유형', example: ContentType.IMAGE })
+  type: ContentType;
 
   @ApiProperty({ description: '미디어 가로 길이', example: 1920 })
   width: number;
@@ -54,22 +55,25 @@ export class MediaItemDetailDto {
   @ApiProperty({ description: '다운로드 횟수', example: 12 })
   downloadCount: number;
 
-  @ApiProperty({ description: '업로드 사용자 닉네임', example: 'PhotoMaster' })
+  @ApiProperty({
+    description: '콘텐츠를 업로드한 사용자의 닉네임',
+    example: 'PhotoMaster',
+  })
   ownerNickname: string;
 
   @ApiProperty({
-    description: '업로드 사용자 프로필 이미지 키',
+    description: '콘텐츠를 업로드한 사용자의 프로필 이미지 키',
     example: 'profiles/a1234567-1a2b-12cd-a123-a1bc12345678.jpeg',
+    nullable: true,
   })
-  ownerProfileImageKey: string;
+  ownerProfileImageKey: string | null;
 
   @ApiProperty({
-    description: '미디어 생성 일시',
-    example: '2025-01-01 18:48:51',
+    description: '콘텐츠 생성 날짜 (ISO 8601)',
+    example: '2025-11-20T10:00:00.000Z',
   })
   createdAt: string;
 
-  // Tags
   @ApiProperty({
     description: '관련 태그 목록',
     example: ['여행', '파리', '새벽'],
