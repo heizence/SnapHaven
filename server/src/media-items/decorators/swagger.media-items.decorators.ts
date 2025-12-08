@@ -44,6 +44,13 @@ export function ApiMediaFeed() {
       description: '제목 또는 설명 검색',
       example: '파리',
     }),
+    ApiQuery({
+      name: 'tag',
+      required: false,
+      type: String,
+      description: '특정 태그로 필터링',
+      example: '여행',
+    }),
     ApiOkResponse({
       description: '성공적으로 미디어 목록 반환',
       schema: {

@@ -51,7 +51,7 @@ export class MediaItemsService {
     totalCounts: number;
   }> {
     const limit = 40;
-    const { page, sort, type, keyword } = query;
+    const { page, sort, type, keyword, tag } = query;
     const offset = (page - 1) * limit;
 
     const qb = this.mediaRepository
@@ -71,8 +71,18 @@ export class MediaItemsService {
             );
         }),
       )
+      .leftJoin('media.owner', 'user')
+      .leftJoin('media.likedByUsers', 'likes')
+      .leftJoin('media.tags', 'tag')
+      .leftJoin('media.album', 'album')
+
       // 타입 필터링
       .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type });
+
+    // 태그 필터링
+    if (tag) {
+      qb.andWhere('tag.name = :searchTag', { searchTag: tag });
+    }
 
     // [키워드 필터링] 제목 또는 설명에 키워드가 포함된 경우
     if (keyword) {
@@ -88,23 +98,20 @@ export class MediaItemsService {
       );
     }
 
-    qb.leftJoin('media.owner', 'user')
-      .leftJoin('media.likedByUsers', 'likes')
-      .leftJoin('media.album', 'album')
-      .select([
-        'media.id',
-        'media.title',
-        'media.type',
-        'media.width',
-        'media.height',
-        'media.keyImageSmall',
-        'media.keyImageMedium',
-        'media.keyImageLarge',
-        'media.keyVideoPreview',
-        'media.createdAt',
-        'user.nickname',
-        'album.id',
-      ])
+    qb.select([
+      'media.id',
+      'media.title',
+      'media.type',
+      'media.width',
+      'media.height',
+      'media.keyImageSmall',
+      'media.keyImageMedium',
+      'media.keyImageLarge',
+      'media.keyVideoPreview',
+      'media.createdAt',
+      'user.nickname',
+      'album.id',
+    ])
       .addSelect('COUNT(likes.id)', 'likeCount')
       .groupBy('media.id, user.id, user.nickname, media.createdAt');
 
@@ -264,7 +271,7 @@ export class MediaItemsService {
       );
     }
 
-    // IID 기준 오름차순으로 정렬
+    // ID 기준 오름차순으로 정렬
     const sortedMediaItems = filteredAlbum.mediaItems.sort(
       (a, b) => a.id - b.id,
     );

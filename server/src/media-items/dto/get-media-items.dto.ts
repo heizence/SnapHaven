@@ -44,4 +44,8 @@ export class GetMediaItemsDto {
   @IsString()
   @IsOptional()
   keyword: string;
+
+  @IsOptional()
+  @IsString()
+  tag?: string;
 }
