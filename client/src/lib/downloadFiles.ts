@@ -66,7 +66,6 @@ export async function handleDownloadContent(s3Key: string): Promise<void> {
  * @param albumTitle ZIP 파일 이름에 사용할 앨범 제목 (선택 사항)
  */
 export async function handleAlbumZipDownload(albumId: number): Promise<void> {
-  console.log("# handleAlbumZipDownload start. albumId : ", albumId);
   if (typeof window === "undefined") return;
 
   try {
@@ -77,8 +76,6 @@ export async function handleAlbumZipDownload(albumId: number): Promise<void> {
 
     // 2. [CRITICAL] Blob 객체를 사용하여 파일 저장 실행
     saveAs(blob, fileName);
-
-    console.log(`[handleAlbumZipDownload] ${fileName} 다운로드 시작됨. (서버 스트림 완료)`);
 
     // 3. 서버에 다운로드 카운트 기록 요청 (선택 사항: 카운트 기록 시)
     // 서버에서 ZIP 스트리밍 전에 카운트를 기록하는 것이 더 안전하지만,
