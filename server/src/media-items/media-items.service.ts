@@ -11,6 +11,9 @@ import {
   AlbumMediaItemDto,
 } from 'src/albums/dto/album-detail.dto';
 import { Album } from 'src/albums/entities/album.entity';
+import { GetDownloadUrlDto } from './dto/get-download-url.dto';
+import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
+import { DownloadRequestDto } from './dto/download.request.dto';
 
 interface RawMediaItemDetailResult {
   media_id: number;
@@ -42,6 +45,8 @@ export class MediaItemsService {
 
     @InjectRepository(Album)
     private albumRepository: Repository<Album>,
+
+    private s3UtilityService: S3UtilityService,
   ) {}
 
   // 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
@@ -108,6 +113,7 @@ export class MediaItemsService {
       'media.keyImageMedium',
       'media.keyImageLarge',
       'media.keyVideoPreview',
+      'media.keyVideoPlayback',
       'media.createdAt',
       'user.nickname',
       'album.id',
@@ -131,6 +137,7 @@ export class MediaItemsService {
       keyImageMedium: rawItem.keyImageMedium,
       keyImageLarge: rawItem.keyImageLarge,
       keyVideoPreview: rawItem.keyVideoPreview,
+      keyVideoPlayback: rawItem.keyVideoPlayback,
       type: rawItem.type,
       width: rawItem.width,
       height: rawItem.height,
@@ -225,8 +232,6 @@ export class MediaItemsService {
       isLikedByCurrentUser: rawResult.isLiked === 1,
     } as MediaItemDetailDto;
 
-    console.log('## item : ', item);
-
     return {
       message: '미디어 아이템 상세 조회 성공',
       item,
@@ -306,5 +311,49 @@ export class MediaItemsService {
       message: '앨범 상세 조회 성공',
       album,
     };
+  }
+
+  // 파일 다운로드를 위한 presigned url 을 반환하고 다운로드 카운트 +1 처리
+  async getDownloadUrl(
+    dto: DownloadRequestDto,
+  ): Promise<{ message: string; data: GetDownloadUrlDto }> {
+    const s3Key = dto.s3Key;
+
+    // 콘텐츠 유효성 검사 및 키 조회
+    const mediaItem = await this.mediaRepository
+      .createQueryBuilder('media')
+      .where('media.status = :status', { status: ContentStatus.ACTIVE })
+      .andWhere(
+        new Brackets((qb) => {
+          // 전달받은 key와 일치하는 레코드를 찾음
+          qb.where('media.keyImageLarge = :key', { key: s3Key })
+            .orWhere('media.keyImageMedium = :key', { key: s3Key })
+            .orWhere('media.keyImageSmall = :key', { key: s3Key })
+            .orWhere('media.keyVideoPlayback = :key', { key: s3Key });
+        }),
+      )
+      .select(['media.id', 'media.title'])
+      .getOne();
+
+    if (!mediaItem) {
+      throw new NotFoundException('다운로드 가능한 콘텐츠를 찾을 수 없습니다.');
+    }
+
+    await this.mediaRepository.increment(
+      { id: mediaItem.id },
+      'downloadCount',
+      1,
+    );
+
+    const fileExtension = s3Key.split('.').pop();
+    const fileName = `${mediaItem.title}.${fileExtension}`;
+    const downloadUrl = this.s3UtilityService.getDownloadUrl(s3Key);
+
+    const data = {
+      downloadUrl,
+      fileName,
+    };
+
+    return { message: '다운로드 링크 생성 성공', data };
   }
 }

@@ -11,6 +11,7 @@ import {
   PaginatedMediaItemsExample,
   MediaItemDetailExample,
   AlbumDetailExample,
+  GetDownloadUrlExample,
 } from 'src/media-items/decorators/media-swagger.examples';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
@@ -169,6 +170,101 @@ export function ApiAlbumDetail() {
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
         '요청하신 앨범을 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+  );
+}
+
+// 단일 콘텐츠 다운로드 URL 요청
+export function ApiGetDownloadUrl() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '콘텐츠 다운로드 링크 생성',
+      description:
+        '다운로드 횟수를 기록하고, 콘텐츠 파일에 대한 임시 Presigned URL을 반환합니다.',
+    }),
+
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: '앨범 상세 정보 조회 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          {
+            properties: {
+              data: {
+                type: 'GetDownloadUrlDto',
+              },
+            },
+          },
+        ],
+      },
+      example: ResponseDto.success(
+        HttpStatus.OK,
+        'Presigned URL 반환 및 카운트 증가 성공',
+        GetDownloadUrlExample,
+      ),
+    }),
+
+    // 응답 실패 형식
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '해당 콘텐츠를 찾을 수 없음.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '요청하신 콘텐츠를 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+  );
+}
+
+// 앨범 내 모든 콘텐츠 다운로드 요청
+export function ApiDownloadAlbum() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '앨범 ZIP 다운로드 요청',
+      description:
+        '앨범 내 모든 ACTIVE 파일을 S3에서 가져와 ZIP으로 압축하여 스트리밍합니다. 실패 파일은 최대 5회 재시도합니다.',
+    }),
+
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: 'ZIP 파일 스트리밍 시작',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          {
+            properties: {},
+          },
+        ],
+      },
+      example: ResponseDto.successWithoutData(
+        HttpStatus.OK,
+        'ZIP 파일 스트리밍 시작',
+      ),
+    }),
+
+    // 응답 실패 형식
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '앨범 또는 콘텐츠를 찾을 수 없음',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '앨범 또는 콘텐츠를 찾을 수 없음',
         null,
       ),
     }),

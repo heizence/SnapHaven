@@ -6,6 +6,7 @@ import {
 import { MediaItemDetailDto } from '../dto/media-item-detail.dto';
 import { AlbumDetailResponseDto } from 'src/albums/dto/album-detail.dto';
 import { ContentType } from 'src/common/enums';
+import { GetDownloadUrlDto } from '../dto/get-download-url.dto';
 
 const mediaItemFeedExample: MediaItemResponseDto = {
   id: 1494,
@@ -86,4 +87,9 @@ export const AlbumDetailExample: AlbumDetailResponseDto = {
       id: 1241,
     },
   ],
+};
+
+export const GetDownloadUrlExample: GetDownloadUrlDto = {
+  downloadUrl: 'https://s3.amazonaws.com/presigned-url?AWSAccessKeyId=...',
+  fileName: '파리_에펠탑.jpg',
 };
