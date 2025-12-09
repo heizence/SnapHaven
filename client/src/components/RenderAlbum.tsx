@@ -5,7 +5,9 @@ import { MasonryPhotoAlbum } from "react-photo-album";
 import { BookmarkIcon, DownloadIcon, ImageIcon, ListIcon, VideoIcon } from "./ui/SvgIcons";
 import "react-photo-album/masonry.css";
 import { LikeButtonForFeeds } from "./ui/LikeButton";
-import { ContentType } from "@/lib/consts";
+import { AWS_BASE_URL, ContentType } from "@/lib/consts";
+import Image from "next/image";
+import { handleDownloadContent } from "@/lib/downloadFiles";
 
 const RenderEachContent = ({ photo, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -18,6 +20,13 @@ const RenderEachContent = ({ photo, onClick }) => {
   const handleActionClick = (e, action) => {
     e.stopPropagation();
     alert(`${action}`);
+  };
+
+  // 메인 화면에서 다운로드(large 사이즈만 다운로드 가능)
+  const downloadFile = (e) => {
+    e.stopPropagation();
+    const key = photo.type === ContentType.IMAGE ? photo.keyImageLarge : photo.keyVideoPlayback;
+    handleDownloadContent(key);
   };
 
   const handleMouseEnter = () => {
@@ -46,7 +55,19 @@ const RenderEachContent = ({ photo, onClick }) => {
       onClick={(e) => onClick({ event: e, photo })}
     >
       {photo.type === ContentType.IMAGE ? (
-        <img className="w-full h-auto bg-black/40" src={photo.src} alt={photo.title || ""} />
+        // <img
+        //   className="w-full h-auto bg-black/40"
+        //   src={AWS_BASE_URL + photo.keyImageSmall}
+        //   alt={photo.title || ""}
+        // />
+        <Image
+          className="w-full h-auto bg-black/40"
+          src={AWS_BASE_URL + photo.keyImageSmall}
+          alt={photo.title || ""}
+          width={photo.width}
+          height={photo.height}
+          priority
+        />
       ) : (
         <video
           ref={videoRef}
@@ -64,7 +85,7 @@ const RenderEachContent = ({ photo, onClick }) => {
           loop
           playsInline // Important for playback on iOS
         >
-          <source src={photo.videoPreview} type={"video/mp4"} />
+          <source src={AWS_BASE_URL + photo.keyVideoPreview} type={"video/mp4"} />
           Your browser does not support the video tag.
         </video>
       )}
@@ -137,7 +158,7 @@ const RenderEachContent = ({ photo, onClick }) => {
             ${bottmBtnStyle}
             ${isDownloadHovered ? "bg-black/70" : ""}
             `}
-            onClick={(e) => handleActionClick(e, "Download")}
+            onClick={downloadFile}
           >
             <DownloadIcon />
           </button>

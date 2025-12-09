@@ -21,6 +21,8 @@ import {
   RefreshTokenResponse,
   EditProfileInfoRequest,
   GetSingleItemRequest,
+  UploadFileRequest,
+  GetDownloadUrlRequest,
 } from "./interfaces";
 import { ResponseDto } from "./ResponseDto";
 import { cloneDeep } from "lodash";
@@ -188,12 +190,9 @@ export const getMediaPresignedUrlsAPI = (requestBody: GetMediaPresignedUrlReques
   postRequest<GetMediaPresignedUrlRequest, null>("upload/request-urls", requestBody);
 
 // S3 key 생성 후 파일 처리 요청
-export const requestFileUploadAPI = (body: { s3Keys: string[]; albumId?: number }) =>
+export const requestFileUploadAPI = (body: UploadFileRequest) =>
   postRequest<
-    {
-      s3Keys: string[];
-      albumId?: number;
-    },
+    UploadFileRequest,
     {
       message: string;
     }
@@ -210,6 +209,10 @@ export const getSingleMediaItemAPI = (requestBody: GetSingleItemRequest) =>
 // 앨범 상세 데이터 불러오기
 export const getAlbumDetailAPI = (requestBody: GetSingleItemRequest) =>
   getRequest<GetSingleItemRequest, null>(`media/album/${requestBody.id}`, requestBody);
+
+// 앨범 다운로드 요청
+export const requestAlbumDownloadAPI = (albumId: number) =>
+  postRequest<{ albumId: number }, null>(`media/album/download/${albumId}`, { albumId });
 
 export const GetCollectionAPI = (requestBody: GetCollectionRequest) =>
   getRequest<GetCollectionRequest, null>("getCollection", requestBody);
@@ -229,3 +232,7 @@ export const deleteUserAPI = (requestBody: DeleteUserRequest) =>
   postRequest<DeleteUserRequest, null>("users/me/delete", requestBody);
 
 export const refreshToken = () => postRequest<null, RefreshTokenResponse>("auth/refresh", null);
+
+// 콘텐츠 다운로드 url 요청
+export const getDownloadUrlAPI = (requestBody: GetDownloadUrlRequest) =>
+  getRequest<GetDownloadUrlRequest, null>(`media/download`, requestBody);

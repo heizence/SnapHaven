@@ -15,6 +15,7 @@ import { GetSingleItemRequest } from "@/lib/interfaces";
 import { AWS_BASE_URL, ContentType } from "@/lib/consts";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { formatDate } from "@/lib/utils";
+import { handleDownloadContent } from "@/lib/downloadFiles";
 
 interface MediaDetail {
   id: string;
@@ -70,6 +71,12 @@ export default function ContentDetailPage() {
       setIsInit(false);
       hideLoading();
     }
+  };
+
+  // 파일 다운로드
+  const handleDownload = () => {
+    // 추후 사이즈별 다운로드로 변경하기
+    handleDownloadContent(mediaDetail!.keyImageLarge);
   };
 
   // 슬라이드쇼 열기 핸들러
@@ -140,7 +147,7 @@ export default function ContentDetailPage() {
 
                 {/* 다운로드, 좋아요, 컬렉션에 추가 버튼 */}
                 <div className="flex-shrink-0 flex space-x-2 ml-4">
-                  <DownloadBtn onClick={() => {}} />
+                  <DownloadBtn onClick={handleDownload} />
                   <LikeButton isLiked={true} />
                   <AddToCollectionBtn isCollected={false} />
                 </div>

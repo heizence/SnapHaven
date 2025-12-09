@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import RenderAlbum from "@/components/RenderAlbum";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 import { MediaItem } from "../page";
-import { AWS_BASE_URL, ContentType, FilterType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
+import { ContentType, FilterType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { getMediaItemsAPI } from "@/lib/APIs";
 import { throttle } from "lodash";
@@ -51,14 +51,18 @@ export default function HomePage() {
           console.log("[getFeeds]items : ", res.data);
           const items = res.data.items;
           const photos = items.map((item) => ({
-            src: AWS_BASE_URL + item.keyImageSmall,
-            videoPreview: item.type === ContentType.VIDEO && AWS_BASE_URL + item.keyVideoPreview, // only for video
             width: item.width,
             height: item.height,
             key: item.id,
             type: item.type,
             title: item.title,
             albumId: item.albumId,
+
+            keyImageLarge: item.keyImageLarge,
+            keyImageMedium: item.keyImageMedium,
+            keyImageSmall: item.keyImageSmall,
+            keyVideoPreview: item.type === ContentType.VIDEO && item.keyVideoPreview,
+            keyVideoPlayback: item.type === ContentType.VIDEO && item.keyVideoPlayback,
           }));
 
           // 스크롤 중에는 기존 내용 유지 + append

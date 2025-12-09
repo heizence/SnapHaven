@@ -17,7 +17,7 @@ export interface SignUpRequest {
 }
 
 export interface SignUpResponse {
-  user: User;
+  user: any;
 }
 
 export interface RefreshTokenResponse {
@@ -67,8 +67,10 @@ export interface GetTagsResponse {
   tags: Tag[];
 }
 
+// S3 key 생성 후 파일 처리 요청
 export interface UploadFileRequest {
-  files: any;
+  s3Keys: string[];
+  albumId?: number;
 }
 
 export interface GetMediaItemsRequest {
@@ -82,6 +84,10 @@ export interface GetMediaItemsRequest {
 // 단일 미디어 아이템 또는 앨범 상세 조회 시 사용
 export interface GetSingleItemRequest {
   id: number;
+}
+
+export interface GetDownloadUrlRequest {
+  s3Key: string;
 }
 
 export interface GetCollectionRequest {

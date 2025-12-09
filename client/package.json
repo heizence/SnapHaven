@@ -21,6 +21,7 @@
     "cookie": "^1.0.2",
     "crypto": "^1.0.1",
     "eslint-config-prettier": "^10.0.1",
+    "file-saver": "^2.0.5",
     "form-data": "^4.0.5",
     "formidable": "^3.5.4",
     "fs": "^0.0.1-security",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/file-saver": "^2.0.7",
     "@types/form-data": "^2.2.1",
     "@types/formidable": "^3.4.5",
     "@types/jsonwebtoken": "^9.0.9",

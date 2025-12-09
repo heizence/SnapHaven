@@ -15,6 +15,7 @@ import { GetSingleItemRequest } from "@/lib/interfaces";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { getAlbumDetailAPI } from "@/lib/APIs";
 import { AWS_BASE_URL, ContentType } from "@/lib/consts";
+import { handleAlbumZipDownload } from "@/lib/downloadFiles";
 
 interface AlbumMediaItem {
   id: number;
@@ -44,7 +45,7 @@ export default function CollectionDetailPage() {
   const id = params.id as number;
 
   const [isInit, setIsInit] = useState(true); // 첫 랜더링 여부. 데이터 불러오고 나면 false.
-  const [albumDetail, setAlbumDetail] = useState<AlbumDetail | null>(null);
+  const [albumDetail, setAlbumDetail] = useState<AlbumDetail>();
   const [showSlideshow, setShowSlideshow] = useState(false);
   const [startIndex, setStartIndex] = useState(0); // 클릭한 이미지 인덱스
 
@@ -68,7 +69,7 @@ export default function CollectionDetailPage() {
         const items = res.data.items;
 
         const photos = items.map((item) => ({
-          src: AWS_BASE_URL + item.keyImageSmall,
+          //src: AWS_BASE_URL + item.keyImageSmall,
           width: item.width,
           height: item.height,
           key: item.id,
@@ -96,6 +97,11 @@ export default function CollectionDetailPage() {
     }
   };
 
+  const handleDownloadZip = () => {
+    const { id } = albumDetail!;
+    handleAlbumZipDownload(id);
+  };
+
   // 슬라이드쇼 열기 핸들러
   const onOpenSlideshow = (index: number) => {
     setStartIndex(index);
@@ -115,7 +121,7 @@ export default function CollectionDetailPage() {
 
   const slideShowImages = albumDetail?.items.map((each) => {
     return {
-      src: each.src,
+      src: AWS_BASE_URL + each.keyImageLarge,
     };
   });
 
@@ -133,7 +139,7 @@ export default function CollectionDetailPage() {
 
               {/* 액션 버튼 */}
               <div className="flex items-center space-x-2">
-                <DownloadBtn title="앨범 전체 ZIP 다운로드" onClick={() => {}} />
+                <DownloadBtn title="앨범 전체 ZIP 다운로드" onClick={handleDownloadZip} />
 
                 <LikeButton isLiked={albumDetail.isLikedByCurrentUser} />
                 <AddToCollectionBtn isCollected={true} />
