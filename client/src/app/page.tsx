@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { throttle } from "lodash";
-import RenderAlbum from "@/components/RenderAlbum";
+import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 import { ContentType, FilterType, ITEM_REQUEST_LIMIT, OrderType } from "@/lib/consts";
 import { getMediaItemsAPI } from "@/lib/APIs";
@@ -69,6 +69,7 @@ export default function HomePage() {
             type: item.type,
             title: item.title,
             albumId: item.albumId,
+            isLikedByCurrentUser: item.isLikedByCurrentUser,
 
             keyImageLarge: item.keyImageLarge,
             keyImageMedium: item.keyImageMedium,
@@ -180,7 +181,7 @@ export default function HomePage() {
 
       {/* 콘텐츠 */}
       {mediaItems.length > 0 && (
-        <RenderAlbum
+        <RenderContents
           photos={mediaItems}
           onClick={({ photo }: { photo: MediaItem }) => handleItemOnclick(photo)}
         />

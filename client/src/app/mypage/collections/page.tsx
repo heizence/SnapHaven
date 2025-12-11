@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import "react-photo-album/masonry.css";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/contexts/ModalProvider";
-import RenderAlbum from "@/components/RenderAlbum";
+import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface CollectionFolder {
@@ -270,7 +270,7 @@ export default function MyCollectionsPage() {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
                 </div>
               ) : (
-                <RenderAlbum
+                <RenderContents
                   photos={displayedItems}
                   onClick={({ index }) => router.push(`/content/${index}`)}
                 />

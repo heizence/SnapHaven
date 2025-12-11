@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import "react-photo-album/masonry.css";
 import { useRouter, useSearchParams } from "next/navigation";
-import RenderAlbum from "@/components/RenderAlbum";
+import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 import { MediaItem } from "../page";
 import { ContentType, FilterType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
@@ -57,6 +57,7 @@ export default function HomePage() {
             type: item.type,
             title: item.title,
             albumId: item.albumId,
+            isLikedByCurrentUser: item.isLikedByCurrentUser,
 
             keyImageLarge: item.keyImageLarge,
             keyImageMedium: item.keyImageMedium,
@@ -158,7 +159,7 @@ export default function HomePage() {
       </div>
 
       {mediaItems.length > 0 && (
-        <RenderAlbum
+        <RenderContents
           photos={mediaItems}
           onClick={({ photo }: { photo: MediaItem }) => handleItemOnclick(photo)}
         />

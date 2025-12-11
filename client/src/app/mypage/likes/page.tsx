@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import "react-photo-album/masonry.css";
-import RenderAlbum from "@/components/RenderAlbum";
+import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface MediaItemDto {
@@ -189,7 +189,7 @@ export default function MyLikedContentsPage() {
           </div>
 
           <div className="py-6 md:py-8">
-            <RenderAlbum
+            <RenderContents
               photos={photos}
               onClick={({ index }) => router.push(`/content/${index}`)}
             />

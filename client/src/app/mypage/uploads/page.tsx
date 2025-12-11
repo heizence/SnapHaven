@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import RenderAlbum from "@/components/RenderAlbum";
+import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 
 interface MediaItemDto {
@@ -195,7 +195,7 @@ export default function MyUploadsPage() {
                 </Link>
               </div>
             ) : (
-              <RenderAlbum
+              <RenderContents
                 photos={photos}
                 onClick={({ index }) => router.push(`/content/${index}`)}
               />
