@@ -16,6 +16,7 @@ import { AWS_BASE_URL, ContentType } from "@/lib/consts";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { formatDate } from "@/lib/utils";
 import { handleDownloadContent } from "@/lib/downloadFiles";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 interface MediaDetail {
   id: string;
@@ -96,7 +97,7 @@ export default function ContentDetailPage() {
       </main>
     );
   }
-
+  const isSignedIn = CustomLocalStorage.getUserInfo();
   const mediaClassName = "w-full h-auto object-contain max-h-[80vh] min-h-[30vh]";
 
   return (
@@ -146,10 +147,15 @@ export default function ContentDetailPage() {
                 </h1>
 
                 {/* 다운로드, 좋아요, 컬렉션에 추가 버튼 */}
+
                 <div className="flex-shrink-0 flex space-x-2 ml-4">
                   <DownloadBtn onClick={handleDownload} />
-                  <LikeButton isLiked={true} />
-                  <AddToCollectionBtn isCollected={false} />
+                  {isSignedIn && (
+                    <>
+                      <LikeButton isLiked={true} />
+                      <AddToCollectionBtn isCollected={false} />
+                    </>
+                  )}
                 </div>
               </div>
             </div>

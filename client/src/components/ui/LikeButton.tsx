@@ -1,7 +1,9 @@
 "use client";
 
+import { toggleLikedItemAPI, toggleLikedAlbumAPI } from "@/lib/APIs";
+
 import { Heart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Props {
   isLiked: boolean;
@@ -25,22 +27,31 @@ export function LikeButton({ isLiked = false }: Props) {
   );
 }
 
-export function LikeButtonForFeeds({ isLiked = false }: { isLiked: boolean }) {
+export function LikeButtonForFeeds({
+  isLiked = false,
+  mediaOrAlbumId,
+  isAlbum,
+}: {
+  isLiked: boolean;
+  mediaOrAlbumId: number;
+  isAlbum: boolean;
+}) {
   const [_isLiked, setIsLiked] = useState(isLiked);
 
-  const toggleLike = (e) => {
+  const toggleLiked = async (e) => {
     e.stopPropagation();
-    setIsLiked((prev) => !prev);
 
-    // 추후 좋아요 처리 API 추가하기
+    const res = isAlbum
+      ? await toggleLikedAlbumAPI(mediaOrAlbumId)
+      : await toggleLikedItemAPI(mediaOrAlbumId);
+
+    if (res.code === 201) {
+      setIsLiked((prev) => !prev);
+    }
   };
 
-  useEffect(() => {
-    setIsLiked(false);
-  }, []);
-
   return (
-    <button onClick={(e) => toggleLike(e)}>
+    <button onClick={(e) => toggleLiked(e)}>
       <Heart size={22} fill={_isLiked ? "red" : "none"} strokeWidth={_isLiked ? 0 : 1.5} />
     </button>
   );

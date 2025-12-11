@@ -8,15 +8,18 @@ import { LikeButtonForFeeds } from "./ui/LikeButton";
 import { AWS_BASE_URL, ContentType } from "@/lib/consts";
 import Image from "next/image";
 import { handleDownloadContent } from "@/lib/downloadFiles";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
-const RenderEachContent = ({ photo, onClick }) => {
+const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLikeHovered, setIsLikeHovered] = useState(false);
   const [isBookmarkHovered, setIsBookmarkHovered] = useState(false);
   const [isDownloadHovered, setIsDownloadHovered] = useState(false);
 
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const isSignedIn = CustomLocalStorage.getUserInfo();
 
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  //console.log("### photo : ", photo);
   const handleActionClick = (e, action) => {
     e.stopPropagation();
     alert(`${action}`);
@@ -55,11 +58,6 @@ const RenderEachContent = ({ photo, onClick }) => {
       onClick={(e) => onClick({ event: e, photo })}
     >
       {photo.type === ContentType.IMAGE ? (
-        // <img
-        //   className="w-full h-auto bg-black/40"
-        //   src={AWS_BASE_URL + photo.keyImageSmall}
-        //   alt={photo.title || ""}
-        // />
         <Image
           className="w-full h-auto bg-black/40"
           src={AWS_BASE_URL + photo.keyImageSmall}
@@ -72,12 +70,7 @@ const RenderEachContent = ({ photo, onClick }) => {
         <video
           ref={videoRef}
           key={photo.key}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            backgroundColor: `rgba(0,0,0, 0.4)`,
-          }}
+          className="w-full h-full object-cover bg-black/40"
           width={photo.width}
           height={photo.height}
           controls={false}
@@ -89,86 +82,82 @@ const RenderEachContent = ({ photo, onClick }) => {
           Your browser does not support the video tag.
         </video>
       )}
-      <div
-        style={{
-          position: "absolute",
-          top: 15,
-          left: 15,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-        }}
-      >
-        <div>
-          {photo.type === ContentType.IMAGE ? (
-            photo.albumId ? (
-              <ListIcon size={30} />
-            ) : (
-              <ImageIcon size={30} />
-            )
-          ) : (
-            <VideoIcon size={30} />
-          )}
-        </div>
-      </div>
 
-      <div
-        className={`
+      {!isAlbumPage && (
+        <div className="absolute top-4 left-4 flex justify-between items-start">
+          <div>
+            {photo.type === ContentType.IMAGE ? (
+              photo.albumId ? (
+                <ListIcon size={30} />
+              ) : (
+                <ImageIcon size={30} />
+              )
+            ) : (
+              <VideoIcon size={30} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {!isAlbumPage && (
+        <div
+          className={`
         absolute inset-0 text-white 
         flex flex-col justify-end p-4
         transition-opacity duration-200 ease-in-out
         ${isHovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
       `}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            gap: "0.5rem",
-            alignItems: "center",
-          }}
         >
-          <div
-            className={`
+          <div className="flex flex-row justify-end space-x-2 items-center">
+            {isSignedIn && (
+              <>
+                <div
+                  className={`
               flex
             ${bottmBtnStyle}
             ${isLikeHovered ? "bg-black/70" : ""}
             `}
-            onMouseEnter={() => setIsLikeHovered(true)}
-            onMouseLeave={() => setIsLikeHovered(false)}
-          >
-            <LikeButtonForFeeds isLiked={false} />
-          </div>
-          <button
-            className={`
+                  onMouseEnter={() => setIsLikeHovered(true)}
+                  onMouseLeave={() => setIsLikeHovered(false)}
+                >
+                  <LikeButtonForFeeds
+                    isLiked={photo.isLikedByCurrentUser}
+                    mediaOrAlbumId={photo.albumId ? photo.albumId : photo.key}
+                    isAlbum={photo.albumId}
+                  />
+                </div>
+                <button
+                  className={`
             ${bottmBtnStyle}
             ${isBookmarkHovered ? "bg-black/70" : ""}
             `}
-            onMouseEnter={() => setIsBookmarkHovered(true)}
-            onMouseLeave={() => setIsBookmarkHovered(false)}
-            onClick={(e) => handleActionClick(e, "Bookmark")}
-          >
-            <BookmarkIcon />
-          </button>
-          <button
-            onMouseEnter={() => setIsDownloadHovered(true)}
-            onMouseLeave={() => setIsDownloadHovered(false)}
-            className={`
+                  onMouseEnter={() => setIsBookmarkHovered(true)}
+                  onMouseLeave={() => setIsBookmarkHovered(false)}
+                  onClick={(e) => handleActionClick(e, "Bookmark")}
+                >
+                  <BookmarkIcon />
+                </button>
+              </>
+            )}
+            <button
+              onMouseEnter={() => setIsDownloadHovered(true)}
+              onMouseLeave={() => setIsDownloadHovered(false)}
+              className={`
             ${bottmBtnStyle}
             ${isDownloadHovered ? "bg-black/70" : ""}
             `}
-            onClick={downloadFile}
-          >
-            <DownloadIcon />
-          </button>
+              onClick={downloadFile}
+            >
+              <DownloadIcon />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default function RenderAlbum({ photos, onClick }) {
+export default function RenderContents({ photos, onClick, isAlbumPage = false }) {
   return (
     <MasonryPhotoAlbum
       photos={photos}
@@ -184,7 +173,12 @@ export default function RenderAlbum({ photos, onClick }) {
       onClick={onClick}
       render={{
         photo: ({ onClick }, { photo }) => (
-          <RenderEachContent key={photo.key} photo={photo} onClick={onClick} />
+          <RenderEachContent
+            key={photo.key}
+            photo={photo}
+            onClick={onClick}
+            isAlbumPage={isAlbumPage}
+          />
         ),
       }}
     />

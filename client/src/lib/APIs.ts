@@ -214,6 +214,13 @@ export const getAlbumDetailAPI = (requestBody: GetSingleItemRequest) =>
 export const requestAlbumDownloadAPI = (albumId: number) =>
   postRequest<{ albumId: number }, null>(`media/album/download/${albumId}`, { albumId });
 
+// 아이템 좋아요/좋아요 취소 처리
+export const toggleLikedItemAPI = (mediaId: number) =>
+  postRequest<{ mediaId: number }, null>(`media/item/like/${mediaId}`, { mediaId });
+
+export const toggleLikedAlbumAPI = (mediaId: number) =>
+  postRequest<{ mediaId: number }, null>(`media/album/like/${mediaId}`, { mediaId });
+
 export const GetCollectionAPI = (requestBody: GetCollectionRequest) =>
   getRequest<GetCollectionRequest, null>("getCollection", requestBody);
 

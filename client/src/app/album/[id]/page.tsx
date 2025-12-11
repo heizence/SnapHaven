@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Slideshow from "@/components/Slideshow";
 
-import RenderAlbum from "@/components/RenderAlbum";
+import RenderContents from "@/components/RenderContents";
 import UserInfoArea from "@/components/ui/UserInfoArea";
 import ContentDesc from "@/components/ui/ContentDesc";
 import { TagButtons } from "@/components/ui/TagButton";
@@ -16,6 +16,7 @@ import { useLoading } from "@/contexts/LoadingProvider";
 import { getAlbumDetailAPI } from "@/lib/APIs";
 import { AWS_BASE_URL, ContentType } from "@/lib/consts";
 import { handleAlbumZipDownload } from "@/lib/downloadFiles";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 interface AlbumMediaItem {
   id: number;
@@ -50,6 +51,8 @@ export default function CollectionDetailPage() {
   const [startIndex, setStartIndex] = useState(0); // 클릭한 이미지 인덱스
 
   const { showLoading, hideLoading } = useLoading();
+
+  const isSignedIn = CustomLocalStorage.getUserInfo();
 
   useEffect(() => {
     if (!id) return;
@@ -141,8 +144,12 @@ export default function CollectionDetailPage() {
               <div className="flex items-center space-x-2">
                 <DownloadBtn title="앨범 전체 ZIP 다운로드" onClick={handleDownloadZip} />
 
-                <LikeButton isLiked={albumDetail.isLikedByCurrentUser} />
-                <AddToCollectionBtn isCollected={true} />
+                {isSignedIn && (
+                  <>
+                    <LikeButton isLiked={albumDetail.isLikedByCurrentUser} />
+                    <AddToCollectionBtn isCollected={true} />
+                  </>
+                )}
               </div>
             </div>
             {/* 유저 정보 */}
@@ -160,7 +167,8 @@ export default function CollectionDetailPage() {
           </div>
 
           <div className="py-2 md:py-6 md:pt-0">
-            <RenderAlbum
+            <RenderContents
+              isAlbumPage={true}
               photos={albumDetail.items}
               onClick={({ index }) => onOpenSlideshow(index)}
             />
