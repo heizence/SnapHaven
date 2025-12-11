@@ -35,7 +35,7 @@ export class Album {
   // User (Owner)와의 Many-to-One 관계
   @ManyToOne(() => User, (user) => user.albums)
   @JoinColumn({ name: 'owner_id' })
-  owner: User; // [cite: 589]
+  owner: User;
 
   // MediaItem과의 One-to-Many 관계
   @OneToMany(() => MediaItem, (media) => media.album)
@@ -52,7 +52,17 @@ export class Album {
 
   // UserLikes (앨범 좋아요)와의 Many-to-Many 관계 (user_album_likes 테이블 생성)
   @ManyToMany(() => User, (user) => user.likedAlbums)
-  @JoinTable({ name: 'user_album_likes' })
+  @JoinTable({
+    name: 'user_album_likes', // 연결 테이블 이름 명시
+    joinColumn: {
+      name: 'album_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'user_id',
+      referencedColumnName: 'id',
+    },
+  })
   likedByUsers: User[];
 
   // ---------------- Timestamps ----------------

@@ -7,9 +7,9 @@ import {
   Req,
   Post,
   Res,
-  StreamableFile,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MediaItemsService } from './media-items.service';
 import { GetMediaItemsDto } from './dto/get-media-items.dto';
 import { ResponseDto } from 'src/common/dto/response.dto';
@@ -20,6 +20,7 @@ import {
   ApiAlbumDetail,
   ApiDownloadAlbum,
   ApiGetDownloadUrl,
+  ApiLikeToggle,
   ApiMediaDetail,
   ApiMediaFeed,
 } from './decorators/swagger.media-items.decorators';
@@ -27,8 +28,10 @@ import { AlbumDetailResponseDto } from 'src/albums/dto/album-detail.dto';
 import { GetDownloadUrlDto } from './dto/get-download-url.dto';
 import { DownloadRequestDto } from './dto/download.request.dto';
 import { AlbumsService } from 'src/albums/albums.service';
-import { createReadStream } from 'fs';
-import { join } from 'path';
+
+import { ToogleLikedResponseDto } from './dto/toggle-liked.response.dto';
+import { OptionalAuthGuard } from 'src/auth/optional-auth.guard';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 @ApiTags('Media Items')
 @Controller('media')
@@ -40,17 +43,23 @@ export class MediaItemsController {
 
   // 메인 피드 콘텐츠 목록 조회
   @Get('items')
+  @UseGuards(OptionalAuthGuard)
   @ApiMediaFeed()
   async getMediaFeeds(
     @Query() query: GetMediaItemsDto,
+    @Req() req: { user?: User },
   ): Promise<ResponseDto<PaginatedMediaItemsDto>> {
+    const currentUserId = req.user?.id;
+    console.log('items controller. user : ', currentUserId);
     const { message, items, totalCounts } =
-      await this.mediaItemsService.findAll(query);
+      await this.mediaItemsService.findAll(query, currentUserId);
+
     return ResponseDto.success(HttpStatus.OK, message, { items, totalCounts });
   }
 
   // 단일 미디어 아이템 상세 정보 조회
   @Get('item/:id')
+  @UseGuards(OptionalAuthGuard)
   @ApiMediaDetail()
   async getMediaDetail(
     @Param('id') mediaId: number,
@@ -58,7 +67,6 @@ export class MediaItemsController {
   ): Promise<ResponseDto<MediaItemDetailDto>> {
     const id = Number(mediaId);
     const currentUserId = req.user ? req.user.id : undefined;
-
     const { message, item } = await this.mediaItemsService.findOne(
       id,
       currentUserId,
@@ -69,6 +77,7 @@ export class MediaItemsController {
 
   // 앨범 상세 조회
   @Get('album/:id')
+  @UseGuards(OptionalAuthGuard)
   @ApiAlbumDetail()
   async getAlbumDetail(
     @Param('id') albumId: number,
@@ -76,7 +85,8 @@ export class MediaItemsController {
   ): Promise<ResponseDto<AlbumDetailResponseDto>> {
     const id = Number(albumId);
     const currentUserId = req.user ? req.user.id : undefined;
-    const { message, album } = await this.mediaItemsService.findAlbumContents(
+    console.log('currentUserId : ', currentUserId);
+    const { message, album } = await this.albumsService.findAlbumContents(
       id,
       currentUserId,
     );
@@ -130,11 +140,41 @@ export class MediaItemsController {
     }
   }
 
-  @Get('test')
-  getFile() {
-    console.log('[media-items.controller]test start!');
-    const file = createReadStream(join(process.cwd(), 'package.json'));
-    console.log('[media-items.controller]file : ', file);
-    return new StreamableFile(file);
+  // 콘텐츠 좋아요 토글 기능(단일 콘텐츠, 앨범 모두 처리)
+  @Post('item/like/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiLikeToggle()
+  async toggleLikedItem(
+    @Param('id') mediaId: number,
+    @Req() req: { user: User },
+  ): Promise<ResponseDto<ToogleLikedResponseDto>> {
+    const userId = req.user.id;
+
+    //console.log('id : ', id);
+    const { message, isLiked } = await this.mediaItemsService.toggleLikedItem(
+      mediaId,
+      userId,
+    );
+
+    return ResponseDto.success(HttpStatus.CREATED, message, { isLiked });
+  }
+
+  @Post('album/like/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiLikeToggle()
+  async toggleLikedAlbum(
+    @Param('id') albumId: number,
+    @Req() req: { user: User },
+  ): Promise<ResponseDto<ToogleLikedResponseDto>> {
+    const userId = req.user.id;
+
+    const { message, isLiked } = await this.albumsService.toggleLikedAlbum(
+      albumId,
+      userId,
+    );
+
+    return ResponseDto.success(HttpStatus.CREATED, message, { isLiked });
   }
 }

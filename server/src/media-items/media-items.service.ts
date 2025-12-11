@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { MediaItem } from './entities/media-item.entity';
@@ -6,20 +10,35 @@ import { GetMediaItemsDto, MediaSort } from './dto/get-media-items.dto';
 import { ContentStatus, ContentType } from 'src/common/enums';
 import { MediaItemResponseDto } from './dto/media-item-response.dto';
 import { MediaItemDetailDto } from './dto/media-item-detail.dto';
-import {
-  AlbumDetailResponseDto,
-  AlbumMediaItemDto,
-} from 'src/albums/dto/album-detail.dto';
+import {} from 'src/albums/dto/album-detail.dto';
 import { Album } from 'src/albums/entities/album.entity';
 import { GetDownloadUrlDto } from './dto/get-download-url.dto';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { DownloadRequestDto } from './dto/download.request.dto';
+import { User } from 'src/users/entities/user.entity';
+
+type RawMediaItemResult = {
+  media_id: number;
+  media_title: string;
+  media_type: ContentType;
+  media_width: number;
+  media_height: number;
+  media_key_image_small: string;
+  media_key_image_medium: string;
+  media_key_image_large: string;
+  media_key_video_preview: string;
+  media_key_video_playback: string;
+  user_nickname: string;
+  album_id: number | null;
+  likeCount: string;
+  isLiked: number; // 쿼리 결과는 문자열 또는 숫자 형태로 옴
+};
 
 interface RawMediaItemDetailResult {
   media_id: number;
   media_title: string;
   media_description: string | null;
-  media_type: 'IMAGE' | 'VIDEO';
+  media_type: ContentType;
   media_width: number;
   media_height: number;
   media_download_count: string;
@@ -42,15 +61,64 @@ export class MediaItemsService {
   constructor(
     @InjectRepository(MediaItem)
     private mediaRepository: Repository<MediaItem>,
-
     @InjectRepository(Album)
     private albumRepository: Repository<Album>,
-
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private s3UtilityService: S3UtilityService,
   ) {}
 
+  // 조건에 따라 불러온 미디어 아이템 총 갯수 구하기
+  async getItemsCount(
+    type: string,
+    tag?: string,
+    keyword?: string,
+  ): Promise<number> {
+    const countQb = this.mediaRepository
+      .createQueryBuilder('media')
+      .where('media.status = :status', { status: ContentStatus.ACTIVE })
+      .andWhere(
+        new Brackets((sqb) => {
+          sqb.where('media.albumId IS NULL').orWhere(
+            `media.id = (
+            SELECT MIN(t1.id)
+            FROM media_items t1
+            WHERE t1.album_id = media.album_id
+            AND t1.status = :activeStatus
+          )`,
+            { activeStatus: ContentStatus.ACTIVE },
+          );
+        }),
+      )
+      .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type });
+
+    if (tag) {
+      countQb.leftJoin('media.tags', 'tag').andWhere('tag.name = :searchTag', {
+        searchTag: tag,
+      });
+    }
+
+    if (keyword) {
+      const searchPattern = `%${keyword}%`;
+      countQb.andWhere(
+        new Brackets((where) => {
+          where
+            .where('media.title LIKE :searchPattern', { searchPattern })
+            .orWhere('media.description LIKE :searchPattern', {
+              searchPattern,
+            });
+        }),
+      );
+    }
+    const totalCounts = await countQb.getCount();
+    return totalCounts;
+  }
+
   // 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
-  async findAll(query: GetMediaItemsDto): Promise<{
+  async findAll(
+    query: GetMediaItemsDto,
+    currentUserId?: number,
+  ): Promise<{
     message: string;
     items: MediaItemResponseDto[];
     totalCounts: number;
@@ -119,6 +187,12 @@ export class MediaItemsService {
       'album.id',
     ])
       .addSelect('COUNT(likes.id)', 'likeCount')
+      .addSelect(
+        currentUserId
+          ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id)`
+          : `FALSE`, // 비로그인 시 NULL 반환
+        'isLiked',
+      )
       .groupBy('media.id, user.id, user.nickname, media.createdAt');
 
     // 정렬
@@ -128,26 +202,31 @@ export class MediaItemsService {
       qb.orderBy('likeCount', 'DESC');
     }
 
-    const [items, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    qb.offset(offset).limit(limit);
 
-    const mappedItems: MediaItemResponseDto[] = items.map((rawItem) => ({
-      id: rawItem.id,
-      title: rawItem.title,
-      keyImageSmall: rawItem.keyImageSmall,
-      keyImageMedium: rawItem.keyImageMedium,
-      keyImageLarge: rawItem.keyImageLarge,
-      keyVideoPreview: rawItem.keyVideoPreview,
-      keyVideoPlayback: rawItem.keyVideoPlayback,
-      type: rawItem.type,
-      width: rawItem.width,
-      height: rawItem.height,
-      albumId: rawItem.album?.id || null,
+    const rawItems: RawMediaItemResult[] = await qb.getRawMany(); // OK
+
+    const mappedItems: MediaItemResponseDto[] = rawItems.map((rawItem) => ({
+      id: rawItem.media_id,
+      title: rawItem.media_title,
+      type: rawItem.media_type,
+      width: rawItem.media_width,
+      height: rawItem.media_height,
+      keyImageSmall: rawItem.media_key_image_small,
+      keyImageMedium: rawItem.media_key_image_medium,
+      keyImageLarge: rawItem.media_key_image_large,
+      keyVideoPreview: rawItem.media_key_video_preview,
+      keyVideoPlayback: rawItem.media_key_video_playback,
+      albumId: rawItem.album_id || null,
+      isLikedByCurrentUser: rawItem.isLiked === 1,
     }));
+
+    const totalCounts = await this.getItemsCount(type, tag, keyword);
 
     return {
       message: '',
       items: mappedItems,
-      totalCounts: total,
+      totalCounts,
     };
   }
 
@@ -157,6 +236,7 @@ export class MediaItemsService {
     currentUserId?: number,
   ): Promise<{ message: string; item: MediaItemDetailDto }> {
     // QueryBuilder를 사용하여 통계 및 소유자 정보를 한 번에 조회
+
     const qb = this.mediaRepository
       .createQueryBuilder('media')
       .where('media.id = :id', { id: mediaId })
@@ -187,15 +267,14 @@ export class MediaItemsService {
       // 현재 사용자의 좋아요 여부 확인
       .addSelect(
         currentUserId
-          ? `MAX(CASE WHEN likes.id = ${currentUserId} THEN 1 ELSE 0 END)`
-          : `0`,
+          ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id) IS NOT NULL`
+          : `FALSE`,
         'isLiked',
       )
       .groupBy('media.id, owner.id');
 
     const rawResult = (await qb.getRawOne()) as RawMediaItemDetailResult;
     console.log('## rawResult : ', rawResult);
-
     if (!rawResult) {
       throw new NotFoundException(
         '요청하신 콘텐츠를 찾을 수 없거나 삭제되었습니다.',
@@ -229,87 +308,12 @@ export class MediaItemsService {
       ownerNickname: rawResult.owner_nickname,
       ownerProfileImageKey: rawResult.owner_profile_image_key,
       tags: tags,
-      isLikedByCurrentUser: rawResult.isLiked === 1,
+      isLikedByCurrentUser: rawResult.isLiked == 1, // isLiked 값이 '1' 로 나옴.
     } as MediaItemDetailDto;
 
     return {
       message: '미디어 아이템 상세 조회 성공',
       item,
-    };
-  }
-
-  // 특정 앨범 ID의 상세 정보와 포함된 모든 ACTIVE 미디어 아이템을 조회
-  async findAlbumContents(
-    albumId: number,
-    currentUserId?: number,
-  ): Promise<{
-    message: string;
-    album: AlbumDetailResponseDto;
-  }> {
-    const qb = this.albumRepository
-      .createQueryBuilder('album')
-      .where('album.id = :id AND album.status = :activeStatus', {
-        id: albumId,
-        activeStatus: ContentStatus.ACTIVE,
-      })
-      .leftJoinAndSelect('album.owner', 'owner')
-      .leftJoinAndSelect('album.tags', 'tag')
-      .leftJoinAndSelect(
-        'album.mediaItems',
-        'media',
-        'media.status = :activeStatus',
-        { activeStatus: ContentStatus.ACTIVE },
-      );
-
-    if (currentUserId) {
-      qb.addSelect(
-        `MAX(CASE WHEN albumLikes.id = ${currentUserId} THEN 1 ELSE 0 END)`,
-        'isLiked',
-      );
-    }
-
-    const filteredAlbum = await qb.getOne();
-
-    if (!filteredAlbum) {
-      throw new NotFoundException(
-        '요청하신 앨범을 찾을 수 없거나 삭제되었습니다.',
-      );
-    }
-
-    // ID 기준 오름차순으로 정렬
-    const sortedMediaItems = filteredAlbum.mediaItems.sort(
-      (a, b) => a.id - b.id,
-    );
-
-    const itemsDto: AlbumMediaItemDto[] = sortedMediaItems.map((item) => ({
-      id: item.id,
-      type: ContentType.IMAGE,
-      width: item.width,
-      height: item.height,
-      keyImageSmall: item.keyImageSmall,
-      keyImageMedium: item.keyImageMedium,
-      keyImageLarge: item.keyImageLarge,
-    }));
-
-    const isLikedByCurrentUser = currentUserId
-      ? filteredAlbum.likedByUsers.some((user) => user.id === currentUserId)
-      : false;
-
-    const album = {
-      id: filteredAlbum.id,
-      title: filteredAlbum.title,
-      description: filteredAlbum.description,
-      ownerNickname: filteredAlbum.owner.nickname,
-      ownerProfileImageKey: filteredAlbum.owner.profileImageKey,
-      createdAt: filteredAlbum.createdAt.toISOString(),
-      tags: filteredAlbum.tags.map((t) => t.name),
-      isLikedByCurrentUser: isLikedByCurrentUser,
-      items: itemsDto,
-    } as AlbumDetailResponseDto;
-
-    return {
-      message: '앨범 상세 조회 성공',
-      album,
     };
   }
 
@@ -355,5 +359,48 @@ export class MediaItemsService {
     };
 
     return { message: '다운로드 링크 생성 성공', data };
+  }
+
+  // 미디어 아이템 좋아요 표시/취소 기능
+  async toggleLikedItem(
+    mediaId: number,
+    userId: number,
+  ): Promise<{ message: string; isLiked: boolean }> {
+    if (!userId) {
+      throw new UnauthorizedException(
+        '로그인된 사용자만 좋아요를 누를 수 있습니다.',
+      );
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['likedMediaItems'],
+    });
+    const mediaItem = await this.mediaRepository.findOne({
+      where: { id: mediaId },
+    });
+
+    if (!user || !mediaItem) {
+      throw new NotFoundException('사용자 또는 콘텐츠를 찾을 수 없습니다.');
+    }
+
+    const isCurrentlyLiked = user.likedMediaItems.some(
+      (item) => item.id === mediaId,
+    );
+    if (isCurrentlyLiked) {
+      // likedMediaItems 배열에서 해당 미디어 아이템 제거
+      user.likedMediaItems = user.likedMediaItems.filter(
+        (item) => item.id !== mediaId,
+      );
+      await this.userRepository.save(user); // 관계 테이블에서 레코드 삭제
+      return { message: '좋아요 취소 처리가 완료되었습니다.', isLiked: false };
+    } else {
+      // 미디어 아이템을 관계 배열에 추가
+      user.likedMediaItems.push(mediaItem);
+
+      await this.userRepository.save(user); // 관계 테이블에 레코드 추가
+
+      return { message: '좋아요 처리가 완료되었습니다.', isLiked: true };
+    }
   }
 }

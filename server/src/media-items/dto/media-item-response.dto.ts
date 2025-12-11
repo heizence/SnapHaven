@@ -43,6 +43,13 @@ export class MediaItemResponseDto {
     nullable: true,
   })
   keyVideoPreview: string | null;
+
+  @ApiProperty({
+    description: '현재 사용자가 해당 아이템에 좋아요 표시 여부',
+    example: '1',
+    nullable: true,
+  })
+  isLikedByCurrentUser: boolean;
 }
 
 export class PaginatedMediaItemsDto {

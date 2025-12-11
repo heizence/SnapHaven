@@ -6,13 +6,16 @@ import { MediaItem } from './entities/media-item.entity';
 import { Album } from 'src/albums/entities/album.entity';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { AlbumsService } from 'src/albums/albums.service';
+import { User } from 'src/users/entities/user.entity';
+import { UsersService } from 'src/users/users.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([MediaItem]),
     TypeOrmModule.forFeature([Album]),
+    TypeOrmModule.forFeature([User]),
   ],
   controllers: [MediaItemsController],
-  providers: [MediaItemsService, AlbumsService, S3UtilityService],
+  providers: [UsersService, MediaItemsService, AlbumsService, S3UtilityService],
 })
 export class MediaItemsModule {}

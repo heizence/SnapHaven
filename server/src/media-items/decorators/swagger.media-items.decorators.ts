@@ -270,3 +270,63 @@ export function ApiDownloadAlbum() {
     }),
   );
 }
+
+// 콘텐츠 좋아요 토글 기능
+export function ApiLikeToggle() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '콘텐츠(단일 아이템, 앨범) 좋아요/취소',
+      description:
+        '인증된 사용자가 특정 콘텐츠에 좋아요를 표시하거나 취소합니다.',
+    }),
+
+    ApiResponse({
+      status: HttpStatus.CREATED,
+      description: '좋아요 상태 변경 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'LikeToggleResponseDto' } } },
+        ],
+      },
+      example: ResponseDto.success(
+        HttpStatus.CREATED,
+        '좋아요 상태 변경 성공',
+        { isLiked: true },
+      ),
+    }),
+
+    // 응답 실패 형식
+    ApiResponse({
+      status: HttpStatus.UNAUTHORIZED,
+      description: '인증 정보 없음',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.UNAUTHORIZED,
+        '인증 정보 없음',
+        null,
+      ),
+    }),
+
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '사용자 또는 콘텐츠를 찾을 수 없음',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '사용자 또는 콘텐츠를 찾을 수 없음',
+        null,
+      ),
+    }),
+  );
+}

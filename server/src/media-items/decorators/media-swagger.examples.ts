@@ -19,6 +19,7 @@ const mediaItemFeedExample: MediaItemResponseDto = {
   width: 1920,
   height: 1080,
   albumId: 1,
+  isLikedByCurrentUser: true,
 };
 
 export const PaginatedMediaItemsExample: PaginatedMediaItemsDto = {
