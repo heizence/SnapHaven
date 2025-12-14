@@ -14,6 +14,7 @@ import {
   AlbumDetailResponseDto,
   AlbumMediaItemDto,
 } from './dto/album-detail.dto';
+import { MediaItem } from 'src/media-items/entities/media-item.entity';
 
 const archiver = require('archiver'); // Do not convert to import.
 
@@ -22,6 +23,8 @@ export class AlbumsService {
   constructor(
     @InjectRepository(Album)
     private albumRepository: Repository<Album>,
+    @InjectRepository(MediaItem)
+    private mediaItemRepository: Repository<MediaItem>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private s3UtilityService: S3UtilityService,
@@ -265,6 +268,34 @@ export class AlbumsService {
       await this.userRepository.save(user); // 관계 테이블에 레코드 추가
 
       return { message: '좋아요 처리가 완료되었습니다.', isLiked: true };
+    }
+  }
+
+  // 앨범 썸네일 업데이트
+  // 여러 개의 아이템을 앨범으로 업로드 하고 나서 앨범 썸네일 업데이트 할 때 사용
+  async updateAlbumThumbnail(albumId: number): Promise<void> {
+    const firstMediaItem = await this.albumRepository.manager
+      .getRepository(MediaItem)
+      .createQueryBuilder('media')
+      .select(['media.keyImageSmall'])
+      .where('media.albumId = :albumId', { albumId: albumId })
+      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
+      .orderBy('media.id', 'ASC') // 가장 먼저 추가된 미디어 아이템 기준
+      .limit(1)
+      .getOne();
+
+    const newThumbnailKey = firstMediaItem?.keyImageSmall || null;
+
+    // 앨범 테이블의 썸네일 컬럼 업데이트
+    // 앨범 내 ACTIVE 미디어가 하나도 없다면, newThumbnailKey는 null이 되어 앨범 썸네일도 비워진다.
+    const updateResult = await this.albumRepository.update(albumId, {
+      keyThumbnail: newThumbnailKey,
+    });
+
+    if (updateResult.affected === 0) {
+      console.warn(
+        `[AlbumsService] Album ID ${albumId} not found or no change in thumbnail.`,
+      );
     }
   }
 }

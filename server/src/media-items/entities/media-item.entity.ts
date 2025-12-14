@@ -120,11 +120,11 @@ export class MediaItem {
   @JoinTable({
     name: 'media_tags', // 연결 테이블 이름
     joinColumn: {
-      name: 'media_id', // [!code focus] // 💡 이 테이블(media_items)의 PK를 연결 테이블에 'media_id'로 저장
+      name: 'media_id', // 이 테이블(media_items)의 PK를 연결 테이블에 'media_id'로 저장
       referencedColumnName: 'id',
     },
     inverseJoinColumn: {
-      name: 'tag_id', // [!code focus] // 💡 연결 테이블에 태그의 PK를 'tag_id'로 저장
+      name: 'tag_id', // 연결 테이블에 태그의 PK를 'tag_id'로 저장
       referencedColumnName: 'id',
     },
   })
@@ -139,7 +139,7 @@ export class MediaItem {
       referencedColumnName: 'id',
     },
     inverseJoinColumn: {
-      name: 'user_id', // 연결된 엔티티(User)의 PK를 'user_id'로 저장 (DB 표준)
+      name: 'user_id', // 연결된 엔티티(User)의 PK를 'user_id'로 저장
       referencedColumnName: 'id',
     },
   })
@@ -147,6 +147,5 @@ export class MediaItem {
 
   // Collection 과의 Many-to-Many 관계
   @ManyToMany(() => Collection, (collection) => collection.mediaItems)
-  @JoinTable({ name: 'collection_media_items' })
   collections: Collection[];
 }

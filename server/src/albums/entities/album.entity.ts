@@ -12,6 +12,7 @@ import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { Tag } from 'src/tags/entities/tag.entity';
 import { ContentStatus } from 'src/common/enums';
+import { Collection } from 'src/collections/entities/collection.entity';
 
 @Entity('albums')
 export class Album {
@@ -64,6 +65,18 @@ export class Album {
     },
   })
   likedByUsers: User[];
+
+  @Column({
+    name: 'key_thumbnail',
+    type: 'varchar',
+    length: 2048,
+    nullable: true,
+  })
+  keyThumbnail: string | null;
+
+  // Collection 과의 Many-to-Many 관계
+  @ManyToMany(() => Collection, (collection) => collection.albums)
+  collections: Collection[];
 
   // ---------------- Timestamps ----------------
   @Column({

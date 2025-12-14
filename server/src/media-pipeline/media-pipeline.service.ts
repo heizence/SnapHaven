@@ -23,6 +23,7 @@ import {
   ProcessedKeys,
 } from './media-processor.service';
 import { RequestUrlsDto } from 'src/upload/dto/request-urls.dto';
+import { AlbumsService } from 'src/albums/albums.service';
 
 @Injectable()
 export class MediaPipelineService {
@@ -31,9 +32,8 @@ export class MediaPipelineService {
   constructor(
     @InjectRepository(MediaItem)
     private readonly mediaItemRepository: Repository<MediaItem>,
-    @InjectRepository(Album)
-    private readonly albumRepository: Repository<Album>,
 
+    private readonly albumsService: AlbumsService,
     private readonly tagsService: TagsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly dataSource: DataSource, // 트랜잭션을 위한 DataSource
@@ -179,6 +179,7 @@ export class MediaPipelineService {
         // 파이프라인이 S3에서 다운로드하고 변환할 수 있도록 이벤트 발행
         this.eventEmitter.emit('media.uploaded', {
           mediaId: item.id,
+          albumId: item.albumId,
           s3Key: item.s3KeyOriginal,
           mimeType:
             item.type === ContentType.IMAGE ? 'image/jpeg' : 'video/mp4',
@@ -201,7 +202,7 @@ export class MediaPipelineService {
   // [비동기 워커] media.uploaded 이벤트 수신 및 처리 파이프라인 실행
   @OnEvent('media.uploaded')
   async handleMediaUpload(payload: MediaUploadedEvent): Promise<void> {
-    const { mediaId, s3Key, contentType, mimeType } = payload;
+    const { mediaId, albumId, s3Key, contentType, mimeType } = payload;
 
     // 임시 스토리지 경로 설정
     const originalLocalPath = path.join(
@@ -229,6 +230,10 @@ export class MediaPipelineService {
           originalLocalPath,
           mediaId,
         );
+      }
+
+      if (albumId) {
+        await this.albumsService.updateAlbumThumbnail(albumId);
       }
 
       // DB URL 및 최종 상태 업데이트

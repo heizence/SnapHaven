@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { TagsModule } from './tags/tags.module';
 import { UploadModule } from './upload/upload.module';
 import { MediaItemsModule } from './media-items/media-items.module';
+import { CollectionsModule } from './collections/collections.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { MediaItemsModule } from './media-items/media-items.module';
     TagsModule,
     UploadModule,
     MediaItemsModule,
+    CollectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

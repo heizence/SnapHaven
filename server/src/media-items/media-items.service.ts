@@ -17,7 +17,7 @@ import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { DownloadRequestDto } from './dto/download.request.dto';
 import { User } from 'src/users/entities/user.entity';
 
-type RawMediaItemResult = {
+export type RawMediaItemResult = {
   media_id: number;
   media_title: string;
   media_type: ContentType;

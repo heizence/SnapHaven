@@ -12,10 +12,12 @@ import * as multerS3 from 'multer-s3';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { S3Client } from '@aws-sdk/client-s3';
+import { AlbumsService } from 'src/albums/albums.service';
+import { User } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MediaItem, Album]),
+    TypeOrmModule.forFeature([MediaItem, Album, User]),
     TagsModule,
 
     MulterModule.registerAsync({
@@ -48,7 +50,13 @@ import { S3Client } from '@aws-sdk/client-s3';
       },
     }),
   ],
-  providers: [MediaPipelineService, S3UtilityService, MediaProcessorService],
+  providers: [
+    MediaPipelineService,
+    AlbumsService,
+
+    S3UtilityService,
+    MediaProcessorService,
+  ],
   exports: [MediaPipelineService],
 })
 export class MediaPipelineModule {}

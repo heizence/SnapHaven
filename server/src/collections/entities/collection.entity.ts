@@ -9,8 +9,9 @@ import {
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
+import { Album } from 'src/albums/entities/album.entity';
 
-@Entity('collections')
+@Entity('user_collections')
 export class Collection {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -43,6 +44,35 @@ export class Collection {
 
   // MediaItem과의 Many-to-Many 관계
   @ManyToMany(() => MediaItem, (mediaItem) => mediaItem.collections)
-  @JoinTable({ name: 'collection_media_items' })
+  @JoinTable({
+    name: 'collection_media_items',
+    joinColumn: {
+      // Collection의 PK를 연결 테이블에 'collection_id'로 저장하도록 명시
+      name: 'collection_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      // MediaItem의 PK를 연결 테이블에 'media_id'로 저장하도록 명시
+      name: 'media_id',
+      referencedColumnName: 'id',
+    },
+  })
   mediaItems: MediaItem[];
+
+  // Album과의 Many-to-Many 관계
+  @ManyToMany(() => Album, (album) => album.collections)
+  @JoinTable({
+    name: 'collection_albums',
+    joinColumn: {
+      // Collection 의 키 -> 연결 테이블 컬럼
+      name: 'collection_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      // Album 의 키 -> 연결 테이블 컬럼
+      name: 'album_id',
+      referencedColumnName: 'id',
+    },
+  })
+  albums: Album[];
 }
