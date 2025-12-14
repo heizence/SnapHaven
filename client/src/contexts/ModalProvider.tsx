@@ -2,6 +2,9 @@
 
 import React, { useState, useContext, createContext, ReactNode } from "react";
 import { CommonAlertModal } from "@/components/modals/CommonAlertModal";
+import { CreateNewCollectionModal } from "@/components/modals/CreateNewCollectionModal";
+import { AddContentToCollectionModal } from "@/components/modals/AddContentToCollectionModal";
+import { CollectionContentType } from "@/lib/interfaces";
 
 export interface AlertModalParams {
   type: "success" | "error";
@@ -10,8 +13,17 @@ export interface AlertModalParams {
   onClose?: () => void;
 }
 
+export interface CollectionModalParams {
+  onSubmit?: () => void;
+  onClose?: () => void;
+  contentId?: number;
+  contentType?: CollectionContentType;
+}
+
 interface ModalContextType {
   openAlertModal: (params: AlertModalParams) => void;
+  openCreateNewCollectionModal: (params: CollectionModalParams) => void;
+  openAddToCollectionModal: (params: CollectionModalParams) => void;
   closeModal: () => void;
 }
 
@@ -24,6 +36,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
     setModalContent(null);
   };
 
+  // 모달 : 기본 알림
   const openAlertModal = ({ type, title, message, onClose }: AlertModalParams) => {
     setModalContent(
       <CommonAlertModal
@@ -40,8 +53,54 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  // 모달 : 새 컬렉션 생성 후 콘텐츠 추가
+  const openCreateNewCollectionModal = ({
+    onSubmit,
+    onClose,
+    contentId,
+    contentType,
+  }: CollectionModalParams) => {
+    setModalContent(
+      <CreateNewCollectionModal
+        onSubmit={onSubmit}
+        onClose={() => {
+          closeModal();
+          if (onClose) {
+            onClose();
+          }
+        }}
+        contentId={contentId}
+        contentType={contentType}
+      />
+    );
+  };
+
+  // 모달 : 컬렉션에 콘텐츠 추가
+  const openAddToCollectionModal = ({
+    onSubmit,
+    onClose,
+    contentId,
+    contentType,
+  }: CollectionModalParams) => {
+    setModalContent(
+      <AddContentToCollectionModal
+        onSubmit={onSubmit}
+        onClose={() => {
+          closeModal();
+          if (onClose) {
+            onClose();
+          }
+        }}
+        contentId={contentId}
+        contentType={contentType}
+      />
+    );
+  };
+
   const value = {
     openAlertModal,
+    openCreateNewCollectionModal,
+    openAddToCollectionModal,
     closeModal,
   };
 

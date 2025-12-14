@@ -11,9 +11,7 @@ import {
   SignUpRequest,
   SignUpResponse,
   GetMediaItemsRequest,
-  CheckResetPwInfoRequest,
   DeleteUserRequest,
-  GetCollectionRequest,
   forgotPasswordRequest,
   GoogleAuthRequest,
   GetTagsResponse,
@@ -23,6 +21,9 @@ import {
   GetSingleItemRequest,
   UploadFileRequest,
   GetDownloadUrlRequest,
+  ToggleContentsRequest,
+  CreateCollectionRequest,
+  EditCollectionRequest,
 } from "./interfaces";
 import { ResponseDto } from "./ResponseDto";
 import { cloneDeep } from "lodash";
@@ -144,6 +145,9 @@ const postRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TReques
 const patchRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
   commonAPI<TRequest, TResponse>("PATCH", path, reqParamsOrBody);
 
+const deleteRequest = <TRequest, TResponse>(path: string, reqParamsOrBody: TRequest) =>
+  commonAPI<TRequest, TResponse>("DELETE", path, reqParamsOrBody);
+
 const multipartRequest = <TRequest, TResponse>(path: string, formData: TRequest) =>
   commonMultipartAPI<TRequest, TResponse>(path, formData);
 
@@ -218,14 +222,50 @@ export const requestAlbumDownloadAPI = (albumId: number) =>
 export const toggleLikedItemAPI = (mediaId: number) =>
   postRequest<{ mediaId: number }, null>(`media/item/like/${mediaId}`, { mediaId });
 
+// 앨범 좋아요/좋아요 취소 처리
 export const toggleLikedAlbumAPI = (mediaId: number) =>
   postRequest<{ mediaId: number }, null>(`media/album/like/${mediaId}`, { mediaId });
 
-export const GetCollectionAPI = (requestBody: GetCollectionRequest) =>
-  getRequest<GetCollectionRequest, null>("getCollection", requestBody);
+// 내 컬렉션 목록 조회
+export const getMyCollectionListAPI = () => getRequest<null, null>("collections", null);
 
-export const checkResetPasswordInfoAPI = (requestBody: CheckResetPwInfoRequest) =>
-  postRequest<CheckResetPwInfoRequest, null>("checkResetPasswordInfo", requestBody);
+//TODO 내가 업로드한 콘텐츠 목록 조회(추후 작업)
+export const getMyUploadsAPI = () => getRequest<null, null>("users/uploads", null);
+
+//TODO 내가 좋아요 표시한 콘텐츠 목록 조회(추후 작업)
+export const getMyLikesListAPI = () => getRequest<null, null>("users/likes", null);
+
+// 특정 컬렉션 내의 콘텐츠 내용 조회
+export const getCollectionDetailAPI = (collectionId: number) =>
+  getRequest<null, null>(`collections/${collectionId}`, null);
+
+// 새 컬렉션 생성
+export const createNewCollectionAPI = (requestBody: CreateCollectionRequest) =>
+  postRequest<CreateCollectionRequest, null>("collections/create", requestBody);
+
+// 컬렉션 수정
+export const updateCollectionAPI = (requestBody: EditCollectionRequest) =>
+  patchRequest<EditCollectionRequest, null>(`collections/${requestBody.id}`, {
+    name: requestBody.name, // 400 validation 에러 방지를 위해 이름만 따로 전송
+  });
+
+// 컬렉션 삭제
+export const deleteCollectionAPI = (collectionId: number) =>
+  deleteRequest<null, null>(`collections/${collectionId}`, null);
+
+// 컬렉션에 미디어 아이템 추가/제거
+export const toggleMediaItemAPI = (requestBody: ToggleContentsRequest) =>
+  postRequest<null, null>(
+    `collections/${requestBody.collectionId}/media/${requestBody.mediaId}`,
+    null
+  );
+
+// 컬렉션에 앨범 추가/제거
+export const toggleAlbumItemAPI = (requestBody: ToggleContentsRequest) =>
+  postRequest<null, null>(
+    `collections/${requestBody.collectionId}/album/${requestBody.albumId}`,
+    null
+  );
 
 // 프로필 닉네임, 비밀번호 변경
 export const editProfileInfoAPI = (requestBody: EditProfileInfoRequest) =>
@@ -235,6 +275,7 @@ export const editProfileInfoAPI = (requestBody: EditProfileInfoRequest) =>
 export const editProfileImageAPI = (requestBody: FormData) =>
   multipartRequest<FormData, null>("users/me/profile-image", requestBody);
 
+// 사용자 계정 삭제(회원 탈퇴)
 export const deleteUserAPI = (requestBody: DeleteUserRequest) =>
   postRequest<DeleteUserRequest, null>("users/me/delete", requestBody);
 

@@ -9,6 +9,8 @@ import { AWS_BASE_URL, ContentType } from "@/lib/consts";
 import Image from "next/image";
 import { handleDownloadContent } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
+import { useModal } from "@/contexts/ModalProvider";
+import { CollectionContentType } from "@/lib/interfaces";
 
 const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -17,12 +19,19 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
   const [isDownloadHovered, setIsDownloadHovered] = useState(false);
 
   const isSignedIn = CustomLocalStorage.getUserInfo();
+  const { openAddToCollectionModal } = useModal(); // [신규] 3. 훅 사용
 
   const videoRef = React.useRef<HTMLVideoElement>(null);
-  //console.log("### photo : ", photo);
-  const handleActionClick = (e, action) => {
+
+  // 컬렉션에 추가
+  const handleAddToCollection = (e) => {
     e.stopPropagation();
-    alert(`${action}`);
+
+    openAddToCollectionModal({
+      onSubmit: () => {},
+      contentId: photo.albumId || photo.key, // albumId 가 있을 경우 앨범 콘텐츠로 취급
+      contentType: photo.albumId ? CollectionContentType.ALBUM : CollectionContentType.ITEM,
+    });
   };
 
   // 메인 화면에서 다운로드(large 사이즈만 다운로드 가능)
@@ -133,7 +142,7 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
             `}
                   onMouseEnter={() => setIsBookmarkHovered(true)}
                   onMouseLeave={() => setIsBookmarkHovered(false)}
-                  onClick={(e) => handleActionClick(e, "Bookmark")}
+                  onClick={handleAddToCollection}
                 >
                   <BookmarkIcon />
                 </button>

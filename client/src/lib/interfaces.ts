@@ -90,9 +90,40 @@ export interface GetDownloadUrlRequest {
   s3Key: string;
 }
 
-export interface GetCollectionRequest {
-  id: string;
-  page: number; // starts with 1
+// 내 컬렉션 기본 정보
+export interface MyCollection {
+  id: number;
+  name: string;
+  itemCount: number;
+  thumbnailKey: string;
+  createdAt: string;
+}
+// 컬렉션 생성
+export interface CreateCollectionRequest {
+  name: string;
+  contentId?: number; // 컬렉션 생성 후 바로 추가할 콘텐츠
+  contentType?: CollectionContentType;
+}
+
+// 컬렉션 생성 후 바로 추가 시 콘텐츠 타입. 기본값 false
+export enum CollectionContentType {
+  ALBUM = "ALBUM",
+  ITEM = "ITEM",
+}
+
+// 컬렉션 업데이트
+export interface EditCollectionRequest {
+  name: string;
+  id?: number;
+}
+
+// 콘텐츠를 특정 컬렉션에 추가/제거
+export interface ToggleContentsRequest {
+  collectionId: number;
+
+  // 콘텐츠 종류에 따라 사용
+  mediaId?: number;
+  albumId?: number;
 }
 
 export interface CheckResetPwInfoRequest {
