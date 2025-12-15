@@ -57,14 +57,10 @@ export class CollectionsService {
       .createQueryBuilder('collection')
       .where('collection.userId = :userId', { userId })
       .leftJoin('collection.mediaItems', 'media')
-      .leftJoin('collection.albums', 'album')
       .select(['collection.id', 'collection.name', 'collection.createdAt'])
-      .addSelect(
-        `(COUNT(DISTINCT media.id) + COUNT(DISTINCT album.id))`,
-        'totalCount',
-      )
+      .addSelect(`(COUNT(DISTINCT media.id))`, 'totalCount')
 
-      // 최신 media (컬렉션 기준)
+      // 미디어 small 이미지 키 추출(썸네일용)
       .addSelect(
         (subQuery) =>
           subQuery
@@ -74,8 +70,9 @@ export class CollectionsService {
             .where('cmi.collection_id = collection.id')
             .orderBy('cmi.created_at', 'DESC')
             .limit(1),
-        'mediaThumbnailKey',
+        'thumbnailKey',
       )
+      // 미디어가 컬렉션에 추가된 날짜 추출(정렬용)
       .addSelect(
         (subQuery) =>
           subQuery
@@ -87,52 +84,18 @@ export class CollectionsService {
         'mediaAddedAt',
       )
 
-      //   최신 album (컬렉션 기준)
-      .addSelect(
-        (subQuery) =>
-          subQuery
-            .select('a.keyThumbnail')
-            .from('collection_albums', 'ca')
-            .innerJoin(Album, 'a', 'a.id = ca.album_id')
-            .where('ca.collection_id = collection.id')
-            .orderBy('ca.created_at', 'DESC')
-            .limit(1),
-        'albumThumbnailKey',
-      )
-      .addSelect(
-        (subQuery) =>
-          subQuery
-            .select('ca.created_at')
-            .from('collection_albums', 'ca')
-            .where('ca.collection_id = collection.id')
-            .orderBy('ca.created_at', 'DESC')
-            .limit(1),
-        'albumAddedAt',
-      )
-
       .groupBy('collection.id')
       .orderBy('collection.createdAt', 'ASC')
       .getRawMany();
 
     const collections: CollectionListResponseDto[] = rawCollections.map(
       (raw) => {
-        // 컬렉션 썸네일 랜더링 할 때 가장 최근에 추가한 콘텐츠의 썸네일을 표시해 준다.
-        let finalThumbnailKey: string | undefined;
-        if (raw.mediaAddedAt && raw.albumAddedAt) {
-          finalThumbnailKey =
-            new Date(raw.mediaAddedAt) > new Date(raw.albumAddedAt)
-              ? raw.mediaThumbnailKey
-              : raw.albumThumbnailKey;
-        } else {
-          finalThumbnailKey = raw.mediaThumbnailKey || raw.albumThumbnailKey;
-        }
-
         return {
           id: parseInt(raw.collection_id, 10),
           name: raw.collection_name,
 
           itemCount: parseInt(raw.totalCount) || 0,
-          thumbnailKey: finalThumbnailKey || null,
+          thumbnailKey: raw.thumbnailKey || null,
         };
       },
     );
@@ -240,7 +203,7 @@ export class CollectionsService {
     userId: number,
     dto: CreateCollectionDto,
   ): Promise<{ message: string; collection: CollectionResponseDto }> {
-    const { name, contentId, contentType } = dto;
+    const { name, mediaId } = dto;
     // 컬렉션 이름 중복 확인 (사용자당 이름은 고유해야 함)
     const existingCollection = await this.collectionRepository.findOne({
       where: { owner: { id: userId }, name },
@@ -265,14 +228,8 @@ export class CollectionsService {
     };
 
     // 콘텐츠 id 값과 타입이 있을 때 자동으로 새로 생성된 컬렉션에 추가
-    if (contentId && contentType) {
-      if (contentType === 'ALBUM') {
-        await this.toggleAlbum(savedCollection.id, contentId, userId);
-        console.log('album added to the collection');
-      } else if (contentType === 'ITEM') {
-        await this.toggleMediaItem(savedCollection.id, contentId, userId);
-        console.log('media item added to the collection');
-      }
+    if (mediaId) {
+      await this.toggleMediaItem(savedCollection.id, mediaId, userId);
     }
 
     return {
@@ -396,57 +353,6 @@ export class CollectionsService {
     } else {
       // 추가
       collection.mediaItems.push(mediaItem);
-      await this.collectionRepository.save(collection);
-
-      return {
-        message: '해당 콘텐츠가 컬렉션에 추가되었습니다.',
-        isAdded: true,
-      };
-    }
-  }
-
-  // 앨범을 특정 컬렉션에 추가/제거
-  async toggleAlbum(
-    collectionId: number,
-    albumId: number,
-    currentUserId: number,
-  ): Promise<{ message: string; isAdded: boolean }> {
-    const collection = await this.collectionRepository.findOne({
-      where: { id: collectionId },
-      relations: ['albums'],
-    });
-
-    const album = await this.albumRepository.findOne({
-      where: { id: albumId },
-    });
-
-    if (!collection || !album) {
-      throw new NotFoundException('컬렉션 또는 앨범을 찾을 수 없습니다.');
-    }
-
-    if (collection.userId !== currentUserId) {
-      throw new UnauthorizedException(
-        '이 컬렉션에 미디어를 추가할 권한이 없습니다.',
-      );
-    }
-
-    // 현재 상태 확인 및 토글
-    const isCurrentlyInCollection = collection.albums.some(
-      (item) => item.id === albumId,
-    );
-    if (isCurrentlyInCollection) {
-      // 제거 (Dislike)
-      collection.albums = collection.albums.filter(
-        (item) => item.id !== albumId,
-      );
-      await this.collectionRepository.save(collection);
-
-      return {
-        message: '해당 콘텐츠가 컬렉션에서 제거되었습니다.',
-        isAdded: false,
-      };
-    } else {
-      collection.albums.push(album);
       await this.collectionRepository.save(collection);
 
       return {

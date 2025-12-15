@@ -74,10 +74,6 @@ export class Album {
   })
   keyThumbnail: string | null;
 
-  // Collection 과의 Many-to-Many 관계
-  @ManyToMany(() => Collection, (collection) => collection.albums)
-  collections: Collection[];
-
   // ---------------- Timestamps ----------------
   @Column({
     type: 'timestamp',

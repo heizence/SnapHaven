@@ -138,23 +138,4 @@ export class CollectionsController {
 
     return ResponseDto.success(HttpStatus.OK, message, { isAdded });
   }
-
-  // 앨범 콘텐츠를 특정 컬렉션에 추가/제거
-  @Post(':collectionId/album/:albumId')
-  @HttpCode(HttpStatus.OK)
-  @ApiCollectionToggle()
-  async toggleAlbum(
-    @Req() req: { user: User },
-    @Param('collectionId') collectionId: number,
-    @Param('albumId') albumId: number,
-  ): Promise<ResponseDto<{ isAdded: boolean }>> {
-    const userId = req.user.id;
-    const { message, isAdded } = await this.collectionsService.toggleAlbum(
-      Number(collectionId),
-      Number(albumId),
-      userId,
-    );
-
-    return ResponseDto.success(HttpStatus.OK, message, { isAdded });
-  }
 }

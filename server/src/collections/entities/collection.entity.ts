@@ -9,7 +9,6 @@ import {
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
-import { Album } from 'src/albums/entities/album.entity';
 
 @Entity('user_collections')
 export class Collection {
@@ -58,21 +57,4 @@ export class Collection {
     },
   })
   mediaItems: MediaItem[];
-
-  // Album과의 Many-to-Many 관계
-  @ManyToMany(() => Album, (album) => album.collections)
-  @JoinTable({
-    name: 'collection_albums',
-    joinColumn: {
-      // Collection 의 키 -> 연결 테이블 컬럼
-      name: 'collection_id',
-      referencedColumnName: 'id',
-    },
-    inverseJoinColumn: {
-      // Album 의 키 -> 연결 테이블 컬럼
-      name: 'album_id',
-      referencedColumnName: 'id',
-    },
-  })
-  albums: Album[];
 }
