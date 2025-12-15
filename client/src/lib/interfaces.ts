@@ -98,6 +98,13 @@ export interface MyCollection {
   thumbnailKey: string;
   createdAt: string;
 }
+
+// 컬렉션 내 컨텐츠 불러오기
+export interface GetCollectionContents {
+  collectionId: number;
+  page?: number;
+}
+
 // 컬렉션 생성
 export interface CreateCollectionRequest {
   name: string;

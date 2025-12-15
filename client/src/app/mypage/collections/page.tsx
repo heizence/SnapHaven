@@ -1,209 +1,148 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { throttle } from "lodash";
 import { Plus } from "lucide-react";
 import "react-photo-album/masonry.css";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/contexts/ModalProvider";
 import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
+import { getCollectionContentsAPI, getMyCollectionListAPI } from "@/lib/APIs";
+import { AWS_BASE_URL, ContentType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
+import { useLoading } from "@/contexts/LoadingProvider";
+import { GetCollectionContents } from "@/lib/interfaces";
 
-interface CollectionFolder {
-  id: string;
-  title: string;
+type Collection = {
+  id: number;
+  name: string;
   itemCount: number;
-  thumbnail: string;
-}
-
-interface CollectionContents {
-  id: string;
-  title: string;
-  photos: any[];
-}
-
-const PAGE_LIMIT = 20;
-
-async function getMyCollectionsListAPI(): Promise<CollectionFolder[]> {
-  console.log("Fetching Collection Folders List...");
-  const mockFolders: CollectionFolder[] = [
-    {
-      id: "europe",
-      title: "유럽 여행",
-      itemCount: 124,
-      thumbnail:
-        "https://images.unsplash.com/photo-1473951574080-01a6571822c9?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "portraits",
-      title: "인물 사진",
-      itemCount: 88,
-      thumbnail:
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "design-ref",
-      title: "디자인 레퍼런스",
-      itemCount: 210,
-      thumbnail:
-        "https://images.unsplash.com/photo-1618220803357-e6b7b7c5b6b1?q=80&w=600&auto=format&fit=crop",
-    },
-  ];
-  await new Promise((res) => setTimeout(res, 300));
-  return mockFolders;
-}
-
-async function getCollectionContentsAPI(collectionId: string): Promise<CollectionContents> {
-  console.log(`Fetching Contents for ${collectionId}...`);
-
-  const generateDummyUploads = (count: number, name: string): any[] => {
-    const items: any[] = [];
-    const ratios = [
-      [600, 400],
-      [400, 600],
-      [800, 600],
-      [500, 500],
-      [1280, 720],
-    ];
-    for (let i = 0; i < count; i++) {
-      const [width, height] = ratios[i % ratios.length];
-      items.push({
-        id: `${collectionId}-item-${i + 1}`,
-        src: `https://placehold.co/${width}x${height}/E2E8F0/333?text=${name}+${i + 1}`,
-        width: width,
-        height: height,
-        key: `${collectionId}-item-${i + 1}`,
-      });
-    }
-    return items;
-  };
-
-  const titles: { [key: string]: string } = {
-    europe: "유럽 여행",
-    portraits: "인물 사진",
-    "design-ref": "디자인 레퍼런스",
-  };
-  const counts: { [key: string]: number } = {
-    europe: 124,
-    portraits: 88,
-    "design-ref": 210,
-  };
-
-  const mockContents: CollectionContents = {
-    id: collectionId,
-    title: titles[collectionId] || "알 수 없는 컬렉션",
-    photos: generateDummyUploads(counts[collectionId] || 10, titles[collectionId]),
-  };
-
-  await new Promise((res) => setTimeout(res, 500)); // 콘텐츠 로드 시 딜레이
-  return mockContents;
-}
+  thumbnailKey: string;
+};
 
 export default function MyCollectionsPage() {
-  const [isLoadingPage, setIsLoadingPage] = useState(true); // 전체 페이지 초기 로딩
-  const [collectionFolders, setCollectionFolders] = useState<CollectionFolder[]>([]); // 상단 폴더 목록
-  const [selectedCollection, setSelectedCollection] = useState<CollectionFolder | null>(null); // 선택된 폴더
+  const [isInit, setIsInit] = useState(true);
 
-  // 하단 그리드 (콘텐츠)용 State
+  const [collectionFolders, setCollectionFolders] = useState<Collection[]>([]); // 상단 폴더 목록
+  const [selectedCollection, setSelectedCollection] = useState<number>(-1); // 선택된 폴더
+
   const [allContents, setAllContents] = useState<any[]>([]); // 선택된 컬렉션의 *모든* 사진 (DB)
-  const [displayedItems, setDisplayedItems] = useState<any[]>([]); // 화면에 표시될 사진 (페이징)
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoadingContents, setIsLoadingContents] = useState(false); // 하단 그리드 로딩
-  const [isLoadingMore, setIsLoadingMore] = useState(false); // 무한 스크롤 로딩
 
   const router = useRouter();
-  const { openAlertModal, openCustomModal } = useModal(); // [신규] 3. 훅 사용
+  const { openAlertModal, openCustomModal } = useModal();
+  const { showLoading, hideLoading } = useLoading();
 
-  // --- Functions ---
+  // 스크롤 보존용 ref
+  const scrollPositionRef = useRef(0);
 
-  // [신규] 6. 특정 컬렉션의 콘텐츠를 로드하는 함수
-  const loadCollectionContents = async (collection: CollectionFolder) => {
-    if (selectedCollection?.id === collection.id) return; // 이미 선택된 탭이면 무시
+  // 컬렉션 목록 기본정보 불러오기
+  const getMyCollectionList = async () => {
+    if (isInit) {
+      showLoading();
+    }
 
-    setIsLoadingContents(true); // 하단 그리드 로딩 시작
-    setSelectedCollection(collection);
-    setDisplayedItems([]); // 기존 그리드 비우기
+    try {
+      const res = await getMyCollectionListAPI();
+      console.log("getMyCollectionList res : ", res);
 
-    const data = await getCollectionContentsAPI(collection.id);
+      if (res.code === 200) {
+        setCollectionFolders(res.data);
 
-    setAllContents(data.photos); // 전체 사진 (DB) 저장
-
-    // 첫 페이지 로드
-    const firstPageItems = data.photos.slice(0, PAGE_LIMIT);
-    setDisplayedItems(firstPageItems);
-    setPage(2);
-    setHasMore(firstPageItems.length < data.photos.length);
-    setIsLoadingContents(false);
+        if (res.data.length > 0) {
+          const firstCollection = res.data[0];
+          await getCollectionContents(firstCollection.id);
+        }
+      }
+    } catch (error) {
+      console.error("getMyCollectionList error : ", error);
+    } finally {
+      hideLoading();
+      setIsInit(false);
+    }
   };
 
-  //   useEffect(() => {
-  //     openAlertModal({
-  //       type: "success",
-  //       title: "업로드 성공",
-  //       message: "메시지를 입력하세요.",
-  //     });
-  //   }, []);
+  // 각 컬렉션 내 콘텐츠 불러오기
+  const getCollectionContents = async (
+    collectionId: number,
+    forcedPage?: number,
+    isRefresh?: boolean
+  ) => {
+    console.log("# getCollectionContents");
+    setSelectedCollection(collectionId); // 기본 선택
 
-  // 7. 초기 데이터 로드 (페이지 + 첫 번째 폴더 콘텐츠)
-  useEffect(() => {
-    async function loadData() {
-      setIsLoadingPage(true);
+    const request: GetCollectionContents = {
+      collectionId,
+      page: forcedPage ?? page,
+    };
+    console.log("# getCollectionContents request : ", request);
+    const res = await getCollectionContentsAPI(request);
+    console.log("# getCollectionContents res : ", res);
+    if (res.code === 200) {
+      const items = res.data.items;
+      const photos = items.map((item) => ({
+        width: item.width,
+        height: item.height,
+        key: item.id,
+        type: item.type,
+        title: item.title,
+        albumId: item.albumId,
+        isLikedByCurrentUser: item.isLikedByCurrentUser,
 
-      // 1. 폴더 목록 가져오기
-      const folders = await getMyCollectionsListAPI();
-      setCollectionFolders(folders);
+        keyImageLarge: item.keyImageLarge,
+        keyImageMedium: item.keyImageMedium,
+        keyImageSmall: item.keyImageSmall,
+        keyVideoPreview: item.type === ContentType.VIDEO && item.keyVideoPreview,
+        keyVideoPlayback: item.type === ContentType.VIDEO && item.keyVideoPlayback,
+      }));
 
-      // 2. 첫 번째 폴더를 기본으로 선택하고, 콘텐츠 로드
-      if (folders.length > 0) {
-        const firstFolder = folders[0];
-        setSelectedCollection(firstFolder); // 기본 선택
-
-        const data = await getCollectionContentsAPI(firstFolder.id);
-        setAllContents(data.photos);
-
-        const firstPageItems = data.photos.slice(0, PAGE_LIMIT);
-        setDisplayedItems(firstPageItems);
-        setPage(2);
-        setHasMore(firstPageItems.length < data.photos.length);
+      if (isRefresh) {
+        setAllContents(photos);
+      } else {
+        setAllContents((prev) => [...prev, ...photos]);
       }
 
-      setIsLoadingPage(false);
+      setPage((prev) => prev + 1);
+
+      if (items.length < ITEM_REQUEST_LIMIT) {
+        setHasMore(false);
+      }
     }
-    loadData();
+  };
+
+  useEffect(() => {
+    getMyCollectionList();
   }, []);
 
-  // 8. 무한 스크롤 핸들러 (기존과 동일)
-  const handleLoadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore || isLoadingContents || !allContents) return;
-    setIsLoadingMore(true);
-
-    const start = (page - 1) * PAGE_LIMIT;
-    const end = page * PAGE_LIMIT;
-    const newItems = allContents.slice(start, end);
-
-    setTimeout(() => {
-      setDisplayedItems((prev) => [...prev, ...newItems]);
-      setPage((prev) => prev + 1);
-      setHasMore(end < allContents.length);
-      setIsLoadingMore(false);
-    }, 500);
-  }, [isLoadingMore, hasMore, page, allContents, isLoadingContents]);
-
-  // 9. 스크롤 이벤트 핸들러 (기존과 동일)
   useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 2 >=
-        document.documentElement.offsetHeight
-      ) {
-        handleLoadMore();
+    setPage(1);
+    setHasMore(true);
+  }, [selectedCollection]);
+
+  // 스크롤 이벤트
+  useEffect(() => {
+    const handleScrollLogic = () => {
+      const bottom =
+        window.innerHeight + window.scrollY >= document.documentElement.offsetHeight - 400;
+
+      if (bottom && hasMore) {
+        scrollPositionRef.current = window.scrollY; // 현재 위치 저장
+        console.log("scroll reached to the bottom!!");
+        getCollectionContents(selectedCollection);
       }
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleLoadMore]);
+
+    const throttledHandleScroll = throttle(handleScrollLogic, 200);
+
+    window.addEventListener("scroll", throttledHandleScroll);
+    return () => {
+      window.removeEventListener("scroll", throttledHandleScroll);
+      throttledHandleScroll.cancel();
+    };
+  }, [getCollectionContents, hasMore]);
 
   return (
     <main className="w-full min-h-[calc(100vh-56px)] bg-white px-5">
@@ -222,16 +161,17 @@ export default function MyCollectionsPage() {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">목록</h2>
 
             {/* 컬렉션 목록 그리드 */}
-            <div className="max-h-96 overflow-y-auto custom-scrollbar p-2">
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="h-70 overflow-x-auto custom-scrollbar p-2">
+              <div className="flex flex-row flex-nowrap gap-4">
                 {collectionFolders.map((folder) => (
                   <button
                     key={folder.id}
-                    onClick={() => loadCollectionContents(folder)}
-                    // [유지] 링 스타일
-                    className={`relative aspect-square w-full rounded-lg overflow-hidden shadow-sm transition-all hover:shadow-md group
+                    onClick={() => getCollectionContents(folder.id, 1, true)}
+                    className={`relative aspect-square transition-all hover:shadow-md group flex-shrink-0
+                      w-[calc(33.33%-12px)] sm:w-[calc(25%-12px)] md:w-[calc(20%-12px)] lg:w-[calc(16.66%-12px)]
+                      max-w-[250px] rounded-lg overflow-hidden shadow-sm
                       ${
-                        selectedCollection?.id === folder.id
+                        selectedCollection === folder.id
                           ? "ring-2 ring-blue-600 ring-offset-2"
                           : "hover:border-gray-300"
                       }
@@ -239,17 +179,17 @@ export default function MyCollectionsPage() {
                   >
                     {/* 썸네일 이미지 */}
                     <Image
-                      src={folder.thumbnail}
-                      alt={folder.title}
+                      src={AWS_BASE_URL + folder.thumbnailKey}
+                      alt={folder.name}
                       fill
-                      sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw" // sizes 수정
+                      sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     {/* 그라데이션 오버레이 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                     {/* 하단 텍스트 */}
                     <div className="absolute bottom-3 left-3 text-left text-white">
-                      <p className="font-semibold">{folder.title}</p>
+                      <p className="font-semibold">{folder.name}</p>
                       <p className="text-sm">{folder.itemCount}개 아이템</p>
                     </div>
                   </button>
@@ -258,27 +198,27 @@ export default function MyCollectionsPage() {
             </div>
           </div>
 
-          {/* --- 2. 하단: 컬렉션 콘텐츠 --- */}
+          {/* 컬렉션 콘텐츠 --- */}
           {selectedCollection && (
             <div className="p-6 md:p-8 border-t border-gray-200">
-              {/* 하단 그리드 제목 */}
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">{selectedCollection.title}</h2>
-
-              {/* 하단 그리드 (Masonry) */}
-              {isLoadingContents ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-                </div>
-              ) : (
+              {allContents.length > 0 && (
                 <RenderContents
-                  photos={displayedItems}
+                  photos={allContents}
                   onClick={({ index }) => router.push(`/content/${index}`)}
                 />
               )}
 
+              {/* No Data */}
+              <div className="mt-10">
+                <NoDataMessage
+                  message="콘텐츠가 없습니다"
+                  show={!isInit && allContents.length === 0}
+                />
+              </div>
+
               <NoDataMessage
                 message="모든 콘텐츠를 불러왔습니다."
-                show={!isLoadingMore && !hasMore && displayedItems.length > 0}
+                show={!isInit && !hasMore && allContents.length > 0}
               />
             </div>
           )}

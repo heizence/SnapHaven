@@ -24,6 +24,7 @@ import {
   ToggleContentsRequest,
   CreateCollectionRequest,
   EditCollectionRequest,
+  GetCollectionContents,
 } from "./interfaces";
 import { ResponseDto } from "./ResponseDto";
 import { cloneDeep } from "lodash";
@@ -236,8 +237,8 @@ export const getMyUploadsAPI = () => getRequest<null, null>("users/uploads", nul
 export const getMyLikesListAPI = () => getRequest<null, null>("users/likes", null);
 
 // 특정 컬렉션 내의 콘텐츠 내용 조회
-export const getCollectionDetailAPI = (collectionId: number) =>
-  getRequest<null, null>(`collections/${collectionId}`, null);
+export const getCollectionContentsAPI = (requestBody: GetCollectionContents) =>
+  getRequest<GetCollectionContents, null>("collections/contents", requestBody);
 
 // 새 컬렉션 생성
 export const createNewCollectionAPI = (requestBody: CreateCollectionRequest) =>
