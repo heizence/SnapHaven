@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MediaItemResponseDto } from 'src/media-items/dto/media-item-response.dto';
 
-export class CollectionDetailResponseDto {
+export class CollectionContentsResponseDto {
   @ApiProperty({ description: '컬렉션 ID', example: 1 })
   id: number;
 

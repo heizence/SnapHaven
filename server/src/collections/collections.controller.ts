@@ -10,6 +10,7 @@ import {
   Get,
   Patch,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CollectionsService } from './collections.service';
@@ -19,16 +20,17 @@ import { ResponseDto } from 'src/common/dto/response.dto';
 import { User } from 'src/users/entities/user.entity';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { CollectionListResponseDto } from './dto/collection-list-response.dto';
-import { CollectionDetailResponseDto } from './dto/collection-detail-response.dto';
+import { CollectionContentsResponseDto } from './dto/collection-contents-response.dto';
 import {
   ApiCollectionCreate,
   ApiCollectionDelete,
-  ApiCollectionDetail,
+  ApiGetCollectionContents,
   ApiCollectionList,
   ApiCollectionToggle,
   ApiCollectionUpdate,
 } from './decorators/swagger.collections.decorators';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
+import { GetCollectionContentsDto } from './dto/get-collection-contents.dto';
 
 @ApiTags('Collections')
 @ApiBearerAuth('bearerAuth')
@@ -52,21 +54,18 @@ export class CollectionsController {
   }
 
   // 특정 컬렉션 내의 콘텐츠 내용 조회
-  @Get(':collectionId')
+  @Get('contents')
   @HttpCode(HttpStatus.OK)
-  @ApiCollectionDetail()
-  async getCollectionDetail(
+  @ApiGetCollectionContents()
+  async getCollectionContents(
+    @Query() query: GetCollectionContentsDto,
     @Req() req: { user: User },
-    @Param('collectionId') collectionId: number,
-  ): Promise<ResponseDto<CollectionDetailResponseDto>> {
+  ): Promise<ResponseDto<CollectionContentsResponseDto>> {
     const userId = req.user.id;
-    const { message, collectionDetail } =
-      await this.collectionsService.findCollectionContents(
-        Number(collectionId),
-        userId,
-      );
+    const { message, contents } =
+      await this.collectionsService.getCollectionContents(query, userId);
 
-    return ResponseDto.success(HttpStatus.OK, message, collectionDetail);
+    return ResponseDto.success(HttpStatus.OK, message, contents);
   }
 
   //새 컬렉션 생성

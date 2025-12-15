@@ -8,7 +8,7 @@ import {
 } from '@nestjs/swagger';
 
 import { CollectionResponseDto } from '../dto/collection-response.dto';
-import { CollectionDetailResponseDto } from '../dto/collection-detail-response.dto';
+import { CollectionContentsResponseDto } from '../dto/collection-contents-response.dto';
 import { CollectionListResponseDto } from '../dto/collection-list-response.dto';
 
 const CollectionCreationExample = {
@@ -106,7 +106,7 @@ export function ApiCollectionList() {
 }
 
 // 특정 컬렉션 상세 내용 조회
-export function ApiCollectionDetail() {
+export function ApiGetCollectionContents() {
   return applyDecorators(
     ApiOperation({
       summary: '특정 컬렉션의 상세 내용 및 미디어 아이템 목록 조회',
@@ -114,7 +114,7 @@ export function ApiCollectionDetail() {
     ApiBearerAuth('bearerAuth'),
     ApiOkResponse({
       description: '컬렉션 상세 조회 성공',
-      type: CollectionDetailResponseDto,
+      type: CollectionContentsResponseDto,
       schema: {
         example: {
           code: HttpStatus.OK,

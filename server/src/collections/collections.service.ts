@@ -13,11 +13,12 @@ import { User } from 'src/users/entities/user.entity';
 import { CollectionResponseDto } from './dto/collection-response.dto';
 import { CollectionListResponseDto } from './dto/collection-list-response.dto';
 import { MediaItemResponseDto } from 'src/media-items/dto/media-item-response.dto';
-import { CollectionDetailResponseDto } from './dto/collection-detail-response.dto';
+import { CollectionContentsResponseDto } from './dto/collection-contents-response.dto';
 import { ContentStatus } from 'src/common/enums';
 import { RawMediaItemResult } from 'src/media-items/media-items.service';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
 import { Album } from 'src/albums/entities/album.entity';
+import { GetCollectionContentsDto } from './dto/get-collection-contents.dto';
 
 type RawCollection = {
   collection_id: string;
@@ -139,14 +140,17 @@ export class CollectionsService {
     return { message: '컬렉션 목록 조회 성공', collections };
   }
 
-  // 특정 컬렉션의 상세 내용을 조회
-  async findCollectionContents(
-    collectionId: number,
+  // 특정 컬렉션의 콘텐츠들을 조회
+  async getCollectionContents(
+    query: GetCollectionContentsDto,
+
     currentUserId?: number,
   ): Promise<{
     message: string;
-    collectionDetail: CollectionDetailResponseDto;
+    contents: CollectionContentsResponseDto;
   }> {
+    const { page, collectionId } = query;
+
     const collection = await this.collectionRepository.findOne({
       where: { id: collectionId, userId: currentUserId },
       select: ['id', 'name', 'userId'],
@@ -157,6 +161,8 @@ export class CollectionsService {
         '컬렉션을 찾을 수 없거나 접근 권한이 없습니다.',
       );
     }
+    const limit = 40;
+    const offset = (page - 1) * limit;
 
     // 컬렉션에 포함된 미디어 아이템 조회 (미디어 피드와 유사한 상세 정보 포함)
     const qb = this.mediaItemRepository
@@ -165,7 +171,7 @@ export class CollectionsService {
       .where('cmi.collection_id = :collectionId', { collectionId })
       .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
 
-      // JOIN 및 통계/좋아요 계산 (MediaItemsService.findAll 로직 재사용)
+      // JOIN 및 통계/좋아요 계산
       .leftJoin('media.owner', 'user')
       .leftJoin('media.likedByUsers', 'likes')
       .leftJoin('media.album', 'album')
@@ -185,6 +191,7 @@ export class CollectionsService {
         'user.nickname',
         'user.profileImageKey',
         'album.id',
+        'cmi.created_at',
       ])
       .addSelect('COUNT(likes.id)', 'likeCount')
       .addSelect(
@@ -194,9 +201,11 @@ export class CollectionsService {
         'isLiked',
       )
       .groupBy(
-        'media.id, user.id, user.nickname, user.profileImageKey, media.createdAt, album.id',
+        'media.id, user.id, user.nickname, user.profileImageKey, media.createdAt, album.id, cmi.created_at',
       )
-      .orderBy('media.createdAt', 'DESC');
+      .orderBy('cmi.created_at', 'DESC');
+
+    qb.offset(offset).limit(limit);
 
     const total = await qb.getCount();
     const rawItems: RawMediaItemResult[] = await qb.getRawMany();
@@ -216,14 +225,14 @@ export class CollectionsService {
       albumId: rawItem.album_id || null,
     }));
 
-    const collectionDetail = {
+    const contents = {
       id: collection.id,
       name: collection.name,
       userId: collection.userId,
       totalItems: total,
       items: items,
     };
-    return { message: '컬렉션 상세 조회 성공', collectionDetail };
+    return { message: '컬렉션 내 콘텐츠 조회 성공', contents };
   }
 
   // 새 컬렉션 생성
