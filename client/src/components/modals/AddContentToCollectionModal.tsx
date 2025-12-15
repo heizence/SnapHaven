@@ -1,24 +1,22 @@
 "use client";
 
 import { useModal } from "@/contexts/ModalProvider";
-import { getMyCollectionListAPI, toggleAlbumItemAPI, toggleMediaItemAPI } from "@/lib/APIs";
+import { getMyCollectionListAPI, toggleMediaItemAPI } from "@/lib/APIs";
 import { AWS_BASE_URL } from "@/lib/consts";
-import { CollectionContentType, MyCollection, ToggleContentsRequest } from "@/lib/interfaces";
+import { MyCollection, ToggleContentsRequest } from "@/lib/interfaces";
 import Image from "next/image";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface ModalProps {
   onSubmit?: (collectionName: string) => void; // 생성 버튼 클릭 시 호출될 함수
   onClose: () => void;
-  contentId?: number;
-  contentType?: CollectionContentType;
+  mediaId: number;
 }
 
 export const AddContentToCollectionModal: React.FC<ModalProps> = ({
   onSubmit,
   onClose,
-  contentId, // 미디어 아이템 또는 앨범
-  contentType,
+  mediaId,
 }) => {
   const { openCreateNewCollectionModal } = useModal();
 
@@ -50,18 +48,12 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
       return;
     }
 
-    let res;
     const request: ToggleContentsRequest = {
       collectionId: selected,
-      mediaId: contentType === CollectionContentType.ITEM ? contentId : undefined,
-      albumId: contentType === CollectionContentType.ALBUM ? contentId : undefined,
+      mediaId: Number(mediaId),
     };
 
-    if (contentType === CollectionContentType.ITEM) {
-      res = await toggleMediaItemAPI(request);
-    } else {
-      res = await toggleAlbumItemAPI(request);
-    }
+    const res = await toggleMediaItemAPI(request);
     if (res.code === 200) {
       alert(res.message);
       onClose();
@@ -69,10 +61,7 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
   };
 
   const openCreateCollectionModal = () => {
-    openCreateNewCollectionModal({
-      contentId,
-      contentType,
-    });
+    openCreateNewCollectionModal({ mediaId });
   };
 
   useEffect(() => {

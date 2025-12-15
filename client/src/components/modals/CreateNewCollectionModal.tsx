@@ -1,22 +1,15 @@
 "use client";
 
 import { createNewCollectionAPI } from "@/lib/APIs";
-import { CollectionContentType } from "@/lib/interfaces";
 import React, { useState } from "react";
 
 interface ModalProps {
   onSubmit?: (collectionName: string) => void; // 생성 버튼 클릭 시 호출될 함수
   onClose: () => void;
-  contentId?: number;
-  contentType?: CollectionContentType;
+  mediaId: number;
 }
 
-export const CreateNewCollectionModal: React.FC<ModalProps> = ({
-  onSubmit,
-  onClose,
-  contentId, // 미디어 아이템 또는 앨범
-  contentType,
-}) => {
+export const CreateNewCollectionModal: React.FC<ModalProps> = ({ onSubmit, onClose, mediaId }) => {
   const [collectionName, setCollectionName] = useState("");
   const [error, setError] = useState("");
 
@@ -32,8 +25,7 @@ export const CreateNewCollectionModal: React.FC<ModalProps> = ({
     try {
       const request = {
         name: collectionName,
-        contentId: contentId && Number(contentId),
-        contentType,
+        mediaId: Number(mediaId),
       };
 
       const res = await createNewCollectionAPI(request);

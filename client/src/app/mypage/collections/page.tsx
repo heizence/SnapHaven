@@ -14,6 +14,7 @@ import { getCollectionContentsAPI, getMyCollectionListAPI } from "@/lib/APIs";
 import { AWS_BASE_URL, ContentType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { GetCollectionContents } from "@/lib/interfaces";
+import { MediaItem } from "@/app/page";
 
 type Collection = {
   id: number;
@@ -113,6 +114,14 @@ export default function MyCollectionsPage() {
     }
   };
 
+  const handleItemOnclick = (photo) => {
+    if (photo.albumId) {
+      router.push(`/album/${photo.albumId}`);
+    } else {
+      router.push(`/content/${photo.key}`);
+    }
+  };
+
   useEffect(() => {
     getMyCollectionList();
   }, []);
@@ -204,7 +213,8 @@ export default function MyCollectionsPage() {
               {allContents.length > 0 && (
                 <RenderContents
                   photos={allContents}
-                  onClick={({ index }) => router.push(`/content/${index}`)}
+                  //onClick={({ index }) => router.push(`/content/${index}`)}
+                  onClick={({ photo }: { photo: MediaItem }) => handleItemOnclick(photo)}
                 />
               )}
 

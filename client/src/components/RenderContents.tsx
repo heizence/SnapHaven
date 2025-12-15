@@ -10,7 +10,6 @@ import Image from "next/image";
 import { handleDownloadContent } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import { useModal } from "@/contexts/ModalProvider";
-import { CollectionContentType } from "@/lib/interfaces";
 
 const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -19,7 +18,7 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
   const [isDownloadHovered, setIsDownloadHovered] = useState(false);
 
   const isSignedIn = CustomLocalStorage.getUserInfo();
-  const { openAddToCollectionModal } = useModal(); // [신규] 3. 훅 사용
+  const { openAddToCollectionModal } = useModal();
 
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
@@ -29,8 +28,7 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
 
     openAddToCollectionModal({
       onSubmit: () => {},
-      contentId: photo.albumId || photo.key, // albumId 가 있을 경우 앨범 콘텐츠로 취급
-      contentType: photo.albumId ? CollectionContentType.ALBUM : CollectionContentType.ITEM,
+      mediaId: photo.key,
     });
   };
 

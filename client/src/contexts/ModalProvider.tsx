@@ -4,7 +4,6 @@ import React, { useState, useContext, createContext, ReactNode } from "react";
 import { CommonAlertModal } from "@/components/modals/CommonAlertModal";
 import { CreateNewCollectionModal } from "@/components/modals/CreateNewCollectionModal";
 import { AddContentToCollectionModal } from "@/components/modals/AddContentToCollectionModal";
-import { CollectionContentType } from "@/lib/interfaces";
 
 export interface AlertModalParams {
   type: "success" | "error";
@@ -16,8 +15,7 @@ export interface AlertModalParams {
 export interface CollectionModalParams {
   onSubmit?: () => void;
   onClose?: () => void;
-  contentId?: number;
-  contentType?: CollectionContentType;
+  mediaId: number;
 }
 
 interface ModalContextType {
@@ -54,12 +52,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // 모달 : 새 컬렉션 생성 후 콘텐츠 추가
-  const openCreateNewCollectionModal = ({
-    onSubmit,
-    onClose,
-    contentId,
-    contentType,
-  }: CollectionModalParams) => {
+  const openCreateNewCollectionModal = ({ onSubmit, onClose, mediaId }: CollectionModalParams) => {
     setModalContent(
       <CreateNewCollectionModal
         onSubmit={onSubmit}
@@ -69,19 +62,13 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
             onClose();
           }
         }}
-        contentId={contentId}
-        contentType={contentType}
+        mediaId={mediaId}
       />
     );
   };
 
   // 모달 : 컬렉션에 콘텐츠 추가
-  const openAddToCollectionModal = ({
-    onSubmit,
-    onClose,
-    contentId,
-    contentType,
-  }: CollectionModalParams) => {
+  const openAddToCollectionModal = ({ onSubmit, onClose, mediaId }: CollectionModalParams) => {
     setModalContent(
       <AddContentToCollectionModal
         onSubmit={onSubmit}
@@ -91,8 +78,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
             onClose();
           }
         }}
-        contentId={contentId}
-        contentType={contentType}
+        mediaId={mediaId}
       />
     );
   };
