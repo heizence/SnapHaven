@@ -4,13 +4,18 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { throttle } from "lodash";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import "react-photo-album/masonry.css";
 import { Button } from "@/components/ui/button";
 import { useModal } from "@/contexts/ModalProvider";
 import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
-import { getCollectionContentsAPI, getMyCollectionListAPI } from "@/lib/APIs";
+import {
+  deleteCollectionAPI,
+  getCollectionContentsAPI,
+  getMyCollectionListAPI,
+  updateCollectionAPI,
+} from "@/lib/APIs";
 import { AWS_BASE_URL, ContentType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { GetCollectionContents } from "@/lib/interfaces";
@@ -26,15 +31,20 @@ type Collection = {
 export default function MyCollectionsPage() {
   const [isInit, setIsInit] = useState(true);
 
-  const [collectionFolders, setCollectionFolders] = useState<Collection[]>([]); // 상단 폴더 목록
-  const [selectedCollection, setSelectedCollection] = useState<number>(-1); // 선택된 폴더
+  const [collectionFolders, setCollectionFolders] = useState<Collection[] | null>(null); // 상단 컬렉션 목록
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null); // 선택된 컬렉션
 
-  const [allContents, setAllContents] = useState<any[]>([]); // 선택된 컬렉션의 *모든* 사진 (DB)
+  const [allContents, setAllContents] = useState<MediaItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // 컬렉션 수정 기능을 위한 상태
+  const [isEditMode, setIsEditMode] = useState(false); // 편집 모드 상태
+  const [newCollectionName, setNewCollectionName] = useState(selectedCollection?.name || ""); // 새 컬렉션 이름
+  const [selectedItemKeys, setSelectedItemKeys] = useState<number[]>([]); // 선택된 아이템 목록
+
   const router = useRouter();
-  const { openAlertModal, openCustomModal } = useModal();
+  const { openCreateNewCollectionModal } = useModal();
   const { showLoading, hideLoading } = useLoading();
 
   // 스크롤 보존용 ref
@@ -55,7 +65,7 @@ export default function MyCollectionsPage() {
 
         if (res.data.length > 0) {
           const firstCollection = res.data[0];
-          await getCollectionContents(firstCollection.id);
+          await getCollectionContents(firstCollection);
         }
       }
     } catch (error) {
@@ -68,18 +78,16 @@ export default function MyCollectionsPage() {
 
   // 각 컬렉션 내 콘텐츠 불러오기
   const getCollectionContents = async (
-    collectionId: number,
+    _collection: Collection,
     forcedPage?: number,
     isRefresh?: boolean
   ) => {
-    console.log("# getCollectionContents");
-    setSelectedCollection(collectionId); // 기본 선택
+    setSelectedCollection(_collection); // 기본 선택
 
     const request: GetCollectionContents = {
-      collectionId,
+      collectionId: _collection.id,
       page: forcedPage ?? page,
     };
-    console.log("# getCollectionContents request : ", request);
     const res = await getCollectionContentsAPI(request);
     console.log("# getCollectionContents res : ", res);
     if (res.code === 200) {
@@ -114,11 +122,98 @@ export default function MyCollectionsPage() {
     }
   };
 
-  const handleItemOnclick = (photo) => {
-    if (photo.albumId) {
-      router.push(`/album/${photo.albumId}`);
+  const handleItemOnclick = (photo: any) => {
+    if (isEditMode) {
+      // 편집 모드일 때는 선택 상태 토글
+      setSelectedItemKeys((prev) =>
+        prev.includes(photo.key) ? prev.filter((k) => k !== photo.key) : [...prev, photo.key]
+      );
     } else {
-      router.push(`/content/${photo.key}`);
+      // 일반 모드일 때는 이동
+      if (photo.albumId) {
+        router.push(`/album/${photo.albumId}`);
+      } else {
+        router.push(`/content/${photo.key}`);
+      }
+    }
+  };
+
+  const handleCreateNewCollection = () => {
+    openCreateNewCollectionModal({
+      onSubmit: (res) => {
+        setCollectionFolders((prev) => [...prev, res.data]);
+      },
+    });
+  };
+
+  const handleDeleteCollection = async () => {
+    if (!selectedCollection) return;
+    const isSure = confirm("컬렉션을 삭제하시겠습니까?");
+    if (!isSure) return;
+
+    const res = await deleteCollectionAPI(selectedCollection.id);
+    //console.log("## deleted collection res : ", res);
+    if (res.code === 202) {
+      let temp = [...collectionFolders!];
+      temp = temp.filter((each) => each.id !== res.data?.deletedCollectionId);
+      setCollectionFolders(temp);
+      setSelectedCollection(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setSelectedItemKeys([]);
+    setNewCollectionName(selectedCollection?.name || "");
+  };
+
+  // 컬렉션 최종 수정
+  // TODO : 추후 컬렉션 내 콘텐츠 제거 기능 구현하기
+  const handleEditCollection = async () => {
+    if (!selectedCollection) return;
+
+    try {
+      showLoading();
+      const request = {
+        collectionId: selectedCollection.id,
+        name: newCollectionName,
+      };
+
+      const res = await updateCollectionAPI(request);
+      console.log("## res : ", res);
+      if (res.code === 200) {
+        const editedCollection = res.data;
+
+        setSelectedCollection(editedCollection);
+
+        const temp = [...collectionFolders];
+        const editedColIndex = collectionFolders?.findIndex(
+          (each) => each.id === editedCollection.id
+        );
+
+        if (editedColIndex !== -1) {
+          temp[editedColIndex] = {
+            ...editedCollection,
+            thumbnailKey: temp[editedColIndex].thumbnailKey,
+          };
+          setCollectionFolders([...temp]);
+        }
+      }
+
+      // 프론트엔드 즉시 반영(추후 구현)
+      // setAllContents((prev) =>
+      //   prev.filter((item) => !selectedItemKeys.includes(item.key as number))
+      // );
+      // setSelectedItemKeys([]);
+      // setIsEditMode(false);
+
+      // 상단 폴더 카운트 업데이트 로직 추가 필요
+    } catch (error) {
+      alert(error.message || "에러가 발생했습니다.");
+      console.error(error);
+    } finally {
+      hideLoading();
+      setIsEditMode(false);
     }
   };
 
@@ -139,8 +234,8 @@ export default function MyCollectionsPage() {
 
       if (bottom && hasMore) {
         scrollPositionRef.current = window.scrollY; // 현재 위치 저장
-        console.log("scroll reached to the bottom!!");
-        getCollectionContents(selectedCollection);
+        //console.log("scroll reached to the bottom!!");
+        if (selectedCollection) getCollectionContents(selectedCollection);
       }
     };
 
@@ -161,59 +256,119 @@ export default function MyCollectionsPage() {
           <div className="p-6 md:p-8">
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-3xl font-bold text-gray-900">내 컬렉션</h1>
-              <Button className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+              <Button
+                className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+                onClick={handleCreateNewCollection}
+              >
                 <Plus size={16} />
                 <span>새 컬렉션 생성</span>
               </Button>
             </div>
 
             <h2 className="text-xl font-semibold text-gray-800 mb-4">목록</h2>
-
             {/* 컬렉션 목록 그리드 */}
-            <div className="h-70 overflow-x-auto custom-scrollbar p-2">
-              <div className="flex flex-row flex-nowrap gap-4">
-                {collectionFolders.map((folder) => (
-                  <button
-                    key={folder.id}
-                    onClick={() => getCollectionContents(folder.id, 1, true)}
-                    className={`relative aspect-square transition-all hover:shadow-md group flex-shrink-0
+
+            {collectionFolders && collectionFolders.length === 0 ? (
+              <div className="mt-10">
+                <NoDataMessage
+                  message="컬렉션이 없습니다"
+                  show={!isInit && allContents.length === 0}
+                />
+              </div>
+            ) : (
+              <div className="h-70 overflow-x-auto custom-scrollbar p-2">
+                <div className="flex flex-row flex-nowrap gap-4">
+                  {collectionFolders?.map((folder) => (
+                    <button
+                      key={folder.id}
+                      onClick={() => getCollectionContents(folder, 1, true)}
+                      className={`relative aspect-square transition-all hover:shadow-md group flex-shrink-0
                       w-[calc(33.33%-12px)] sm:w-[calc(25%-12px)] md:w-[calc(20%-12px)] lg:w-[calc(16.66%-12px)]
                       max-w-[250px] rounded-lg overflow-hidden shadow-sm
                       ${
-                        selectedCollection === folder.id
+                        selectedCollection?.id === folder.id
                           ? "ring-2 ring-blue-600 ring-offset-2"
                           : "hover:border-gray-300"
                       }
                     `}
-                  >
-                    {/* 썸네일 이미지 */}
-                    <Image
-                      src={AWS_BASE_URL + folder.thumbnailKey}
-                      alt={folder.name}
-                      fill
-                      sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    {/* 그라데이션 오버레이 */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    {/* 하단 텍스트 */}
-                    <div className="absolute bottom-3 left-3 text-left text-white">
-                      <p className="font-semibold">{folder.name}</p>
-                      <p className="text-sm">{folder.itemCount}개 아이템</p>
-                    </div>
-                  </button>
-                ))}
+                    >
+                      {/* 썸네일 이미지 */}
+                      {folder.thumbnailKey && (
+                        <Image
+                          src={AWS_BASE_URL + folder.thumbnailKey}
+                          alt={folder.name}
+                          fill
+                          sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, 20vw"
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      )}
+                      {/* 그라데이션 오버레이 */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                      {/* 하단 텍스트 */}
+                      <div className="absolute bottom-3 left-3 text-left text-white">
+                        <p className="font-semibold">{folder.name}</p>
+                        <p className="text-sm">{folder.itemCount}개 아이템</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 컬렉션 콘텐츠 --- */}
           {selectedCollection && (
             <div className="p-6 md:p-8 border-t border-gray-200">
+              <div className="flex justify-between items-center mb-6">
+                {/* 컬렉션 타이틀 표시 */}
+                {isEditMode ? (
+                  <input
+                    type="text"
+                    className="w-full text-2xl md:text-3xl pt-1 pb-1 font-bold text-gray-900 border-2 border-rounded border-blue-600 max-w-[600px]"
+                    defaultValue={selectedCollection.name}
+                    onChange={(e) => {
+                      setNewCollectionName(e.target.value);
+                    }}
+                  />
+                ) : (
+                  <h2 className="text-2xl md:text-3xl font-bold text-gray-900 truncate">
+                    {selectedCollection.name}
+                  </h2>
+                )}
+                {/* 버튼 그룹 전환 */}
+                <div className="flex space-x-2">
+                  {!isEditMode ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)}>
+                        이름 수정
+                      </Button>
+
+                      <Button variant="destructive" size="sm" onClick={handleDeleteCollection}>
+                        삭제
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                        <X size={16} /> 취소
+                      </Button>
+
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleEditCollection}
+                        className="bg-blue-600"
+                      >
+                        완료
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
               {allContents.length > 0 && (
                 <RenderContents
                   photos={allContents}
-                  //onClick={({ index }) => router.push(`/content/${index}`)}
                   onClick={({ photo }: { photo: MediaItem }) => handleItemOnclick(photo)}
                 />
               )}

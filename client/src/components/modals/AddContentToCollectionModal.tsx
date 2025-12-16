@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 interface ModalProps {
   onSubmit?: (collectionName: string) => void; // 생성 버튼 클릭 시 호출될 함수
   onClose: () => void;
-  mediaId: number;
+  mediaId?: number;
 }
 
 export const AddContentToCollectionModal: React.FC<ModalProps> = ({
@@ -21,36 +21,28 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
   const { openCreateNewCollectionModal } = useModal();
 
   const [collectionsList, setCollecitonsList] = useState<MyCollection[]>([]);
-  //const [selected, setSelected] = useState<number[]>([]);
-  const [selected, setSelected] = useState<number>();
   const [search, setSearch] = useState("");
 
   const getMyCollectionList = async () => {
     try {
-      const res = await getMyCollectionListAPI();
+      const res = await getMyCollectionListAPI(mediaId ? { mediaId } : undefined);
+      console.log("### res : ", res);
       setCollecitonsList(res.data || []);
     } catch (error) {
       console.error("error : ", error);
     }
   };
 
-  // 콘텐츠 추가할 컬렉션 선택/선택 해제
-  const toggle = (id: number) => {
-    setSelected(id);
-    // 추후 여러 컬렉션 선택 기능 구현 후 활성화
-    //setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
-
   // 선택한 컬렉션에 콘텐츠 추가
-  const handleSubmit = async () => {
-    if (!selected) {
+  const handleSubmit = async (collectionId: number) => {
+    if (!collectionId) {
       alert("콘텐츠를 추가할 컬렉션을 선택해 주세요.");
       return;
     }
 
     const request: ToggleContentsRequest = {
-      collectionId: selected,
-      mediaId: Number(mediaId),
+      collectionId,
+      mediaId: mediaId ?? Number(mediaId),
     };
 
     const res = await toggleMediaItemAPI(request);
@@ -145,9 +137,9 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
               {/* Checkbox */}
               <input
                 type="checkbox"
-                //checked={selected.includes(each.id)}
-                checked={selected === each.id}
-                onChange={() => toggle(each.id)}
+                checked={each.isContentContained}
+                readOnly
+                onClick={() => handleSubmit(each.id)}
                 className="size-5 rounded border-2 border-gray-300 text-blue-500 focus:ring-0 cursor-pointer"
               />
             </label>
@@ -171,15 +163,9 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
         <div className="flex items-center justify-end gap-3 px-6 py-5 bg-gray-50 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-6 py-3 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 transition"
+            className="px-6 py-3 rounded-xl text-sm font-semibold text-gray-800 bg-gray-200 hover:bg-gray-300 transition"
           >
             취소
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="px-8 py-3 rounded-xl text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition shadow-md"
-          >
-            추가
           </button>
         </div>
       </div>

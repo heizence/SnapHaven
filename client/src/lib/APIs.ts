@@ -228,7 +228,9 @@ export const toggleLikedAlbumAPI = (mediaId: number) =>
   postRequest<{ mediaId: number }, null>(`media/album/like/${mediaId}`, { mediaId });
 
 // 내 컬렉션 목록 조회
-export const getMyCollectionListAPI = () => getRequest<null, null>("collections", null);
+// mediaId 값을 넣어주면 해당 media-item 이 어떤 컬렉션에 포함되어 있는지 조회할 수 있음.
+export const getMyCollectionListAPI = (requestBody?: { mediaId: number }) =>
+  getRequest<{ mediaId: number } | undefined, null>("collections", requestBody ?? undefined);
 
 //TODO 내가 업로드한 콘텐츠 목록 조회(추후 작업)
 export const getMyUploadsAPI = () => getRequest<null, null>("users/uploads", null);
@@ -246,7 +248,7 @@ export const createNewCollectionAPI = (requestBody: CreateCollectionRequest) =>
 
 // 컬렉션 수정
 export const updateCollectionAPI = (requestBody: EditCollectionRequest) =>
-  patchRequest<EditCollectionRequest, null>(`collections/${requestBody.id}`, {
+  patchRequest<{ name: string }, null>(`collections/${requestBody.collectionId}`, {
     name: requestBody.name, // 400 validation 에러 방지를 위해 이름만 따로 전송
   });
 

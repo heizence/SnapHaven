@@ -4,9 +4,9 @@ import { createNewCollectionAPI } from "@/lib/APIs";
 import React, { useState } from "react";
 
 interface ModalProps {
-  onSubmit?: (collectionName: string) => void; // 생성 버튼 클릭 시 호출될 함수
+  onSubmit?: (data: any) => void; // 생성 버튼 클릭 시 호출될 함수
   onClose: () => void;
-  mediaId: number;
+  mediaId?: number;
 }
 
 export const CreateNewCollectionModal: React.FC<ModalProps> = ({ onSubmit, onClose, mediaId }) => {
@@ -30,7 +30,9 @@ export const CreateNewCollectionModal: React.FC<ModalProps> = ({ onSubmit, onClo
 
       const res = await createNewCollectionAPI(request);
       if (res.code === 201) {
-        alert("콘텐츠가 컬렉션에 추가되었습니다.");
+        alert(res.message);
+
+        if (onSubmit) onSubmit(res);
         onClose();
       }
     } catch (error) {

@@ -13,9 +13,9 @@ export interface AlertModalParams {
 }
 
 export interface CollectionModalParams {
-  onSubmit?: () => void;
+  onSubmit?: (data: any) => void;
   onClose?: () => void;
-  mediaId: number;
+  mediaId?: number;
 }
 
 interface ModalContextType {
@@ -51,7 +51,7 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  // 모달 : 새 컬렉션 생성 후 콘텐츠 추가
+  // 모달 : 새 컬렉션 생성(생성 후 콘텐츠 추가도 가능)
   const openCreateNewCollectionModal = ({ onSubmit, onClose, mediaId }: CollectionModalParams) => {
     setModalContent(
       <CreateNewCollectionModal

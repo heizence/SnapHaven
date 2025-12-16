@@ -120,8 +120,8 @@ export enum CollectionContentType {
 
 // 컬렉션 업데이트
 export interface EditCollectionRequest {
+  collectionId: number;
   name: string;
-  id?: number;
 }
 
 // 콘텐츠를 특정 컬렉션에 추가/제거
