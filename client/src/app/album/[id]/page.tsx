@@ -147,7 +147,10 @@ export default function CollectionDetailPage() {
 
                 {isSignedIn && (
                   <>
-                    <LikeButton isLiked={albumDetail.isLikedByCurrentUser} />
+                    <LikeButton
+                      isLiked={albumDetail.isLikedByCurrentUser}
+                      mediaItemId={albumDetail.representativeItemId}
+                    />
                     <AddToCollectionBtn mediaId={albumDetail.representativeItemId} />
                   </>
                 )}

@@ -1,50 +1,50 @@
 "use client";
 
-import { toggleLikedItemAPI, toggleLikedAlbumAPI } from "@/lib/APIs";
+import { toggleLikedItemAPI } from "@/lib/APIs";
 
 import { Heart } from "lucide-react";
 import { useState } from "react";
 
 interface Props {
   isLiked: boolean;
+  mediaItemId: number;
 }
 
-export function LikeButton({ isLiked = false }: Props) {
+export function LikeButton({ isLiked = false, mediaItemId }: Props) {
+  const [_isLiked, setIsLiked] = useState(isLiked);
+  const toggleLiked = async (e) => {
+    e.stopPropagation();
+
+    const res = await toggleLikedItemAPI(mediaItemId);
+    if (res.code === 201) {
+      setIsLiked((prev) => !prev);
+    }
+  };
+
   return (
     <button
-      onClick={() => {
-        // 좋아요 처리 API 추가
+      onClick={(e) => {
+        toggleLiked(e);
       }}
       className={`flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition-colors
         ${
-          isLiked
+          _isLiked
             ? "border-red-500 bg-red-500 text-white"
             : "border-gray-300 text-gray-700 hover:bg-gray-100"
         }`}
     >
-      <Heart size={20} fill={isLiked ? "currentColor" : "none"} strokeWidth={1.5} />
+      <Heart size={20} fill={_isLiked ? "currentColor" : "none"} strokeWidth={1.5} />
     </button>
   );
 }
 
-export function LikeButtonForFeeds({
-  isLiked = false,
-  mediaOrAlbumId,
-  isAlbum,
-}: {
-  isLiked: boolean;
-  mediaOrAlbumId: number;
-  isAlbum: boolean;
-}) {
+export function LikeButtonForFeeds({ isLiked = false, mediaItemId }: Props) {
   const [_isLiked, setIsLiked] = useState(isLiked);
 
   const toggleLiked = async (e) => {
     e.stopPropagation();
 
-    const res = isAlbum
-      ? await toggleLikedAlbumAPI(mediaOrAlbumId)
-      : await toggleLikedItemAPI(mediaOrAlbumId);
-
+    const res = await toggleLikedItemAPI(mediaItemId);
     if (res.code === 201) {
       setIsLiked((prev) => !prev);
     }

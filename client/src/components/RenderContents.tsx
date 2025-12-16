@@ -129,8 +129,7 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
                 >
                   <LikeButtonForFeeds
                     isLiked={photo.isLikedByCurrentUser}
-                    mediaOrAlbumId={photo.albumId ? photo.albumId : photo.key}
-                    isAlbum={photo.albumId}
+                    mediaItemId={photo.key}
                   />
                 </div>
                 <button

@@ -19,7 +19,7 @@ import { handleDownloadContent } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 interface MediaDetail {
-  id: string;
+  id: number;
   type: ContentType;
   keyImageLarge: string;
   keyImageMedium: string;
@@ -31,7 +31,7 @@ interface MediaDetail {
   description: string;
   tags: string[];
   downloadCount: number;
-  likeCount: number;
+  isLikedByCurrentUser: boolean;
   ownerNickname: string;
   ownerProfileImageKey: string;
   createdAt: string;
@@ -152,8 +152,11 @@ export default function ContentDetailPage() {
                   <DownloadBtn onClick={handleDownload} />
                   {isSignedIn && (
                     <>
-                      <LikeButton isLiked={true} />
-                      <AddToCollectionBtn isCollected={false} />
+                      <LikeButton
+                        isLiked={mediaDetail.isLikedByCurrentUser}
+                        mediaItemId={mediaDetail.id}
+                      />
+                      <AddToCollectionBtn mediaId={mediaDetail.id} />
                     </>
                   )}
                 </div>
