@@ -38,6 +38,7 @@ interface AlbumDetail {
   createdAt: string;
   tags: string[];
   isLikedByCurrentUser: boolean;
+  representativeItemId: number; // 앨범 대표(커버) 아이템 id. 컬렉션에 추가/제거 요청 시 사용하기
   items: AlbumMediaItem[];
 }
 
@@ -147,7 +148,7 @@ export default function CollectionDetailPage() {
                 {isSignedIn && (
                   <>
                     <LikeButton isLiked={albumDetail.isLikedByCurrentUser} />
-                    <AddToCollectionBtn isCollected={true} />
+                    <AddToCollectionBtn mediaId={albumDetail.representativeItemId} />
                   </>
                 )}
               </div>

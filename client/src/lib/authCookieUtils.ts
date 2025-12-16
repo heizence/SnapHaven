@@ -1,12 +1,12 @@
 import { serialize } from "cookie";
 
 // Max Age는 서버의 JWT의 만료 시간과 일치해야 한다. (단위: 초)
-//const ACCESS_TOKEN_MAX_AGE = 60 * 15; // 15분
-//const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7일
+const ACCESS_TOKEN_MAX_AGE = 60 * 15; // 15분
+const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7일
 
 // for test
-const ACCESS_TOKEN_MAX_AGE = 60 * 1;
-const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7일
+// const ACCESS_TOKEN_MAX_AGE = 60 * 1;
+// const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7일
 
 // Access Token과 Refresh Token을 HttpOnly 쿠키로 직렬화
 export const serializeAuthCookies = (accessToken: string, refreshToken: string): string[] => {
