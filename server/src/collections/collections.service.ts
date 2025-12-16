@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Collection } from './entities/collection.entity';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
@@ -55,6 +55,7 @@ export class CollectionsService {
       .select(['collection.id', 'collection.name', 'collection.createdAt'])
       .addSelect(`(COUNT(DISTINCT media.id))`, 'totalCount')
 
+      // mediaId 값을 파라미터로 받을 때 해당 아이템이 각 컬렉션에 포함되어 있는지 조회
       .addSelect(
         (subQuery) =>
           subQuery
@@ -74,10 +75,17 @@ export class CollectionsService {
             .from('collection_media_items', 'cmi')
             .innerJoin(MediaItem, 'm', 'm.id = cmi.media_id')
             .where('cmi.collection_id = collection.id')
+            // [핵심 추가] 앨범에 속하지 않은 일반 사진(NULL)이거나, 앨범의 대표 사진(1)인 경우만 추출
+            .andWhere(
+              new Brackets((qb) => {
+                qb.where('m.albumId IS NULL').orWhere('m.isRepresentative = 1');
+              }),
+            )
             .orderBy('cmi.created_at', 'DESC')
             .limit(1),
         'thumbnailKey',
       )
+
       // 미디어가 컬렉션에 추가된 날짜 추출(정렬용)
       .addSelect(
         (subQuery) =>
@@ -93,7 +101,7 @@ export class CollectionsService {
       .groupBy('collection.id')
       .orderBy('collection.createdAt', 'ASC')
       .getRawMany();
-
+    console.log('## rawCollections : ', rawCollections);
     const collections: CollectionListResponseDto[] = rawCollections.map(
       (raw) => {
         return {

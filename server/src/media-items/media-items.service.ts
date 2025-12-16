@@ -130,18 +130,11 @@ export class MediaItemsService {
     const qb = this.mediaRepository
       .createQueryBuilder('media')
       .where('media.status = :status', { status: ContentStatus.ACTIVE })
-      // [앨범 대표 항목 필터링] 단일 콘텐츠이거나 (albumId IS NULL), 혹은 앨범 내에서 ID가 가장 작은 레코드만 선택한다.
+      // 앨범 내에 포함된 아이템들 중 대표 콘텐츠 1건만 불러오기
       .andWhere(
-        new Brackets((sqb) => {
-          sqb
-            .where('media.albumId IS NULL')
-            .orWhere(
-              'media.id = (' +
-                'SELECT MIN(t1.id) FROM media_items t1 ' +
-                'WHERE t1.album_id = media.album_id AND t1.status = :activeStatus' +
-                ')',
-              { activeStatus: ContentStatus.ACTIVE },
-            );
+        new Brackets((qb) => {
+          qb.where('media.albumId IS NULL') // 일반 개별 사진
+            .orWhere('media.isRepresentative = 1'); // 앨범의 대표 사진만
         }),
       )
       .leftJoin('media.owner', 'user')
@@ -182,6 +175,7 @@ export class MediaItemsService {
       'media.keyImageLarge',
       'media.keyVideoPreview',
       'media.keyVideoPlayback',
+      'media.isRepresentative',
       'media.createdAt',
       'user.nickname',
       'album.id',
@@ -204,8 +198,7 @@ export class MediaItemsService {
 
     qb.offset(offset).limit(limit);
 
-    const rawItems: RawMediaItemResult[] = await qb.getRawMany(); // OK
-
+    const rawItems: RawMediaItemResult[] = await qb.getRawMany();
     const mappedItems: MediaItemResponseDto[] = rawItems.map((rawItem) => ({
       id: rawItem.media_id,
       title: rawItem.media_title,

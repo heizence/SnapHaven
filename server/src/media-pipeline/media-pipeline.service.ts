@@ -109,6 +109,7 @@ export class MediaPipelineService {
               albumId,
               title: dto.title,
               description: dto.description,
+              isRepresentative: index === 0 ? 1 : undefined,
               type: contentType,
               s3KeyOriginal: s3Key,
               tags: tagEntities,
@@ -179,7 +180,6 @@ export class MediaPipelineService {
         // 파이프라인이 S3에서 다운로드하고 변환할 수 있도록 이벤트 발행
         this.eventEmitter.emit('media.uploaded', {
           mediaId: item.id,
-          albumId: item.albumId,
           s3Key: item.s3KeyOriginal,
           mimeType:
             item.type === ContentType.IMAGE ? 'image/jpeg' : 'video/mp4',
@@ -202,7 +202,7 @@ export class MediaPipelineService {
   // [비동기 워커] media.uploaded 이벤트 수신 및 처리 파이프라인 실행
   @OnEvent('media.uploaded')
   async handleMediaUpload(payload: MediaUploadedEvent): Promise<void> {
-    const { mediaId, albumId, s3Key, contentType, mimeType } = payload;
+    const { mediaId, s3Key, contentType, mimeType } = payload;
 
     // 임시 스토리지 경로 설정
     const originalLocalPath = path.join(
@@ -230,10 +230,6 @@ export class MediaPipelineService {
           originalLocalPath,
           mediaId,
         );
-      }
-
-      if (albumId) {
-        await this.albumsService.updateAlbumThumbnail(albumId);
       }
 
       // DB URL 및 최종 상태 업데이트

@@ -81,6 +81,12 @@ export class AlbumDetailResponseDto {
   isLikedByCurrentUser: boolean;
 
   @ApiProperty({
+    description: '앨범 대표(커버) 콘텐츠 id(추후 앨범 컬렉션 추가 기능에 사용)',
+    example: 1234,
+  })
+  representativeItemId: number;
+
+  @ApiProperty({
     type: [AlbumMediaItemDto],
     description: '앨범에 포함된 미디어 아이템 목록',
   })

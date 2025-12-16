@@ -172,19 +172,22 @@ export class AlbumsService {
       })
       .leftJoinAndSelect('album.owner', 'owner')
       .leftJoinAndSelect('album.tags', 'tag')
+      // 앨범 내 미디어 아이템 조인 및 필요한 필드(isRepresentative) 포함 확인
       .leftJoinAndSelect(
         'album.mediaItems',
         'media',
         'media.status = :activeStatus',
         { activeStatus: ContentStatus.ACTIVE },
       )
+      // 정렬 순서: 대표 이미지가 가장 먼저 나오고, 나머지는 생성순 정렬
+      .orderBy('media.isRepresentative', 'DESC')
+      .addOrderBy('media.createdAt', 'ASC')
       .addSelect(
         currentUserId
           ? `(SELECT 1 FROM user_album_likes WHERE user_album_likes.user_id = ${currentUserId} AND user_album_likes.album_id = album.id) IS NOT NULL`
           : `FALSE`,
         'isLiked',
       );
-
     const { entities, raw } = await qb.getRawAndEntities();
 
     const albumEntity = entities[0];
@@ -199,15 +202,19 @@ export class AlbumsService {
     // ID 기준 오름차순으로 정렬
     const sortedMediaItems = albumEntity.mediaItems.sort((a, b) => a.id - b.id);
 
-    const itemsDto: AlbumMediaItemDto[] = sortedMediaItems.map((item) => ({
-      id: item.id,
-      type: ContentType.IMAGE,
-      width: item.width,
-      height: item.height,
-      keyImageSmall: item.keyImageSmall,
-      keyImageMedium: item.keyImageMedium,
-      keyImageLarge: item.keyImageLarge,
-    }));
+    let representativeItemId: number = -1;
+    const itemsDto: AlbumMediaItemDto[] = sortedMediaItems.map((item) => {
+      if (item.isRepresentative) representativeItemId = item.id;
+      return {
+        id: item.id,
+        type: ContentType.IMAGE,
+        width: item.width,
+        height: item.height,
+        keyImageSmall: item.keyImageSmall,
+        keyImageMedium: item.keyImageMedium,
+        keyImageLarge: item.keyImageLarge,
+      };
+    });
 
     const isLikedByCurrentUser = rawData?.isLiked === '1';
 
@@ -220,6 +227,7 @@ export class AlbumsService {
       createdAt: albumEntity.createdAt.toISOString(),
       tags: albumEntity.tags.map((t) => t.name),
       isLikedByCurrentUser: isLikedByCurrentUser,
+      representativeItemId,
       items: itemsDto,
     } as AlbumDetailResponseDto;
 
@@ -268,34 +276,6 @@ export class AlbumsService {
       await this.userRepository.save(user); // 관계 테이블에 레코드 추가
 
       return { message: '좋아요 처리가 완료되었습니다.', isLiked: true };
-    }
-  }
-
-  // 앨범 썸네일 업데이트
-  // 여러 개의 아이템을 앨범으로 업로드 하고 나서 앨범 썸네일 업데이트 할 때 사용
-  async updateAlbumThumbnail(albumId: number): Promise<void> {
-    const firstMediaItem = await this.albumRepository.manager
-      .getRepository(MediaItem)
-      .createQueryBuilder('media')
-      .select(['media.keyImageSmall'])
-      .where('media.albumId = :albumId', { albumId: albumId })
-      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
-      .orderBy('media.id', 'ASC') // 가장 먼저 추가된 미디어 아이템 기준
-      .limit(1)
-      .getOne();
-
-    const newThumbnailKey = firstMediaItem?.keyImageSmall || null;
-
-    // 앨범 테이블의 썸네일 컬럼 업데이트
-    // 앨범 내 ACTIVE 미디어가 하나도 없다면, newThumbnailKey는 null이 되어 앨범 썸네일도 비워진다.
-    const updateResult = await this.albumRepository.update(albumId, {
-      keyThumbnail: newThumbnailKey,
-    });
-
-    if (updateResult.affected === 0) {
-      console.warn(
-        `[AlbumsService] Album ID ${albumId} not found or no change in thumbnail.`,
-      );
     }
   }
 }

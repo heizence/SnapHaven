@@ -81,6 +81,7 @@ export const AlbumDetailExample: AlbumDetailResponseDto = {
   createdAt: '2025-11-20T10:00:00.000Z',
   tags: ['여행', '파리', '유럽'],
   isLikedByCurrentUser: true,
+  representativeItemId: 1234,
   items: [
     albumMediaItemExample,
     {

@@ -39,6 +39,14 @@ export class MediaItem {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({
+    name: 'is_representative',
+    type: 'tinyint',
+    nullable: true,
+    default: 0,
+  })
+  isRepresentative: number;
+
   @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.PENDING })
   status: ContentStatus;
 
