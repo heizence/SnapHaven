@@ -223,20 +223,18 @@ export const requestAlbumDownloadAPI = (albumId: number) =>
 export const toggleLikedItemAPI = (mediaId: number) =>
   postRequest<{ mediaId: number }, null>(`media/item/like/${mediaId}`, { mediaId });
 
-// 앨범 좋아요/좋아요 취소 처리
-export const toggleLikedAlbumAPI = (mediaId: number) =>
-  postRequest<{ mediaId: number }, null>(`media/album/like/${mediaId}`, { mediaId });
-
 // 내 컬렉션 목록 조회
 // mediaId 값을 넣어주면 해당 media-item 이 어떤 컬렉션에 포함되어 있는지 조회할 수 있음.
 export const getMyCollectionListAPI = (requestBody?: { mediaId: number }) =>
   getRequest<{ mediaId: number } | undefined, null>("collections", requestBody ?? undefined);
 
-//TODO 내가 업로드한 콘텐츠 목록 조회(추후 작업)
-export const getMyUploadsAPI = () => getRequest<null, null>("users/uploads", null);
+// 내가 업로드한 콘텐츠 목록 조회
+export const getMyUploadsAPI = (requestBody: { page: number }) =>
+  getRequest<{ page: number }, null>("users/uploads", requestBody);
 
-//TODO 내가 좋아요 표시한 콘텐츠 목록 조회(추후 작업)
-export const getMyLikesListAPI = () => getRequest<null, null>("users/likes", null);
+// 내가 좋아요 표시한 콘텐츠 목록 조회
+export const getMyLikedContentsAPI = (requestBody: { page: number }) =>
+  getRequest<{ page: number }, null>("users/likes", requestBody);
 
 // 특정 컬렉션 내의 콘텐츠 내용 조회
 export const getCollectionContentsAPI = (requestBody: GetCollectionContents) =>
