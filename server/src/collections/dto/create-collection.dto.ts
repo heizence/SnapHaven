@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsString, IsNotEmpty, MaxLength, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MaxLength,
+  IsNumber,
+  IsOptional,
+} from 'class-validator';
 
 export class CreateCollectionDto {
   @ApiProperty({
@@ -18,5 +24,6 @@ export class CreateCollectionDto {
   })
   @Type(() => Number)
   @IsNumber()
+  @IsOptional()
   mediaId: number;
 }

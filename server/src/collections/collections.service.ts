@@ -24,16 +24,10 @@ type RawCollection = {
   collection_id: string;
   collection_name: string;
   collection_created_at: Date;
+  isContentContained: number;
   totalCount: string;
   thumbnailKey?: string;
-  mediaThumbnailKey?: string;
-  albumThumbnailKey?: string;
-
-  mediaCreatedAt: Date;
-  albumCreatedAt: Date;
-
   mediaAddedAt: Date;
-  albumAddedAt: Date;
 };
 
 @Injectable()
@@ -52,6 +46,7 @@ export class CollectionsService {
   // 사용자별 컬렉션 기본정보 조회
   async findUserCollections(
     userId: number,
+    mediaId?: number,
   ): Promise<{ message: string; collections: CollectionListResponseDto[] }> {
     const rawCollections: RawCollection[] = await this.collectionRepository
       .createQueryBuilder('collection')
@@ -60,6 +55,17 @@ export class CollectionsService {
       .select(['collection.id', 'collection.name', 'collection.createdAt'])
       .addSelect(`(COUNT(DISTINCT media.id))`, 'totalCount')
 
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select('COUNT(*) > 0') // 존재하면 true(1), 없으면 false(0)
+            .from('collection_media_items', 'cmi_check')
+            .where('cmi_check.collection_id = collection.id')
+            .andWhere('cmi_check.media_id = :mediaId', {
+              mediaId: mediaId || 0,
+            }), // mediaId가 없을 경우 0 처리
+        'isContentContained',
+      )
       // 미디어 small 이미지 키 추출(썸네일용)
       .addSelect(
         (subQuery) =>
@@ -93,9 +99,9 @@ export class CollectionsService {
         return {
           id: parseInt(raw.collection_id, 10),
           name: raw.collection_name,
-
           itemCount: parseInt(raw.totalCount) || 0,
           thumbnailKey: raw.thumbnailKey || null,
+          isContentContained: Boolean(raw.isContentContained),
         };
       },
     );
@@ -206,7 +212,8 @@ export class CollectionsService {
     const { name, mediaId } = dto;
     // 컬렉션 이름 중복 확인 (사용자당 이름은 고유해야 함)
     const existingCollection = await this.collectionRepository.findOne({
-      where: { owner: { id: userId }, name },
+      where: { name },
+      withDeleted: false,
     });
 
     if (existingCollection) {
@@ -227,13 +234,16 @@ export class CollectionsService {
       userId: savedCollection.userId,
     };
 
+    let message = '새 컬렉션이 생성되었습니다.';
     // 콘텐츠 id 값과 타입이 있을 때 자동으로 새로 생성된 컬렉션에 추가
     if (mediaId) {
-      await this.toggleMediaItem(savedCollection.id, mediaId, userId);
+      message = (
+        await this.toggleMediaItem(savedCollection.id, mediaId, userId)
+      )?.message;
     }
 
     return {
-      message: '새 컬렉션이 생성되었습니다.',
+      message,
       collection,
     };
   }
@@ -290,7 +300,7 @@ export class CollectionsService {
   async deleteCollection(
     collectionId: number,
     userId: number,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: string; deletedCollectionId: number }> {
     const result = await this.collectionRepository.softDelete({
       id: collectionId,
       userId: userId,
@@ -304,6 +314,7 @@ export class CollectionsService {
 
     return {
       message: '컬렉션이 삭제되었습니다.',
+      deletedCollectionId: collectionId,
     };
   }
 

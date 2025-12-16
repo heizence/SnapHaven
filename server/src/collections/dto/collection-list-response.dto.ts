@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 
 // 컬렉션 목록 조회 응답 DTO
 export class CollectionListResponseDto {
@@ -17,4 +18,11 @@ export class CollectionListResponseDto {
     nullable: true,
   })
   thumbnailKey: string | null;
+
+  @IsOptional()
+  @ApiProperty({
+    description: '특정 콘텐츠가 각 컬렉션에 포함되어 있는지 여부',
+    example: true,
+  })
+  isContentContained: boolean;
 }

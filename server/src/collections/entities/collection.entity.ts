@@ -6,6 +6,7 @@ import {
   ManyToMany,
   JoinColumn,
   JoinTable,
+  DeleteDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
@@ -35,6 +36,9 @@ export class Collection {
     default: () => 'CURRENT_TIMESTAMP',
   })
   updatedAt: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  deletedAt: Date | null;
 
   // User 와의 Many-to-One 관계
   @ManyToOne(() => User, (user) => user.collections)

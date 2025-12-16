@@ -45,10 +45,12 @@ export class CollectionsController {
   @ApiCollectionList()
   async getCollections(
     @Req() req: { user: User },
+    @Query() query: { mediaId: number },
   ): Promise<ResponseDto<CollectionListResponseDto[]>> {
     const userId = req.user.id;
+    const mediaId = query.mediaId || undefined;
     const { message, collections } =
-      await this.collectionsService.findUserCollections(userId);
+      await this.collectionsService.findUserCollections(userId, mediaId);
 
     return ResponseDto.success(HttpStatus.OK, message, collections);
   }
@@ -88,11 +90,11 @@ export class CollectionsController {
   }
 
   // 컬렉션 이름 수정
-  @Patch(':id')
+  @Patch(':collectionId')
   @ApiCollectionUpdate()
   async updateCollection(
     @Req() req: { user: User },
-    @Param('id') collectionId: number,
+    @Param('collectionId') collectionId: number,
     @Body() updateCollectionDto: UpdateCollectionDto,
   ): Promise<ResponseDto<CollectionResponseDto>> {
     const { message, collection } =
@@ -106,18 +108,21 @@ export class CollectionsController {
 
   // 컬렉션 삭제
   @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.ACCEPTED)
   @ApiCollectionDelete()
   async deleteCollection(
     @Req() req: { user: User },
     @Param('id') collectionId: number,
-  ): Promise<ResponseDto<null>> {
-    const { message } = await this.collectionsService.deleteCollection(
-      Number(collectionId),
-      req.user.id,
-    );
+  ): Promise<ResponseDto<{ deletedCollectionId: number }>> {
+    const { message, deletedCollectionId } =
+      await this.collectionsService.deleteCollection(
+        Number(collectionId),
+        req.user.id,
+      );
 
-    return ResponseDto.successWithoutData(HttpStatus.NO_CONTENT, message);
+    return ResponseDto.success(HttpStatus.ACCEPTED, message, {
+      deletedCollectionId,
+    });
   }
 
   // 미디어 콘텐츠를 특정 컬렉션에 추가/제거

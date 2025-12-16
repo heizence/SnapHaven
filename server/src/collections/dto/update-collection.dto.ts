@@ -1,4 +1,13 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateCollectionDto } from './create-collection.dto'; // 기존 생성 DTO 참조
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
 
-export class UpdateCollectionDto extends PartialType(CreateCollectionDto) {}
+export class UpdateCollectionDto {
+  @ApiProperty({
+    description: '새로 적용할 컬렉션 이름 (최대 30자)',
+    example: 'My Favorites',
+  })
+  @IsString()
+  @IsNotEmpty({ message: '컬렉션 이름은 필수입니다.' })
+  @MaxLength(30, { message: '컬렉션 이름은 최대 30자입니다.' })
+  name: string;
+}
