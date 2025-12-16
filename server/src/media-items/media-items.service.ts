@@ -35,7 +35,7 @@ export type RawMediaItemResult = {
 };
 
 interface RawMediaItemDetailResult {
-  media_id: number;
+  media_id: string;
   media_title: string;
   media_description: string | null;
   media_type: ContentType;
@@ -73,6 +73,8 @@ export class MediaItemsService {
     type: string,
     tag?: string,
     keyword?: string,
+    isFetchingMyUploads?: boolean,
+    currentUserId?: number,
   ): Promise<number> {
     const countQb = this.mediaRepository
       .createQueryBuilder('media')
@@ -90,7 +92,12 @@ export class MediaItemsService {
           );
         }),
       )
-      .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type });
+      .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type })
+      // 내가 업로드한 콘텐츠 필터링(내 업로드 콘텐츠 조회 시 사용)
+      .andWhere(
+        isFetchingMyUploads ? 'media.ownerId = :currentUserId' : '1=1',
+        { currentUserId },
+      );
 
     if (tag) {
       countQb.leftJoin('media.tags', 'tag').andWhere('tag.name = :searchTag', {
@@ -118,6 +125,7 @@ export class MediaItemsService {
   async findAll(
     query: GetMediaItemsDto,
     currentUserId?: number,
+    isFetchingMyUploads?: boolean,
   ): Promise<{
     message: string;
     items: MediaItemResponseDto[];
@@ -130,6 +138,13 @@ export class MediaItemsService {
     const qb = this.mediaRepository
       .createQueryBuilder('media')
       .where('media.status = :status', { status: ContentStatus.ACTIVE })
+
+      // 내가 업로드한 콘텐츠 필터링(내 업로드 콘텐츠 조회 시 사용)
+      .andWhere(
+        isFetchingMyUploads ? 'media.ownerId = :currentUserId' : '1=1',
+        { currentUserId },
+      )
+
       // 앨범 내에 포함된 아이템들 중 대표 콘텐츠 1건만 불러오기
       .andWhere(
         new Brackets((qb) => {
@@ -214,10 +229,18 @@ export class MediaItemsService {
       isLikedByCurrentUser: rawItem.isLiked === 1,
     }));
 
-    const totalCounts = await this.getItemsCount(type, tag, keyword);
+    const totalCounts = await this.getItemsCount(
+      type,
+      tag,
+      keyword,
+      isFetchingMyUploads,
+      currentUserId,
+    );
 
     return {
-      message: '',
+      message: isFetchingMyUploads
+        ? '내 업로드 콘텐츠 조회 성공'
+        : '전체 콘텐츠 불러오기 성공',
       items: mappedItems,
       totalCounts,
     };
@@ -283,7 +306,7 @@ export class MediaItemsService {
 
     // DTO 변환 및 반환
     const item = {
-      id: rawResult.media_id,
+      id: parseInt(rawResult.media_id, 10),
       title: rawResult.media_title,
       description: rawResult.media_description,
       type: rawResult.media_type,
@@ -395,5 +418,77 @@ export class MediaItemsService {
 
       return { message: '좋아요 처리가 완료되었습니다.', isLiked: true };
     }
+  }
+
+  // 사용자가 좋아요 표시한 콘텐츠들을 조회
+  async getLikedMediaItems(
+    userId: number,
+    query: GetMediaItemsDto,
+  ): Promise<{ message: string; likedItems: MediaItemResponseDto[] }> {
+    const { page } = query;
+    const limit = 40;
+    const offset = (page - 1) * limit;
+
+    const qb = this.mediaRepository
+      .createQueryBuilder('media')
+      // 좋아요 테이블과 JOIN (현재 사용자가 좋아요 누른 것만)
+      .innerJoin('user_media_likes', 'uml', 'uml.media_id = media.id')
+      .where('uml.user_id = :userId', { userId })
+      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
+
+      // 앨범의 대표 콘텐츠만 조회
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('media.albumId IS NULL').orWhere(
+            'media.isRepresentative = 1',
+          );
+        }),
+      )
+
+      // 작성자 및 앨범 정보 조인
+      .leftJoin('media.owner', 'user')
+      .leftJoin('media.album', 'album')
+      .leftJoin('media.likedByUsers', 'allLikes') // 전체 좋아요 수 계산용
+
+      .select([
+        'media.id',
+        'media.title',
+        'media.type',
+        'media.width',
+        'media.height',
+        'media.keyImageSmall',
+        'media.keyImageMedium',
+        'media.keyImageLarge',
+        'media.keyVideoPreview',
+        'media.keyVideoPlayback',
+        'album.id',
+      ])
+      .addSelect('COUNT(allLikes.id)', 'likeCount')
+
+      // 좋아요를 최근에 누른 순서대로 정렬
+      .addSelect('MAX(uml.created_at)', 'likedAt')
+      .groupBy('media.id, user.id, album.id')
+      .orderBy('likedAt', 'DESC')
+      .offset(offset)
+      .limit(limit);
+
+    const rawItems: RawMediaItemResult[] = await qb.getRawMany();
+
+    const likedItems = rawItems.map((raw) => ({
+      id: raw.media_id,
+      title: raw.media_title,
+      type: raw.media_type,
+      width: raw.media_width,
+      height: raw.media_height,
+      keyImageSmall: raw.media_key_image_small,
+      keyImageMedium: raw.media_key_image_medium,
+      keyImageLarge: raw.media_key_image_large,
+      keyVideoPreview: raw.media_key_video_preview,
+      keyVideoPlayback: raw.media_key_video_playback,
+      isLikedByCurrentUser: true, // 좋아요 목록이므로 무조건 true
+      albumId: raw.album_id || null,
+    }));
+
+    return { message: '좋아요 표시한 콘텐츠 조회 성공', likedItems };
   }
 }

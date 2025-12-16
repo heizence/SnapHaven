@@ -182,12 +182,17 @@ export class AlbumsService {
       // 정렬 순서: 대표 이미지가 가장 먼저 나오고, 나머지는 생성순 정렬
       .orderBy('media.isRepresentative', 'DESC')
       .addOrderBy('media.createdAt', 'ASC')
-      .addSelect(
-        currentUserId
-          ? `(SELECT 1 FROM user_album_likes WHERE user_album_likes.user_id = ${currentUserId} AND user_album_likes.album_id = album.id) IS NOT NULL`
-          : `FALSE`,
-        'isLiked',
-      );
+
+      // 앨범 내 대표 콘텐츠의 좋아요 표시 여부를 조회
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(*) > 0', 'isLiked')
+          .from('user_media_likes', 'uml')
+          .where('uml.media_id = media.id')
+          .andWhere('uml.user_id = :currentUserId', {
+            currentUserId: currentUserId || 0,
+          });
+      }, 'isLikedByCurrentUser');
     const { entities, raw } = await qb.getRawAndEntities();
 
     const albumEntity = entities[0];
@@ -216,7 +221,7 @@ export class AlbumsService {
       };
     });
 
-    const isLikedByCurrentUser = rawData?.isLiked === '1';
+    const isLikedByCurrentUser = rawData?.isLikedByCurrentUser === 1;
 
     const album = {
       id: albumEntity.id,

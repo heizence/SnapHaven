@@ -10,6 +10,7 @@ import {
   Patch,
   UseInterceptors,
   UploadedFile,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -30,6 +31,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ValidationService } from 'src/upload/validation.service';
 import { ContentType } from 'src/common/enums';
 import { DeleteUserDto } from './dto/delete-user.dto';
+import { MediaItemResponseDto } from 'src/media-items/dto/media-item-response.dto';
+import { GetMediaItemsDto } from 'src/media-items/dto/get-media-items.dto';
+import { MediaItemsService } from 'src/media-items/media-items.service';
 
 @ApiTags('Users')
 @ApiBearerAuth('bearerAuth')
@@ -38,6 +42,7 @@ import { DeleteUserDto } from './dto/delete-user.dto';
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
+    private readonly mediaItemsService: MediaItemsService,
     private readonly validationService: ValidationService,
   ) {}
 
@@ -140,5 +145,50 @@ export class UsersController {
       deleteUserDto,
     );
     return ResponseDto.successWithoutData(HttpStatus.NO_CONTENT, message);
+  }
+
+  // 내가 업로드한 콘텐츠 목록 조회
+  @Get('uploads')
+  @ApiOperation({
+    summary: '내가 업로드한 콘텐츠 목록 조회',
+    description:
+      '소유자가 업로드한 모든 미디어/앨범 목록을 관리 목적으로 조회합니다.',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: '업로드 목록 반환' })
+  async getMyUploads(
+    @Req() req: { user: User },
+    @Query() query: GetMediaItemsDto,
+  ): Promise<any> {
+    // 반환 타입은 PaginatedMediaItemsDto와 유사
+    const userId = req.user.id;
+    const { message, items, totalCounts } =
+      await this.mediaItemsService.findAll(query, userId, true);
+    return ResponseDto.success(HttpStatus.OK, message, {
+      items,
+      totalCounts,
+    });
+  }
+
+  // 내가 좋아요 표시한 콘텐츠 목록 조회
+  @Get('likes')
+  @ApiOperation({
+    summary: '내가 좋아요한 콘텐츠 목록 조회',
+    description:
+      '좋아요를 누른 미디어 및 앨범 목록을 조회하며, 삭제된 항목은 표시됩니다.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '좋아요 목록 반환',
+    type: MediaItemResponseDto,
+  })
+  async getMyLikedContents(
+    @Req() req: { user: User },
+    @Query() query: GetMediaItemsDto,
+  ): Promise<ResponseDto<MediaItemResponseDto[]>> {
+    const userId = req.user.id;
+    const { message, likedItems } =
+      await this.mediaItemsService.getLikedMediaItems(userId, query);
+
+    return ResponseDto.success(HttpStatus.OK, message, likedItems);
   }
 }
