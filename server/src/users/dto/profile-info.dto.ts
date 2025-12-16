@@ -1,12 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../entities/user.entity';
 
+type EachContent = {
+  count: number;
+  thumbnail: string | null;
+};
 export class ProfileInfoDto {
-  @ApiProperty({ description: '사용자 고유 ID', example: 1 })
-  id: number;
-
   @ApiProperty({ description: '닉네임', example: 'CreativeUser' })
   nickname: string;
+
+  @ApiProperty({ description: '가입 유형', example: 'Email | GOOGLE' })
+  authProvider: string;
 
   @ApiProperty({
     description: '프로필 이미지 key',
@@ -15,13 +18,12 @@ export class ProfileInfoDto {
   })
   profileImageKey: string | null;
 
-  @ApiProperty({ description: '업로드한 총 미디어 항목 개수', example: 42 })
-  mediaItemCount: number; // 통계 데이터 포함
+  @ApiProperty({ description: '사용자가 업로드한 콘텐츠 ' })
+  uploads: EachContent;
 
-  constructor(user: User, mediaItemCount: number) {
-    this.id = user.id;
-    this.nickname = user.nickname;
-    this.profileImageKey = user.profileImageKey;
-    this.mediaItemCount = mediaItemCount;
-  }
+  @ApiProperty({ description: '사용자가 좋아요 표시한 콘텐츠 ' })
+  likes: EachContent;
+
+  @ApiProperty({ description: '사용자가 생성한 컬렉션 ' })
+  collections: EachContent;
 }

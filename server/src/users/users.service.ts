@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -16,6 +16,7 @@ import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { DeleteUserDto } from './dto/delete-user.dto';
+import { Collection } from 'src/collections/entities/collection.entity';
 
 @Injectable()
 export class UsersService {
@@ -71,7 +72,7 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  // 유저 프로필 정보 불러오기
+  // 유저 프로필 정보 + 내 좋아요, 내 업로드, 내 컬렉션 정보 불러오기
   async getProfileInfo(
     id: number,
   ): Promise<{ message: string; profileInfo: ProfileInfoDto }> {
@@ -91,16 +92,132 @@ export class UsersService {
       throw new NotFoundException(`User with ID #${id} not found`);
     }
 
-    const mediaItemCount = await this.mediaItemsRepository.count({
-      where: {
-        ownerId: id,
-        status: ContentStatus.ACTIVE,
-      },
-    });
+    type rawData = {
+      user_id: string;
+      user_email: string;
+      user_password_hash: string;
+      user_nickname: string;
+      user_profile_image_key: string;
+      user_auth_provider: string;
+      user_sns_id: string;
+      user_created_at: Date;
+      user_updated_at: Date;
+      user_deleted_at: Date | null;
+      user_token_version: number;
+      uploadCount: string;
+      lastUploadThumbnail: string;
+      likeCount: string;
+      lastLikeThumbnail: string;
+      collectionCount: string;
+      lastCollectionThumbnail: string;
+    };
+    // 2. 내 업로드, 내 좋아요, 내 컬렉션의 통계 및 최근 썸네일 조회
+    const qb = this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id })
+
+      // [내 업로드] 개수 및 최신 썸네일 (일반 사진 or 앨범 대표)
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(m.id)')
+          .from(MediaItem, 'm')
+          .where('m.ownerId = user.id AND m.status = :active', {
+            active: ContentStatus.ACTIVE,
+          })
+          .andWhere(
+            new Brackets((qb) => {
+              qb.where('m.albumId IS NULL').orWhere('m.isRepresentative = 1');
+            }),
+          );
+      }, 'uploadCount')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('m.keyImageSmall')
+          .from(MediaItem, 'm')
+          .where('m.ownerId = user.id AND m.status = :active')
+          .andWhere(
+            new Brackets((qb) => {
+              qb.where('m.albumId IS NULL').orWhere('m.isRepresentative = 1');
+            }),
+          )
+          .orderBy('m.createdAt', 'DESC')
+          .limit(1);
+      }, 'lastUploadThumbnail')
+
+      // [내 좋아요] 개수 및 최신 썸네일
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(uml.media_id)')
+          .from('user_media_likes', 'uml')
+          .innerJoin(MediaItem, 'm', 'm.id = uml.media_id')
+          .where('uml.user_id = user.id AND m.status = :active')
+          .andWhere(
+            new Brackets((qb) => {
+              qb.where('m.albumId IS NULL').orWhere('m.isRepresentative = 1');
+            }),
+          );
+      }, 'likeCount')
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('m.keyImageSmall')
+          .from('user_media_likes', 'uml')
+          .innerJoin(MediaItem, 'm', 'm.id = uml.media_id')
+          .where('uml.user_id = user.id AND m.status = :active')
+          .andWhere(
+            new Brackets((qb) => {
+              qb.where('m.albumId IS NULL').orWhere('m.isRepresentative = 1');
+            }),
+          )
+          .orderBy('uml.created_at', 'DESC')
+          .limit(1);
+      }, 'lastLikeThumbnail')
+
+      // [내 컬렉션] 개수 및 최신 컬렉션의 썸네일
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('COUNT(c.id)')
+          .from(Collection, 'c')
+          .where('c.userId = user.id');
+      }, 'collectionCount')
+      .addSelect((subQuery) => {
+        // 가장 최근 수정/생성된 컬렉션의 대표 미디어 썸네일
+        return subQuery
+          .select('m.keyImageSmall')
+          .from(Collection, 'c')
+          .innerJoin(
+            'collection_media_items',
+            'cmi',
+            'cmi.collection_id = c.id',
+          )
+          .innerJoin(MediaItem, 'm', 'm.id = cmi.media_id')
+          .where('c.userId = user.id')
+          .orderBy('c.createdAt', 'DESC')
+          .limit(1);
+      }, 'lastCollectionThumbnail');
+
+    const rawResult = (await qb.getRawOne()) as rawData;
+    if (!rawResult) {
+      throw new NotFoundException('프로필 정보를 조회할 수 없습니다.');
+    }
+
+    const uploads = {
+      count: parseInt(rawResult.uploadCount, 10) || 0,
+      thumbnail: rawResult.lastUploadThumbnail || null,
+    };
+
+    const likes = {
+      count: parseInt(rawResult.likeCount, 10) || 0,
+      thumbnail: rawResult.lastLikeThumbnail || null,
+    };
+
+    const collections = {
+      count: parseInt(rawResult.collectionCount, 10) || 0,
+      thumbnail: rawResult.lastCollectionThumbnail || null,
+    };
 
     return {
       message: '프로필 불러오기 성공',
-      profileInfo: { ...userFound, mediaItemCount },
+      profileInfo: { ...userFound, uploads, likes, collections },
     };
   }
 
