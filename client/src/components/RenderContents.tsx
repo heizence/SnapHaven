@@ -5,13 +5,21 @@ import { MasonryPhotoAlbum } from "react-photo-album";
 import { BookmarkIcon, DownloadIcon, ImageIcon, ListIcon, VideoIcon } from "./ui/SvgIcons";
 import "react-photo-album/masonry.css";
 import { LikeButtonForFeeds } from "./ui/LikeButton";
-import { AWS_BASE_URL, ContentType } from "@/lib/consts";
+import { AWS_BASE_URL } from "@/constants";
+import { ContentType } from "@/constants/enums";
 import Image from "next/image";
 import { handleDownloadContent } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import { useModal } from "@/contexts/ModalProvider";
+import { Photo } from "@/types/data";
 
-const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
+type RenderEachContentProps = {
+  photo: Photo;
+  onClick: () => void;
+  isAlbumPage?: boolean;
+};
+
+const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isLikeHovered, setIsLikeHovered] = useState(false);
   const [isBookmarkHovered, setIsBookmarkHovered] = useState(false);
@@ -163,7 +171,16 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }) => {
   );
 };
 
-export default function RenderContents({ photos, onClick, isAlbumPage = false }) {
+type RenderContentsProp = {
+  photos: Photo[];
+  onClick: () => void;
+  isAlbumPage?: boolean;
+};
+export default function RenderContents({
+  photos,
+  onClick,
+  isAlbumPage = false,
+}: RenderContentsProp) {
   return (
     <MasonryPhotoAlbum
       photos={photos}
@@ -178,7 +195,7 @@ export default function RenderContents({ photos, onClick, isAlbumPage = false })
       rowConstraints={{ singleRowMaxHeight: 250 }}
       onClick={onClick}
       render={{
-        photo: ({ onClick }, { photo }) => (
+        photo: ({ onClick }: { onClick: () => void }, { photo }: { photo: Photo }) => (
           <RenderEachContent
             key={photo.key}
             photo={photo}

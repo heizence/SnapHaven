@@ -12,7 +12,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { ResponseDto } from "@/lib/ResponseDto";
+import { ResponseDto } from "@/types/ResponseDto";
 import { clearAuthCookies } from "@/lib/authCookieUtils";
 
 const BASE_URL = `${process.env.SERVER_ADDRESS}/api/v1/auth/signout`;

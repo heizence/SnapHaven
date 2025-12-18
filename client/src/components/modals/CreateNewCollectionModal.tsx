@@ -1,6 +1,7 @@
 "use client";
 
 import { createNewCollectionAPI } from "@/lib/APIs";
+import { CreateCollectionReqDto } from "@/types/api-dtos";
 import React, { useState } from "react";
 
 interface ModalProps {
@@ -22,21 +23,15 @@ export const CreateNewCollectionModal: React.FC<ModalProps> = ({ onSubmit, onClo
       return;
     }
 
-    try {
-      const request = {
-        name: collectionName,
-        mediaId: Number(mediaId),
-      };
+    const request: CreateCollectionReqDto = {
+      name: collectionName,
+      mediaId: Number(mediaId),
+    };
 
-      const res = await createNewCollectionAPI(request);
-      if (res.code === 201) {
-        alert(res.message);
-
-        if (onSubmit) onSubmit(res);
-        onClose();
-      }
-    } catch (error) {
-      alert(error.message || "에러가 발생했습니다.");
+    const res = await createNewCollectionAPI(request);
+    if (res.code === 201) {
+      if (onSubmit) onSubmit(res);
+      onClose();
     }
   };
 

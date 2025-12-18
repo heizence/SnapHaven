@@ -5,13 +5,13 @@ export enum AuthProvider {
   APPLE = 'APPLE',
 }
 
-// 미디어 콘텐츠 유형
+// 콘텐츠 유형
 export enum ContentType {
   IMAGE = 'IMAGE',
   VIDEO = 'VIDEO',
 }
 
-// 미디어 콘텐츠 업로드 상태
+// 콘텐츠 업로드 상태
 export enum ContentStatus {
   PENDING = 'PENDING', // 업로드 대기 중
   PROCESSING = 'PROCESSING', // 업로드 진행 중

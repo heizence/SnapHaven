@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional } from 'class-validator';
 
 // 컬렉션 목록 조회 응답 DTO
-export class CollectionListResponseDto {
+export class CollectionDto {
   @ApiProperty({ description: '컬렉션 ID', example: 1 })
   id: number;
 

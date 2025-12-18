@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class MediaItemResponseDto {
+export class MediaItemDto {
   @ApiProperty({ description: '미디어 고유 ID', example: 123 })
   id: number;
 
@@ -50,12 +50,4 @@ export class MediaItemResponseDto {
     nullable: true,
   })
   isLikedByCurrentUser: boolean;
-}
-
-export class PaginatedMediaItemsDto {
-  @ApiProperty({ type: [MediaItemResponseDto] })
-  items: MediaItemResponseDto[];
-
-  @ApiProperty({ description: '총 항목 수', example: 100 })
-  totalCounts: number;
 }

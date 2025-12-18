@@ -7,7 +7,7 @@ export class AlbumMediaItemDto {
   id: number;
 
   @ApiProperty({ description: '콘텐츠 유형', example: ContentType.IMAGE })
-  type: ContentType; // 앨범은 이미지로만 구성
+  type: ContentType.IMAGE; // 앨범은 이미지로만 구성
 
   @ApiProperty({ description: '미디어 가로 길이', example: 1920 })
   width: number;
@@ -35,7 +35,7 @@ export class AlbumMediaItemDto {
 }
 
 // 앨범 상세 정보 응답 DTO
-export class AlbumDetailResponseDto {
+export class GetAlbumDetailResDto {
   @ApiProperty({ description: '앨범 고유 ID', example: 101 })
   id: number;
 

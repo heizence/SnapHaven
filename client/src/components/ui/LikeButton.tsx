@@ -1,6 +1,7 @@
 "use client";
 
 import { toggleLikedItemAPI } from "@/lib/APIs";
+import { ToogleLikedReqDto } from "@/types/api-dtos";
 
 import { Heart } from "lucide-react";
 import { useState } from "react";
@@ -15,7 +16,10 @@ export function LikeButton({ isLiked = false, mediaItemId }: Props) {
   const toggleLiked = async (e) => {
     e.stopPropagation();
 
-    const res = await toggleLikedItemAPI(mediaItemId);
+    const request: ToogleLikedReqDto = {
+      mediaId: mediaItemId,
+    };
+    const res = await toggleLikedItemAPI(request);
     if (res.code === 201) {
       setIsLiked((prev) => !prev);
     }
@@ -44,7 +48,7 @@ export function LikeButtonForFeeds({ isLiked = false, mediaItemId }: Props) {
   const toggleLiked = async (e) => {
     e.stopPropagation();
 
-    const res = await toggleLikedItemAPI(mediaItemId);
+    const res = await toggleLikedItemAPI({ mediaId: mediaItemId });
     if (res.code === 201) {
       setIsLiked((prev) => !prev);
     }

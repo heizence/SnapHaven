@@ -18,7 +18,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { ResponseDto } from "@/lib/ResponseDto";
+import { ResponseDto } from "@/types/ResponseDto";
 import axios from "axios";
 
 const serverAxiosInstance = axios.create();

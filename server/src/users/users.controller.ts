@@ -25,14 +25,17 @@ import { ResponseDto } from 'src/common/dto/response.dto';
 
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
-import { ProfileInfoDto } from './dto/profile-info.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { GetProfileInfoResDto } from './dto/get-profile-info.dto';
+import { EditProfileReq } from './dto/edit-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ValidationService } from 'src/upload/validation.service';
 import { ContentType } from 'src/common/enums';
-import { DeleteUserDto } from './dto/delete-user.dto';
-import { MediaItemResponseDto } from 'src/media-items/dto/media-item-response.dto';
-import { GetMediaItemsDto } from 'src/media-items/dto/get-media-items.dto';
+import { DeleteUserReqDto } from './dto/delete-user.dto';
+import { MediaItemDto } from 'src/media-items/dto/media-items.dto';
+import {
+  GetMediaItemsReqDto,
+  GetMediaItemsResDto,
+} from 'src/media-items/dto/get-media-items.dto';
 import { MediaItemsService } from 'src/media-items/media-items.service';
 
 @ApiTags('Users')
@@ -62,7 +65,7 @@ export class UsersController {
   @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: '인증 실패' })
   async getProfileInfo(
     @Req() req: Request,
-  ): Promise<ResponseDto<ProfileInfoDto>> {
+  ): Promise<ResponseDto<GetProfileInfoResDto>> {
     const userId = (req.user as User).id;
     const { message, profileInfo } =
       await this.usersService.getProfileInfo(userId);
@@ -90,14 +93,11 @@ export class UsersController {
   @ApiResponse({ status: HttpStatus.CONFLICT, description: '닉네임 중복' })
   async editProfileInfo(
     @Req() req: Request,
-    @Body() updateProfileDto: UpdateProfileDto,
+    @Body() dto: EditProfileReq,
   ): Promise<ResponseDto<null>> {
     const userId = (req.user as User).id;
 
-    const { message } = await this.usersService.updateProfile(
-      userId,
-      updateProfileDto,
-    );
+    const { message } = await this.usersService.editProfile(userId, dto);
     return ResponseDto.successWithoutData(HttpStatus.ACCEPTED, message);
   }
 
@@ -119,7 +119,7 @@ export class UsersController {
     status: HttpStatus.BAD_REQUEST,
     description: '파일 유효성 검사 실패',
   })
-  async updateProfileImage(
+  async editProfileImage(
     @Req() req: Request,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<{ message: string }> {
@@ -127,27 +127,24 @@ export class UsersController {
 
     this.validationService.validateFileArray([file], ContentType.IMAGE, 1);
     const { message, profileImageKey } =
-      await this.usersService.updateProfileImage(userId, file);
+      await this.usersService.editProfileImage(userId, file);
 
     return ResponseDto.success(HttpStatus.ACCEPTED, message, profileImageKey);
   }
 
   // **************** 사용자 계정 삭제(회원 탈퇴) ****************
   @Post('me/delete')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async deleteUser(
     @Req() req: Request,
-    @Body() deleteUserDto: DeleteUserDto,
+    @Body() dto: DeleteUserReqDto,
   ): Promise<{ message: string }> {
     const userId = (req.user as User).id;
-    const { message } = await this.usersService.deleteUser(
-      userId,
-      deleteUserDto,
-    );
-    return ResponseDto.successWithoutData(HttpStatus.NO_CONTENT, message);
+    const { message } = await this.usersService.deleteUser(userId, dto);
+    return ResponseDto.successWithoutData(HttpStatus.OK, message);
   }
 
-  // 내가 업로드한 콘텐츠 목록 조회
+  // **************** 내가 업로드한 콘텐츠 목록 조회 ****************
   @Get('uploads')
   @ApiOperation({
     summary: '내가 업로드한 콘텐츠 목록 조회',
@@ -157,9 +154,9 @@ export class UsersController {
   @ApiResponse({ status: HttpStatus.OK, description: '업로드 목록 반환' })
   async getMyUploads(
     @Req() req: { user: User },
-    @Query() query: GetMediaItemsDto,
-  ): Promise<any> {
-    // 반환 타입은 PaginatedMediaItemsDto와 유사
+    @Query() query: GetMediaItemsReqDto,
+  ): Promise<ResponseDto<GetMediaItemsResDto>> {
+    // 반환 타입은 GetMediaItemsResDto와 유사
     const userId = req.user.id;
     const { message, items, totalCounts } =
       await this.mediaItemsService.findAll(query, userId, true);
@@ -169,7 +166,7 @@ export class UsersController {
     });
   }
 
-  // 내가 좋아요 표시한 콘텐츠 목록 조회
+  // **************** 내가 좋아요 표시한 콘텐츠 목록 조회 ****************
   @Get('likes')
   @ApiOperation({
     summary: '내가 좋아요한 콘텐츠 목록 조회',
@@ -179,16 +176,18 @@ export class UsersController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: '좋아요 목록 반환',
-    type: MediaItemResponseDto,
+    type: MediaItemDto,
   })
   async getMyLikedContents(
     @Req() req: { user: User },
-    @Query() query: GetMediaItemsDto,
-  ): Promise<ResponseDto<MediaItemResponseDto[]>> {
+    @Query() query: GetMediaItemsReqDto,
+  ): Promise<ResponseDto<GetMediaItemsResDto>> {
     const userId = req.user.id;
-    const { message, likedItems } =
-      await this.mediaItemsService.getLikedMediaItems(userId, query);
+    const { message, items } = await this.mediaItemsService.getLikedMediaItems(
+      userId,
+      query,
+    );
 
-    return ResponseDto.success(HttpStatus.OK, message, likedItems);
+    return ResponseDto.success(HttpStatus.OK, message, { items });
   }
 }

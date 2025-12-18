@@ -8,7 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signoutAPI } from "@/lib/APIs";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import Image from "next/image";
-import { AWS_BASE_URL } from "@/lib/consts";
+import { AWS_BASE_URL } from "@/constants";
 
 export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
   const router = useRouter();
@@ -53,13 +53,35 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
     }
   }, [isMenuOpen, searchParams]);
 
-  // 검색 핸들러
-  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && searchTerm.trim()) {
-      e.preventDefault();
-      router.push(`/search?keyword=${searchTerm.trim()}`);
-      setIsMenuOpen(false);
+  // 검색 실행 공통 로직
+  const executeSearch = (term: string) => {
+    if (!term.trim()) return;
+
+    // 포커스 해제 (키보드 닫기)
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
+
+    router.push(`/search?keyword=${term.trim()}`);
+    setIsMenuOpen(false);
+  };
+
+  // 엔터 키 핸들러
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      executeSearch(searchTerm);
+    }
+  };
+
+  // 돋보기 클릭 핸들러
+  const handleSearchClick = () => {
+    executeSearch(searchTerm);
+  };
+
+  // 검색 키워드 지우기
+  const handleClearSearch = () => {
+    setSearchTerm("");
   };
 
   const signout = async () => {
@@ -67,8 +89,8 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
     setIsMypageMenuOpen(false);
     try {
       const res = await signoutAPI();
-      CustomLocalStorage.clearUserInfo();
       if (res.code === 200) {
+        CustomLocalStorage.clearUserInfo();
         router.push("/signin");
         router.refresh();
       }
@@ -77,6 +99,7 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
     }
   };
 
+  // 각 메뉴 클릭
   const linkOnClick = () => {
     setIsMenuOpen(false);
     setIsMypageMenuOpen(false);
@@ -166,12 +189,28 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
             <input
               type="search"
               placeholder="사진 또는 영상 검색"
-              className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 [&::-webkit-search-cancel-button]:appearance-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={handleSearch}
+              onKeyDown={handleKeyDown}
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <button onClick={handleSearchClick}>
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer"
+                size={20}
+              />
+            </button>
+
+            {/* X 버튼: 검색어가 있을 때만 표시 */}
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer p-1"
+                aria-label="Clear search"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -235,12 +274,14 @@ export default function Navbar({ isSignedIn }: { isSignedIn: boolean }) {
                 className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 bg-gray-100 focus:outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleSearch} // 검색 기능
+                onKeyDown={handleKeyDown} // 검색 기능
               />
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={20}
-              />
+              <button onClick={handleSearchClick}>
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  size={20}
+                />
+              </button>
             </div>
 
             {isSignedIn ? (

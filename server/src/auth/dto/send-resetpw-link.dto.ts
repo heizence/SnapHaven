@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty } from 'class-validator';
 
-export class ForgotPasswordDto {
+export class SendResetPWlinkReqDto {
   @ApiProperty({
     example: 'user@example.com',
     description: '비밀번호 재설정 링크를 받을 이메일',

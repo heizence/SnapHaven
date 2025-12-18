@@ -13,8 +13,8 @@ import {
 import { Response } from 'express';
 import { ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { SigninDto } from './dto/signin.dto';
-import { SignUpDto } from './dto/signup.dto';
+import { SigninReqDto, SigninResDto } from './dto/signin.dto';
+import { SignUpReqDto } from './dto/signup.dto';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
 import {
@@ -30,11 +30,10 @@ import {
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import { User } from 'src/users/entities/user.entity';
-import { CheckNicknameDto } from './dto/check-nickname.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { GoogleAuthDto } from './dto/google-auth.dto';
-import { SigninResponseDto } from './dto/signin-response.dto';
+import { CheckNicknameReqDto } from './dto/check-nickname.dto';
+import { SendResetPWlinkReqDto } from './dto/send-resetpw-link.dto';
+import { ResetPasswordReqDto } from './dto/reset-password.dto';
+import { GoogleAuthReqDto } from './dto/google-auth.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -47,11 +46,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiSignin()
   async signin(
-    @Body() signinDto: SigninDto,
+    @Body() dto: SigninReqDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseDto<SigninResponseDto>> {
+  ): Promise<ResponseDto<SigninResDto>> {
     const { message, accessToken, refreshToken, nickname, profileImageKey } =
-      await this.authService.signin(signinDto);
+      await this.authService.signin(dto);
 
     return ResponseDto.success(HttpStatus.OK, message, {
       accessToken,
@@ -101,8 +100,8 @@ export class AuthController {
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   @ApiSignUp()
-  async signup(@Body() signUpDto: SignUpDto): Promise<ResponseDto<null>> {
-    const serviceRes = await this.authService.signUp(signUpDto);
+  async signup(@Body() dto: SignUpReqDto): Promise<ResponseDto<null>> {
+    const serviceRes = await this.authService.signUp(dto);
     return ResponseDto.successWithoutData(
       HttpStatus.CREATED,
       serviceRes.message,
@@ -114,7 +113,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiGoogleAuth()
   async googleAuth(
-    @Body() googleAuthDto: GoogleAuthDto,
+    @Body() dto: GoogleAuthReqDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<
     ResponseDto<{
@@ -123,7 +122,7 @@ export class AuthController {
     }>
   > {
     const { message, accessToken, refreshToken, nickname, profileImageKey } =
-      await this.authService.googleAuth(googleAuthDto);
+      await this.authService.googleAuth(dto);
 
     return ResponseDto.success(HttpStatus.OK, message, {
       accessToken,
@@ -138,20 +137,20 @@ export class AuthController {
   @Get('check-nickname')
   @HttpCode(HttpStatus.OK)
   async checkNickname(
-    @Query() checkNicknameDto: CheckNicknameDto,
+    @Query() dto: CheckNicknameReqDto,
   ): Promise<ResponseDto<null>> {
-    const serviceRes = await this.authService.checkNickname(checkNicknameDto);
+    const serviceRes = await this.authService.checkNickname(dto);
     return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
   }
 
   // **************** 비밀번호 재설정 요청(이메일로 링크 전송) ****************
   @ApiForgotPassword()
-  @Post('forgot-password')
+  @Post('send-reset-pw-link')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
-    @Body() forgotPasswordDto: ForgotPasswordDto,
+    @Body() dto: SendResetPWlinkReqDto,
   ): Promise<ResponseDto<null>> {
-    const serviceRes = await this.authService.forgotPassword(forgotPasswordDto);
+    const serviceRes = await this.authService.sendResetPasswordLink(dto);
     return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
   }
 
@@ -160,9 +159,9 @@ export class AuthController {
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(
-    @Body() resetPasswordDto: ResetPasswordDto,
+    @Body() dto: ResetPasswordReqDto,
   ): Promise<ResponseDto<null>> {
-    const serviceRes = await this.authService.resetPassword(resetPasswordDto);
+    const serviceRes = await this.authService.resetPassword(dto);
     return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
   }
 }

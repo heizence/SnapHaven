@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Max,
   Min,
@@ -35,7 +36,7 @@ export class RequestFileDto {
 }
 
 // S3 Presigned Url 생성 요청 dto
-export class RequestUrlsDto {
+export class GetMediaPresignedUrlReqDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RequestFileDto)
@@ -54,4 +55,18 @@ export class RequestUrlsDto {
 
   @IsBoolean()
   isAlbumUpload: boolean;
+}
+
+export class PresignedUrlInfo {
+  fileIndex: number;
+  signedUrl: string;
+  s3Key: string;
+}
+export class GetMediaPresignedUrlResDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  urls: PresignedUrlInfo[];
+
+  @IsOptional()
+  albumId?: number;
 }

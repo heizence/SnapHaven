@@ -1,11 +1,16 @@
-import { CommonResDto } from "./interfaces";
+interface CommonResType<T> {
+  success: boolean;
+  code: number;
+  message: string;
+  data: T;
+}
 
 export const commonResDto = <T>(
   success: boolean,
   code: number,
   message: string,
   data: T
-): CommonResDto<T> => {
+): CommonResType<T> => {
   return { success, code, message, data };
 };
 

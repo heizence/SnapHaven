@@ -1,6 +1,5 @@
 import { saveAs } from "file-saver";
-import { getDownloadUrlAPI } from "./APIs";
-import { GetDownloadUrlRequest } from "./interfaces";
+import { getItemDownloadUrlAPI } from "./APIs";
 
 /**
  * 서버에 다운로드 요청을 보내고, 받은 Presigned URL을 사용하여 다운로드를 시작한다.
@@ -15,10 +14,10 @@ export async function handleDownloadContent(s3Key: string): Promise<void> {
 
   try {
     // 1. 서버 API 호출 및 Presigned URL 및 파일명 받기
-    const request: GetDownloadUrlRequest = {
+    const request = {
       s3Key,
     };
-    const response = await getDownloadUrlAPI(request);
+    const response = await getItemDownloadUrlAPI(request);
 
     if (response.code !== 200 || !response.data) {
       alert(`다운로드 링크 생성에 실패했습니다: ${response.message}`);

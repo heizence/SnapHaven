@@ -11,11 +11,11 @@ import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthProvider, ContentStatus } from 'src/common/enums';
-import { ProfileInfoDto } from './dto/profile-info.dto';
+import { GetProfileInfoResDto } from './dto/get-profile-info.dto';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
-import { UpdateProfileDto } from './dto/update-profile.dto';
+import { EditProfileReq } from './dto/edit-profile.dto';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
-import { DeleteUserDto } from './dto/delete-user.dto';
+import { DeleteUserReqDto } from './dto/delete-user.dto';
 import { Collection } from 'src/collections/entities/collection.entity';
 
 @Injectable()
@@ -75,7 +75,7 @@ export class UsersService {
   // 유저 프로필 정보 + 내 좋아요, 내 업로드, 내 컬렉션 정보 불러오기
   async getProfileInfo(
     id: number,
-  ): Promise<{ message: string; profileInfo: ProfileInfoDto }> {
+  ): Promise<{ message: string; profileInfo: GetProfileInfoResDto }> {
     const userFound = await this.usersRepository.findOne({
       select: [
         'authProvider',
@@ -221,10 +221,10 @@ export class UsersService {
     };
   }
 
-  // 프로필 정보 업데이트(서비스에서 사용)
-  async updateProfile(
+  // 프로필 정보 수정(서비스에서 사용)
+  async editProfile(
     userId: number,
-    updateProfileDto: UpdateProfileDto,
+    dto: EditProfileReq,
   ): Promise<{ message: string }> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -238,25 +238,22 @@ export class UsersService {
     let needsUpdate = false;
 
     // 닉네임 업데이트 처리
-    if (
-      updateProfileDto.newNickname &&
-      updateProfileDto.newNickname !== user.nickname
-    ) {
+    if (dto.newNickname && dto.newNickname !== user.nickname) {
       const existingUser = await this.usersRepository.findOne({
-        where: { nickname: updateProfileDto.newNickname },
+        where: { nickname: dto.newNickname },
       });
       if (existingUser) {
         throw new ConflictException('이미 사용 중인 닉네임입니다.');
       }
-      updateData.nickname = updateProfileDto.newNickname;
+      updateData.nickname = dto.newNickname;
       needsUpdate = true;
     }
 
     // 필요시에만 비밀번호 변경
-    if (updateProfileDto.currentPassword && updateProfileDto.newPassword) {
+    if (dto.currentPassword && dto.newPassword) {
       // 현재 비밀번호 검증
       const isPasswordValid = await bcrypt.compare(
-        updateProfileDto.currentPassword,
+        dto.currentPassword,
         user.password_hash,
       );
       if (!isPasswordValid) {
@@ -265,7 +262,7 @@ export class UsersService {
 
       // 비밀번호 업데이트 처리
       const isSameAsOld = await bcrypt.compare(
-        updateProfileDto.newPassword,
+        dto.newPassword,
         user.password_hash,
       );
       if (isSameAsOld) {
@@ -275,10 +272,7 @@ export class UsersService {
       }
 
       // 새 비밀번호 해시 처리
-      updateData.password_hash = await bcrypt.hash(
-        updateProfileDto.newPassword,
-        10,
-      );
+      updateData.password_hash = await bcrypt.hash(dto.newPassword, 10);
       needsUpdate = true;
     }
 
@@ -298,7 +292,7 @@ export class UsersService {
   }
 
   // 프로필 이미지 업데이트
-  async updateProfileImage(
+  async editProfileImage(
     userId: number,
     file: Express.Multer.File,
   ): Promise<{ message: string; profileImageKey: string }> {
@@ -338,7 +332,7 @@ export class UsersService {
   // 사용자 계정 삭제(회원탈퇴)
   async deleteUser(
     userId: number,
-    deleteUserDto: DeleteUserDto,
+    dto: DeleteUserReqDto,
   ): Promise<{ message: string }> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -351,12 +345,12 @@ export class UsersService {
 
     // 일반 계정의 경우에는 비밀번호 검증 후 삭제, SNS 계정의 경우에는 검증 생략
     if (user.authProvider === AuthProvider.EMAIL) {
-      if (!deleteUserDto.currentPassword) {
+      if (!dto.currentPassword) {
         throw new NotFoundException('현재 비밀번호를 입력해 주세요.');
       }
 
       const isPasswordValid = await bcrypt.compare(
-        deleteUserDto.currentPassword,
+        dto.currentPassword,
         user.password_hash,
       );
 

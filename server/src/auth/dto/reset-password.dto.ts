@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
 
-export class ResetPasswordDto {
+export class ResetPasswordReqDto {
   @ApiProperty({
     description: '이메일로 받은 비밀번호 재설정 토큰',
   })

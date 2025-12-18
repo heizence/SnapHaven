@@ -12,8 +12,11 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { ResponseDto } from 'src/common/dto/response.dto';
-import { RequestUrlsDto } from './dto/request-urls.dto';
-import { UploadCompleteDto } from './dto/upload-complete.dto';
+import {
+  GetMediaPresignedUrlReqDto,
+  GetMediaPresignedUrlResDto,
+} from './dto/get-presigned-url.dto';
+import { RequestFileProcessingReqDto } from './dto/request-file-processing.dto';
 import { MediaPipelineService } from 'src/media-pipeline/media-pipeline.service';
 
 @ApiTags('Upload')
@@ -26,15 +29,10 @@ export class UploadController {
   // **************** S3 Presigned URL 발급 및 파일 업로드 준비 요청 ****************
   @Post('request-urls')
   @HttpCode(HttpStatus.ACCEPTED)
-  async requesturls(
-    @Body() body: RequestUrlsDto,
+  async getMediaPresignedUrls(
+    @Body() body: GetMediaPresignedUrlReqDto,
     @Req() req: Request,
-  ): Promise<
-    ResponseDto<{
-      urls: Array<{ fileIndex: number; signedUrl: string; s3Key: string }>;
-      albumId?: number;
-    }>
-  > {
+  ): Promise<ResponseDto<GetMediaPresignedUrlResDto>> {
     const ownerId = (req.user as any).id;
     const { message, urls, albumId } =
       await this.mediaPipelineService.readyToUpload(ownerId, body);
@@ -48,15 +46,14 @@ export class UploadController {
   // **************** Presigned URL 요청 후 업로드 파이프라인 시작 요청 ****************
   @Post('request-processing')
   @HttpCode(HttpStatus.ACCEPTED)
-  async requestProcessing(
-    @Body() body: UploadCompleteDto,
+  async requestFileProcessing(
+    @Body() dto: RequestFileProcessingReqDto,
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const ownerId = (req.user as any).id;
-    const { message } = await this.mediaPipelineService.requestProcessing(
+    const { message } = await this.mediaPipelineService.requestFileProcessing(
       ownerId,
-      body.s3Keys,
-      body.albumId,
+      dto,
     );
 
     return ResponseDto.successWithoutData(HttpStatus.ACCEPTED, message);

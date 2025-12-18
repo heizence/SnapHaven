@@ -7,7 +7,7 @@ import {
   Matches,
 } from 'class-validator';
 
-export class SignUpDto {
+export class SignUpReqDto {
   @IsEmail()
   @ApiProperty({
     description: '가입할 사용자의 이메일',

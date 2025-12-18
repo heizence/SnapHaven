@@ -60,7 +60,7 @@ export function ApiMediaFeed() {
           {
             properties: {
               data: {
-                type: 'PaginatedMediaItemsDto',
+                type: 'GetMediaItemsResDto',
                 example: PaginatedMediaItemsExample,
               },
             },
@@ -177,7 +177,7 @@ export function ApiAlbumDetail() {
 }
 
 // 단일 콘텐츠 다운로드 URL 요청
-export function ApiGetDownloadUrl() {
+export function ApiGetItemDownloadUrl() {
   return applyDecorators(
     ApiOperation({
       summary: '콘텐츠 다운로드 링크 생성',

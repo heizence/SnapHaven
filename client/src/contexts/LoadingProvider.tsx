@@ -17,20 +17,35 @@ function LoadingOverlay() {
         position: "fixed",
         top: 0,
         left: 0,
-        width: "100%",
-        height: "100%",
-        backgroundColor: "rgba(255, 255, 255, 0.3)",
-        zIndex: 9999,
+        width: "100vw",
+        height: "100vh",
+        backgroundColor: "rgba(255, 255, 255, 0.7)",
+        zIndex: 99999,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        // Pointer Events: 오버레이가 투명하더라도 아래 요소와의 상호작용을 차단
         pointerEvents: "auto",
       }}
       aria-live="polite"
       aria-busy="true"
     >
-      <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600"></div>
+      <div
+        style={{
+          width: "48px",
+          height: "48px",
+          border: "4px solid #e5e7eb", // 회색 배경 원
+          borderTop: "4px solid #2563eb", // 파란색 회전 부분
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+        }}
+      />
+      {/* keyframes 애니메이션 */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

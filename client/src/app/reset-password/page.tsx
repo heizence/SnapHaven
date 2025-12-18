@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useSearchParams, useRouter } from "next/navigation"; // [!]
+import { useSearchParams, useRouter } from "next/navigation";
 import { resetPasswordAPI } from "@/lib/APIs";
-import { ResetPasswordRequest } from "@/lib/interfaces";
+import { ResetPasswordReqDto } from "@/types/api-dtos";
 
-// Omit을 사용해 'token'을 제외한 폼 타입을 만듭니다.
-type ResetPasswordForm = Omit<ResetPasswordRequest, "token">;
+type ResetPasswordForm = Omit<ResetPasswordReqDto, "token">;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // [!] URL 쿼리 파라미터 읽기
+  const searchParams = useSearchParams();
   const {
     register,
     handleSubmit,
@@ -23,14 +22,12 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. URL에서 재설정 토큰을 가져옵니다.
-  const token = searchParams.get("token");
-  const password = watch("newPassword"); // 비밀번호 확인을 위해
+  const token = searchParams?.get("token");
+  const password = watch("newPassword");
 
   const onSubmit = async (data: ResetPasswordForm) => {
     setError(null);
 
-    // 2. 토큰이 없으면 함수 종료
     if (!token) {
       setError("유효하지 않은 접근입니다. 이메일을 통해 다시 시도해 주세요.");
       return;
@@ -38,26 +35,23 @@ export default function ResetPasswordPage() {
 
     setIsLoading(true);
 
-    try {
-      // 3. API 호출 시 토큰과 새 비밀번호를 함께 전송
-      await resetPasswordAPI({
-        token: token,
-        newPassword: data.newPassword,
-      });
+    const request: ResetPasswordReqDto = {
+      token: token,
+      newPassword: data.newPassword,
+    };
+    const res = await resetPasswordAPI(request);
 
+    if (res.code === 200) {
       setSuccess(true);
-      // 3초 후 로그인 페이지로 이동
       setTimeout(() => {
         router.push("/signin");
       }, 3000);
-    } catch (error: any) {
-      // 4. 401 (토큰 만료/무효) 등 NestJS 에러 처리
-      if (error && error.message) {
-        setError(error.message);
+    } else {
+      if (res && res.message) {
+        setError(res.message);
       } else {
         setError("알 수 없는 오류가 발생했습니다.");
       }
-    } finally {
       setIsLoading(false);
     }
   };

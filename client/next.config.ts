@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { AWS_HOST_NAME } from "@/lib/consts";
+import { AWS_HOST_NAME } from "@/constants";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,

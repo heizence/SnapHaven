@@ -13,7 +13,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { ResponseDto } from "@/lib/ResponseDto";
+import { ResponseDto } from "@/types/ResponseDto";
 import { serializeAuthCookies } from "@/lib/authCookieUtils";
 
 export default async function googleSignInHandler(req: NextApiRequest, res: NextApiResponse) {

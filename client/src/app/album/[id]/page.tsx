@@ -11,43 +11,20 @@ import { TagButtons } from "@/components/ui/TagButton";
 import { DownloadBtn } from "@/components/ui/DownloadBtn";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { AddToCollectionBtn } from "@/components/ui/AddToCollectionBtn";
-import { GetSingleItemRequest } from "@/lib/interfaces";
+import { GetAlbumDetailReqDto, GetAlbumDetailResDto } from "@/types/api-dtos";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { getAlbumDetailAPI } from "@/lib/APIs";
-import { AWS_BASE_URL, ContentType } from "@/lib/consts";
+import { AWS_BASE_URL } from "@/constants";
 import { handleAlbumZipDownload } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
-
-interface AlbumMediaItem {
-  id: number;
-  type: ContentType;
-  width: number;
-  height: number;
-  src: string;
-  keyImageSmall: string;
-  keyImageMedium: string | null;
-  keyImageLarge: string | null;
-}
-
-interface AlbumDetail {
-  id: number;
-  title: string;
-  description: string;
-  ownerNickname: string;
-  ownerProfileImageKey: string | null;
-  createdAt: string;
-  tags: string[];
-  isLikedByCurrentUser: boolean;
-  representativeItemId: number; // 앨범 대표(커버) 아이템 id. 컬렉션에 추가/제거 요청 시 사용하기
-  items: AlbumMediaItem[];
-}
+import { formatDate } from "@/lib/utils";
 
 export default function CollectionDetailPage() {
   const params = useParams();
   const id = params.id as number;
 
   const [isInit, setIsInit] = useState(true); // 첫 랜더링 여부. 데이터 불러오고 나면 false.
-  const [albumDetail, setAlbumDetail] = useState<AlbumDetail>();
+  const [albumDetail, setAlbumDetail] = useState<GetAlbumDetailResDto>();
   const [showSlideshow, setShowSlideshow] = useState(false);
   const [startIndex, setStartIndex] = useState(0); // 클릭한 이미지 인덱스
 
@@ -61,44 +38,39 @@ export default function CollectionDetailPage() {
   }, [id]);
 
   const getAlbumDetail = async () => {
-    const request: GetSingleItemRequest = {
+    const request: GetAlbumDetailReqDto = {
       id,
     };
-    try {
-      showLoading();
-      const res = await getAlbumDetailAPI(request);
 
-      if (res.code === 200) {
-        console.log("[getAlbumDetail]res : ", res.data);
-        const items = res.data.items;
+    showLoading();
+    const res = await getAlbumDetailAPI(request);
 
-        const photos = items.map((item) => ({
-          //src: AWS_BASE_URL + item.keyImageSmall,
-          width: item.width,
-          height: item.height,
-          key: item.id,
-          type: item.type,
-          title: item.title,
-          albumId: item.albumId,
+    if (res.code === 200) {
+      console.log("[getAlbumDetail]res : ", res.data);
+      const items = res.data.items;
 
-          // 이미지 다운로드를 위한 key
-          keyImageLarge: item.keyImageLarge,
-          keyImageMedium: item.keyImageMedium,
-          keyImageSmall: item.keyImageSmall,
-        }));
+      const photos = items.map((item) => ({
+        width: item.width,
+        height: item.height,
+        key: item.id,
+        type: item.type,
+        title: res.data.title,
+        albumId: res.data.id,
 
-        setAlbumDetail({
-          ...res.data,
-          items: photos,
-        });
-      }
-    } catch (error) {
-      console.error("[getFeeds]error", error);
-      alert(error?.response?.message || "에러가 발생했습니다.");
-    } finally {
-      setIsInit(false);
-      hideLoading();
+        // 이미지 다운로드를 위한 key
+        keyImageLarge: item.keyImageLarge,
+        keyImageMedium: item.keyImageMedium,
+        keyImageSmall: item.keyImageSmall,
+      }));
+
+      setAlbumDetail({
+        ...res.data,
+        items: photos,
+      });
     }
+
+    setIsInit(false);
+    hideLoading();
   };
 
   const handleDownloadZip = () => {
@@ -158,9 +130,9 @@ export default function CollectionDetailPage() {
             </div>
             {/* 유저 정보 */}
             <UserInfoArea
-              avatarUrl={AWS_BASE_URL + albumDetail.ownerProfileImageKey}
+              profileImageKey={albumDetail.ownerProfileImageKey}
               name={albumDetail.ownerNickname}
-              uploadedDate="2025.11.14"
+              uploadedDate={formatDate(albumDetail.createdAt)}
             />
             {/* 설명 */}
             <ContentDesc description={albumDetail.description || ""} />

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteUserAPI, getProfileInfoAPI } from "@/lib/APIs";
-import { DeleteUserRequest } from "@/lib/interfaces";
+import { useLoading } from "@/contexts/LoadingProvider";
+import { DeleteUserReqDto } from "@/types/api-dtos";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 export default function Page() {
   const router = useRouter();
@@ -12,18 +14,16 @@ export default function Page() {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
 
+  const { showLoading, hideLoading } = useLoading();
   // 현재 프로필 데이터 불러오기
   const loadProfileData = async () => {
-    try {
-      const res = await getProfileInfoAPI();
-      if (res.code === 202) {
-        const data = res.data;
-        setAuthProvider(data.authProvider);
-      }
-    } catch (error) {
-      console.log(error);
-      alert(error.message);
+    showLoading();
+    const res = await getProfileInfoAPI();
+    if (res.code === 202) {
+      const data = res.data;
+      setAuthProvider(data.authProvider);
     }
+    hideLoading();
   };
 
   const deleteUser = async () => {
@@ -31,24 +31,20 @@ export default function Page() {
       alert("현재 비밀번호를 입력해 주세요");
       return;
     }
-
-    const request: DeleteUserRequest = {
+    showLoading();
+    const request: DeleteUserReqDto = {
       currentPassword: password,
     };
-    console.log("## deleteUser. request : ", request);
-    try {
-      const res = await deleteUserAPI(request);
 
-      if (res.code === 204) {
-        alert(res.message);
-        console.log("redirect!");
-        router.push("/");
-        router.refresh();
-      }
-    } catch (error) {
-      console.error(error);
-      alert(error.message);
+    const res = await deleteUserAPI(request);
+
+    if (res.code === 200) {
+      alert(res.message);
+      CustomLocalStorage.clearUserInfo();
+      router.push("/");
+      router.refresh();
     }
+    hideLoading();
   };
 
   const handleInputChange = (e) => {
@@ -64,6 +60,7 @@ export default function Page() {
   }, []);
 
   const isSNS = authProvider !== "EMAIL";
+  const isInputValid = isSNS ? confirmation === "계정을 삭제합니다" : password.length >= 8;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 space-y-8 text-base text-gray-800">
@@ -88,7 +85,7 @@ export default function Page() {
         <label className="block mb-2 font-medium">{isSNS ? "확인 문구" : "현재 비밀번호"}</label>
         <input
           type={isSNS ? "text" : "password"}
-          value={confirmation}
+          value={isSNS ? confirmation : password}
           onChange={handleInputChange}
           placeholder={isSNS ? "계정을 삭제합니다" : "비밀번호 입력"}
           className="w-full px-4 py-3 text-base border rounded"
@@ -98,14 +95,10 @@ export default function Page() {
       <div className="pt-6 text-center">
         <button
           type="submit"
-          disabled={confirmation !== "계정을 삭제합니다"}
+          disabled={!isInputValid}
           onClick={deleteUser}
           className={`px-6 py-3 text-base rounded text-white
-          ${
-            confirmation === "계정을 삭제합니다"
-              ? "bg-red-500 hover:bg-red-600"
-              : "bg-red-300 cursor-not-allowed"
-          }`}
+          ${isInputValid ? "bg-red-500 hover:bg-red-600" : "bg-red-300 cursor-not-allowed"}`}
         >
           계정 삭제하기
         </button>

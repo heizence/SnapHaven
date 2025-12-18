@@ -7,8 +7,8 @@ import LongButton from "@/components/ui/LongButton";
 import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
 import LinkText from "@/components/ui/LinkText";
 import { signupAPI, checkNicknameAPI } from "@/lib/APIs";
-import { CheckNicknameRequest, SignUpRequest } from "@/lib/interfaces";
 import { isValidPassword } from "@/lib/utils";
+import { CheckNicknameReqDto, SignUpReqDto } from "@/types/api-dtos";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -57,20 +57,19 @@ export default function SignupPage() {
     setNicknameStatus("checking");
     setNicknameMessage("");
 
-    const param: CheckNicknameRequest = { nickname };
-    try {
-      const res = await checkNicknameAPI(param);
+    const param: CheckNicknameReqDto = { nickname };
 
-      // 사용 가능한 닉네임
-      if (res.code === 200) {
-        setNicknameStatus("ok");
-        setNicknameMessage(res.message);
-      }
-    } catch (error) {
+    const res = await checkNicknameAPI(param);
+
+    // 사용 가능한 닉네임
+    if (res.code === 200) {
+      setNicknameStatus("ok");
+      setNicknameMessage(res.message);
+    } else {
       // 이미 사용 중인 닉네임
-      if (error.code === 409) {
+      if (res.code === 409) {
         setNicknameStatus("error");
-        setNicknameMessage(error.message);
+        setNicknameMessage(res.message);
       } else {
         setNicknameStatus("idle");
       }
@@ -118,23 +117,19 @@ export default function SignupPage() {
 
     setFormStatus("submitting");
 
-    try {
-      const request: SignUpRequest = {
-        email: email,
-        password: password,
-        nickname: nickname,
-      };
+    const request: SignUpReqDto = {
+      email: email,
+      password: password,
+      nickname: nickname,
+    };
 
-      const res = await signupAPI(request);
-      if (res.code === 201) {
-        // 회원가입 성공
-        alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
-        window.location.href = "/signin"; // 로그인 페이지로 리디렉션
-      }
-    } catch (error) {
-      console.error(error);
+    const res = await signupAPI(request);
+    if (res.code === 201) {
+      // 회원가입 성공
+      alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
+      window.location.href = "/signin"; // 로그인 페이지로 리디렉션
+    } else {
       setFormStatus("idle");
-      alert(error.message);
     }
   };
 

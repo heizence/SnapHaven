@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-type EachContent = {
+type EachProfileContent = {
   count: number;
   thumbnail: string | null;
 };
-export class ProfileInfoDto {
+export class GetProfileInfoResDto {
   @ApiProperty({ description: '닉네임', example: 'CreativeUser' })
   nickname: string;
 
@@ -19,11 +19,11 @@ export class ProfileInfoDto {
   profileImageKey: string | null;
 
   @ApiProperty({ description: '사용자가 업로드한 콘텐츠 ' })
-  uploads: EachContent;
+  uploads: EachProfileContent;
 
   @ApiProperty({ description: '사용자가 좋아요 표시한 콘텐츠 ' })
-  likes: EachContent;
+  likes: EachProfileContent;
 
   @ApiProperty({ description: '사용자가 생성한 컬렉션 ' })
-  collections: EachContent;
+  collections: EachProfileContent;
 }

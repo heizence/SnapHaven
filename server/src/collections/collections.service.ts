@@ -7,18 +7,26 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Collection } from './entities/collection.entity';
-import { CreateCollectionDto } from './dto/create-collection.dto';
+import {
+  CreateCollectionReqDto,
+  CreateCollectionResDto,
+} from './dto/create-collection.dto';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { User } from 'src/users/entities/user.entity';
-import { CollectionResponseDto } from './dto/collection-response.dto';
-import { CollectionListResponseDto } from './dto/collection-list-response.dto';
-import { MediaItemResponseDto } from 'src/media-items/dto/media-item-response.dto';
-import { CollectionContentsResponseDto } from './dto/collection-contents-response.dto';
+
+import { CollectionDto } from './dto/get-collections.dto';
+import { MediaItemDto } from 'src/media-items/dto/media-items.dto';
 import { ContentStatus } from 'src/common/enums';
 import { RawMediaItemResult } from 'src/media-items/media-items.service';
-import { UpdateCollectionDto } from './dto/update-collection.dto';
+import {
+  EditCollectionReqDto,
+  EditCollectionResDto,
+} from './dto/edit-collection.dto';
 import { Album } from 'src/albums/entities/album.entity';
-import { GetCollectionContentsDto } from './dto/get-collection-contents.dto';
+import {
+  GetCollectionContentsReqDto,
+  GetCollectionContentsResDto,
+} from './dto/get-collection-contents.dto';
 
 type RawCollection = {
   collection_id: string;
@@ -44,10 +52,10 @@ export class CollectionsService {
   ) {}
 
   // 사용자별 컬렉션 기본정보 조회
-  async findUserCollections(
+  async getMyCollections(
     userId: number,
     mediaId?: number,
-  ): Promise<{ message: string; collections: CollectionListResponseDto[] }> {
+  ): Promise<{ message: string; collections: CollectionDto[] }> {
     const rawCollections: RawCollection[] = await this.collectionRepository
       .createQueryBuilder('collection')
       .where('collection.userId = :userId', { userId })
@@ -101,30 +109,27 @@ export class CollectionsService {
       .groupBy('collection.id')
       .orderBy('collection.createdAt', 'ASC')
       .getRawMany();
-    console.log('## rawCollections : ', rawCollections);
-    const collections: CollectionListResponseDto[] = rawCollections.map(
-      (raw) => {
-        return {
-          id: parseInt(raw.collection_id, 10),
-          name: raw.collection_name,
-          itemCount: parseInt(raw.totalCount) || 0,
-          thumbnailKey: raw.thumbnailKey || null,
-          isContentContained: Boolean(raw.isContentContained),
-        };
-      },
-    );
+
+    const collections = rawCollections.map((raw) => {
+      return {
+        id: parseInt(raw.collection_id, 10),
+        name: raw.collection_name,
+        itemCount: parseInt(raw.totalCount) || 0,
+        thumbnailKey: raw.thumbnailKey || null,
+        isContentContained: Boolean(raw.isContentContained),
+      };
+    });
 
     return { message: '컬렉션 목록 조회 성공', collections };
   }
 
   // 특정 컬렉션의 콘텐츠들을 조회
   async getCollectionContents(
-    query: GetCollectionContentsDto,
-
+    query: GetCollectionContentsReqDto,
     currentUserId?: number,
   ): Promise<{
     message: string;
-    contents: CollectionContentsResponseDto;
+    contents: GetCollectionContentsResDto;
   }> {
     const { page, collectionId } = query;
 
@@ -187,7 +192,7 @@ export class CollectionsService {
     const total = await qb.getCount();
     const rawItems: RawMediaItemResult[] = await qb.getRawMany();
 
-    const items: MediaItemResponseDto[] = rawItems.map((rawItem) => ({
+    const items: MediaItemDto[] = rawItems.map((rawItem) => ({
       id: rawItem.media_id,
       title: rawItem.media_title,
       type: rawItem.media_type,
@@ -215,8 +220,8 @@ export class CollectionsService {
   // 새 컬렉션 생성
   async createCollection(
     userId: number,
-    dto: CreateCollectionDto,
-  ): Promise<{ message: string; collection: CollectionResponseDto }> {
+    dto: CreateCollectionReqDto,
+  ): Promise<{ message: string; collection: CreateCollectionResDto }> {
     const { name, mediaId } = dto;
     // 컬렉션 이름 중복 확인 (사용자당 이름은 고유해야 함)
     const existingCollection = await this.collectionRepository.findOne({
@@ -257,11 +262,11 @@ export class CollectionsService {
   }
 
   // 컬렉션 이름 수정
-  async updateCollection(
+  async editCollection(
     collectionId: number,
     userId: number,
-    dto: UpdateCollectionDto,
-  ): Promise<{ message: string; collection: CollectionResponseDto }> {
+    dto: EditCollectionReqDto,
+  ): Promise<{ message: string; collection: EditCollectionResDto }> {
     const { name } = dto;
 
     // 컬렉션 및 소유권 확인

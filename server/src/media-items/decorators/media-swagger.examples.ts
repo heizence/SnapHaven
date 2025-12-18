@@ -1,14 +1,15 @@
 import { HttpStatus } from '@nestjs/common';
+import { MediaItemDto } from '../dto/media-items.dto';
 import {
-  PaginatedMediaItemsDto,
-  MediaItemResponseDto,
-} from '../dto/media-item-response.dto';
-import { MediaItemDetailDto } from '../dto/media-item-detail.dto';
-import { AlbumDetailResponseDto } from 'src/albums/dto/album-detail.dto';
+  AlbumMediaItemDto,
+  GetAlbumDetailResDto,
+} from 'src/albums/dto/album-detail.dto';
 import { ContentType } from 'src/common/enums';
 import { GetDownloadUrlDto } from '../dto/get-download-url.dto';
+import { GetMediaItemsResDto } from '../dto/get-media-items.dto';
+import { GetMediaItemDetailResDto } from '../dto/get-media-item-detail.dto';
 
-const mediaItemFeedExample: MediaItemResponseDto = {
+const mediaItemFeedExample: MediaItemDto = {
   id: 1494,
   title: '파리 에펠탑의 새벽',
   type: 'IMAGE',
@@ -22,7 +23,7 @@ const mediaItemFeedExample: MediaItemResponseDto = {
   isLikedByCurrentUser: true,
 };
 
-export const PaginatedMediaItemsExample: PaginatedMediaItemsDto = {
+export const PaginatedMediaItemsExample: GetMediaItemsResDto = {
   items: [
     mediaItemFeedExample,
     { ...mediaItemFeedExample, id: 1495, title: '런던 야경' },
@@ -30,7 +31,7 @@ export const PaginatedMediaItemsExample: PaginatedMediaItemsDto = {
   totalCounts: 1500,
 };
 
-export const MediaItemDetailExample: MediaItemDetailDto = {
+export const MediaItemDetailExample: GetMediaItemDetailResDto = {
   id: 1494,
   title: '파리 에펠탑의 새벽',
   description: '2025년 5월에 촬영된 에펠탑 사진입니다. 새벽 5시에 담았습니다.',
@@ -62,7 +63,7 @@ export const MediaNotFoundResponse = {
   },
 };
 
-const albumMediaItemExample = {
+const albumMediaItemExample: AlbumMediaItemDto = {
   id: 1240,
   type: ContentType.IMAGE,
   width: 1920,
@@ -72,7 +73,7 @@ const albumMediaItemExample = {
   keyImageLarge: 'media-items/1234_1234567890123/large.jpg',
 };
 
-export const AlbumDetailExample: AlbumDetailResponseDto = {
+export const AlbumDetailExample: GetAlbumDetailResDto = {
   id: 101,
   title: '파리 여행 모음',
   description: '2025년 여름 파리에서 찍은 모든 사진.',

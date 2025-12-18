@@ -11,8 +11,8 @@ import { Album } from 'src/albums/entities/album.entity';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { User } from 'src/users/entities/user.entity';
 import {
-  AlbumDetailResponseDto,
   AlbumMediaItemDto,
+  GetAlbumDetailResDto,
 } from './dto/album-detail.dto';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 
@@ -162,7 +162,7 @@ export class AlbumsService {
     currentUserId?: number,
   ): Promise<{
     message: string;
-    album: AlbumDetailResponseDto;
+    album: GetAlbumDetailResDto;
   }> {
     const qb = this.albumRepository
       .createQueryBuilder('album')
@@ -171,6 +171,8 @@ export class AlbumsService {
         activeStatus: ContentStatus.ACTIVE,
       })
       .leftJoinAndSelect('album.owner', 'owner')
+      .withDeleted()
+
       .leftJoinAndSelect('album.tags', 'tag')
       // 앨범 내 미디어 아이템 조인 및 필요한 필드(isRepresentative) 포함 확인
       .leftJoinAndSelect(
@@ -227,14 +229,14 @@ export class AlbumsService {
       id: albumEntity.id,
       title: albumEntity.title,
       description: albumEntity.description,
-      ownerNickname: albumEntity.owner.nickname,
-      ownerProfileImageKey: albumEntity.owner.profileImageKey,
+      ownerNickname: albumEntity.owner?.nickname || '탈퇴한 회원',
+      ownerProfileImageKey: albumEntity.owner?.profileImageKey || null,
       createdAt: albumEntity.createdAt.toISOString(),
       tags: albumEntity.tags.map((t) => t.name),
       isLikedByCurrentUser: isLikedByCurrentUser,
       representativeItemId,
       items: itemsDto,
-    } as AlbumDetailResponseDto;
+    } as GetAlbumDetailResDto;
 
     return {
       message: '앨범 상세 조회 성공',

@@ -6,7 +6,7 @@ import {
   IsOptional,
 } from 'class-validator';
 
-export class UploadCompleteDto {
+export class RequestFileProcessingReqDto {
   @IsArray()
   @IsString({ each: true })
   @IsNotEmpty({ each: true })

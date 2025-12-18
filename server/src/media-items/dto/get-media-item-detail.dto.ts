@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ContentType } from 'src/common/enums';
 
-export class MediaItemDetailDto {
+export class GetMediaItemDetailResDto {
   @ApiProperty({ description: '미디어 고유 ID', example: 1494 })
   id: number;
 

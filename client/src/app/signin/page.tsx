@@ -8,8 +8,8 @@ import LongButton from "@/components/ui/LongButton";
 import SnsLoginBtn from "@/components/ui/SnsLoginBtn";
 import LinkText from "@/components/ui/LinkText";
 import { signinAPI } from "@/lib/APIs";
-import { SignInRequest } from "@/lib/interfaces";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
+import { SignInReqDto } from "@/types/api-dtos";
 
 export default function Page() {
   const router = useRouter();
@@ -50,24 +50,21 @@ export default function Page() {
     }
 
     setEmailStatus("checking");
-    try {
-      const request: SignInRequest = {
-        email,
-        password,
-      };
-      const res = await signinAPI(request);
 
-      if (res.code === 200) {
-        const { nickname, profileImageKey } = res.data;
-        CustomLocalStorage.saveUserInfo({ nickname, profileImageKey });
+    const request: SignInReqDto = {
+      email,
+      password,
+    };
+    const res = await signinAPI(request);
 
-        router.push("/");
-        router.refresh();
-      }
-    } catch (error) {
-      console.error("Error checking email:", error);
-      alert(error.message);
+    if (res.code === 200) {
+      const { nickname, profileImageKey } = res.data;
+      CustomLocalStorage.saveUserInfo({ nickname, profileImageKey });
+
+      router.push("/");
+      router.refresh();
     }
+
     setEmailStatus("idle");
   };
 
@@ -133,11 +130,11 @@ export default function Page() {
             title="Google 계정으로 로그인"
             onClick={() => alert("Google 로그인 API 연동 필요")}
           />
-          <SnsLoginBtn
+          {/* <SnsLoginBtn
             type="apple"
             title="Apple 계정으로 로그인"
             onClick={() => alert("Apple 로그인 API 연동 필요")}
-          />
+          /> */}
         </div>
 
         {/* 회원가입 링크 */}

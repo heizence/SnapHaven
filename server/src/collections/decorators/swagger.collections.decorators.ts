@@ -7,9 +7,8 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 
-import { CollectionResponseDto } from '../dto/collection-response.dto';
-import { CollectionContentsResponseDto } from '../dto/collection-contents-response.dto';
-import { CollectionListResponseDto } from '../dto/collection-list-response.dto';
+import { CollectionDto } from '../dto/get-collections.dto';
+import { GetCollectionContentsResDto } from '../dto/get-collection-contents.dto';
 
 const CollectionCreationExample = {
   id: 7,
@@ -26,7 +25,7 @@ export function ApiCollectionCreate() {
     ApiBearerAuth('bearerAuth'),
     ApiCreatedResponse({
       description: '컬렉션 생성 성공 (HTTP 201)',
-      type: CollectionResponseDto,
+      type: CollectionDto,
       schema: {
         example: {
           code: HttpStatus.CREATED,
@@ -50,7 +49,7 @@ export function ApiCollectionCreate() {
 }
 
 // 컬렉션 수정
-export function ApiCollectionUpdate() {
+export function ApiCollectionEdit() {
   return applyDecorators(
     ApiOperation({
       summary: '컬렉션 이름 수정',
@@ -58,7 +57,7 @@ export function ApiCollectionUpdate() {
     }),
     ApiOkResponse({
       description: '이름 수정 성공',
-      type: CollectionResponseDto,
+      type: CollectionDto,
     }),
     ApiResponse({
       status: 404,
@@ -93,7 +92,7 @@ export function ApiCollectionList() {
     ApiBearerAuth('bearerAuth'),
     ApiOkResponse({
       description: '컬렉션 목록 조회 성공',
-      type: [CollectionListResponseDto],
+      type: [Array<CollectionDto>],
       schema: {
         example: {
           code: HttpStatus.OK,
@@ -114,12 +113,12 @@ export function ApiGetCollectionContents() {
     ApiBearerAuth('bearerAuth'),
     ApiOkResponse({
       description: '컬렉션 상세 조회 성공',
-      type: CollectionContentsResponseDto,
+      type: GetCollectionContentsResDto,
       schema: {
         example: {
           code: HttpStatus.OK,
           message: '컬렉션 상세 조회 성공',
-          // data는 CollectionDetailResponseDto (내부에 MediaItemResponseDto[] 포함)
+          // data는 CollectionDetailResponseDto (내부에 MediaItem[] 포함)
           data: {
             id: 1,
             name: '여행 기록',

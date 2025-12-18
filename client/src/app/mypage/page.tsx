@@ -2,18 +2,19 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getProfileInfoAPI } from "@/lib/APIs";
-import { ProfileInfo } from "@/lib/interfaces";
 import { LayoutGrid, Pencil, User } from "lucide-react";
-import { AWS_BASE_URL } from "@/lib/consts";
+import { AWS_BASE_URL } from "@/constants";
 
-// 컬렉션 카드용 인터페이스
-interface CollectionPreview {
-  id: string;
-  href: string;
-  title: string;
+type ContentLabel = "내 업로드" | "내 좋아요" | "내 컬렉션";
+
+interface ProfileInfo {
+  nickname: string;
+  profileImageUrl?: string;
+}
+interface EachUserContent {
+  label: ContentLabel;
   count: number;
   thumbnail: string | null;
 }
@@ -25,65 +26,48 @@ export default function MyProfilePage() {
     nickname: "",
     profileImageUrl: "",
   });
-  const [data, setData] = useState<CollectionPreview[]>([]);
+  const [contents, setContents] = useState<EachUserContent[]>([]);
   const [isReady, setIsReady] = useState(false);
 
-  const loadProfileData = async () => {
-    try {
-      const res = await getProfileInfoAPI();
+  const getProfileData = async () => {
+    const res = await getProfileInfoAPI();
+    console.log("## res : ", res);
+    if (res.code === 202) {
+      const { nickname, profileImageKey, uploads, likes, collections } = res.data;
+      setProfileInfo({
+        nickname,
+        profileImageUrl: profileImageKey ? AWS_BASE_URL + res.data.profileImageKey : undefined,
+      });
 
-      if (res.code === 202) {
-        const { nickname, profileImageKey } = res.data;
-        setProfileInfo({
-          nickname,
-          profileImageUrl: profileImageKey ? AWS_BASE_URL + res.data.profileImageKey : undefined,
-        });
-      }
-
-      // 2. [수정] 데이터를 "내 업로드", "내 좋아요", "내 컬렉션" 3개로 고정
-      const mockCollections: CollectionPreview[] = [
-        {
-          id: "uploads",
-          href: "/mypage/uploads", // (예시 경로)
-          title: "내 업로드",
-          count: 3,
-          thumbnail: "https://placehold.co/600x400/E2E8F0/333?text=Image+1",
-        },
-        {
-          id: "likes",
-          href: "/mypage/likes", // (예시 경로)
-          title: "내 좋아요",
-          count: 9,
-          thumbnail: "https://placehold.co/400x600/D1FAE5/333?text=Image+2",
-        },
-        {
-          id: "collection1",
-          href: "/mypage/collections", // (예시 경로)
-          title: "내 컬렉션",
-          count: 12,
-          thumbnail: "https://placehold.co/800x600/FEF9C3/333?text=Image+3",
-        },
-        // (참고: 빈 컬렉션 테스트용)
-        // {
-        //   id: "empty",
-        //   href: "/collection/empty",
-        //   title: "빈 컬렉션",
-        //   count: 0,
-        //   thumbnail: null,
-        // },
+      const contents = [
+        { ...uploads, label: "내 업로드" },
+        { ...likes, label: "내 좋아요" },
+        { ...collections, label: "내 컬렉션" },
       ];
-      setData(mockCollections);
 
-      setIsReady(true);
-    } catch (error) {
-      console.log(error);
-      alert(error.message);
-      setIsReady(true);
+      setContents(contents);
+    }
+    setIsReady(true);
+  };
+
+  const handleContentOnclick = (label: ContentLabel) => {
+    switch (label) {
+      case "내 업로드":
+        router.push("/mypage/uploads");
+        break;
+      case "내 좋아요":
+        router.push("/mypage/likes");
+        break;
+      case "내 컬렉션":
+        router.push("/mypage/collections");
+        break;
+      default:
+        break;
     }
   };
 
   useEffect(() => {
-    loadProfileData();
+    getProfileData();
   }, []);
 
   if (!isReady) return null;
@@ -98,7 +82,7 @@ export default function MyProfilePage() {
             alt="preview"
             width={128}
             height={128}
-            priority={true}
+            priority
             className="w-32 h-32 rounded-full object-cover"
             unoptimized
           />
@@ -121,43 +105,40 @@ export default function MyProfilePage() {
       </div>
 
       <div className="mt-12 border-t pt-8 w-full">
-        {data.length === 0 ? (
-          <div className="text-center mt-10 border rounded py-10 px-4 text-gray-600">
-            <p className="text-lg mb-2">업로드나 컬렉션이 없습니다.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col sm:flex-row justify-center gap-6">
-            {data.map((collection) => (
-              <Link href={collection.href} key={collection.id} className="w-full sm:w-60 md:w-72">
-                <div className="relative aspect-square rounded-lg overflow-hidden border shadow-sm transition-all hover:shadow-md">
-                  {collection.count === 0 || !collection.thumbnail ? (
-                    // 콘텐츠 없음 상태
-                    <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4">
-                      <p className="text-gray-500 text-center">콘텐츠가 없습니다</p>
-                    </div>
-                  ) : (
-                    // 썸네일 이미지
-                    <Image
-                      src={collection.thumbnail}
-                      alt={collection.title}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 33vw, 25vw"
-                    />
-                  )}
+        <div className="flex flex-col sm:flex-row justify-center gap-6">
+          {contents.map((each, index) => (
+            <div
+              key={index}
+              className="w-full sm:w-60 md:w-72 cursor-pointer"
+              onClick={() => handleContentOnclick(each.label)}
+            >
+              <div className="relative aspect-square rounded-lg overflow-hidden border shadow-sm transition-all hover:shadow-md">
+                {each.count === 0 || !each.thumbnail ? (
+                  // 콘텐츠 없음 상태
+                  <div className="w-full h-full bg-gray-100 flex items-center justify-center p-4"></div>
+                ) : (
+                  // 썸네일 이미지
+                  <Image
+                    src={AWS_BASE_URL + each.thumbnail}
+                    alt={""}
+                    fill
+                    priority
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 33vw, 25vw"
+                  />
+                )}
+              </div>
+              {/* 카드 하단 정보 */}
+              <div className="flex justify-between items-center text-base mt-2 px-1">
+                <span className="font-semibold text-gray-800">{each.label}</span>
+                <div className="flex items-center gap-1 text-gray-600">
+                  <LayoutGrid size={16} />
+                  <span className="font-medium">{each.count}</span>
                 </div>
-                {/* 카드 하단 정보 */}
-                <div className="flex justify-between items-center text-base mt-2 px-1">
-                  <span className="font-semibold text-gray-800">{collection.title}</span>
-                  <div className="flex items-center gap-1 text-gray-600">
-                    <LayoutGrid size={16} />
-                    <span className="font-medium">{collection.count}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

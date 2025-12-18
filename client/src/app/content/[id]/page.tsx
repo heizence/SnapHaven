@@ -10,68 +10,44 @@ import { TagButtons } from "@/components/ui/TagButton";
 import { DownloadBtn } from "@/components/ui/DownloadBtn";
 import { LikeButton } from "@/components/ui/LikeButton";
 import { AddToCollectionBtn } from "@/components/ui/AddToCollectionBtn";
-import { getSingleMediaItemAPI } from "@/lib/APIs";
-import { GetSingleItemRequest } from "@/lib/interfaces";
-import { AWS_BASE_URL, ContentType } from "@/lib/consts";
+import { getMediaItemDetailAPI } from "@/lib/APIs";
+import { AWS_BASE_URL } from "@/constants";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { formatDate } from "@/lib/utils";
 import { handleDownloadContent } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
-
-interface MediaDetail {
-  id: number;
-  type: ContentType;
-  keyImageLarge: string;
-  keyImageMedium: string;
-  keyImageSmall: string;
-  keyVideoPlayback: string | null;
-  width: number;
-  height: number;
-  title: string;
-  description: string;
-  tags: string[];
-  downloadCount: number;
-  isLikedByCurrentUser: boolean;
-  ownerNickname: string;
-  ownerProfileImageKey: string;
-  createdAt: string;
-}
+import { GetMediaItemDetailResDto } from "@/types/api-dtos";
 
 export default function ContentDetailPage() {
   const params = useParams();
   const id = params.id as number;
 
   const [isInit, setIsInit] = useState(true); // 첫 랜더링 여부. 데이터 불러오고 나면 false.
-  const [mediaDetail, setMediaDetail] = useState<MediaDetail | null>(null);
+  const [mediaDetail, setMediaDetail] = useState<GetMediaItemDetailResDto | null>(null);
   const [showSlideshow, setShowSlideshow] = useState(false);
 
   const { showLoading, hideLoading } = useLoading();
 
-  // [수정] 데이터 페칭 (URL의 ID를 사용)
   useEffect(() => {
     getSingleMediaItem();
   }, [id]);
 
   const getSingleMediaItem = async () => {
-    const request: GetSingleItemRequest = {
+    const request = {
       id,
     };
-    try {
-      showLoading();
-      const res = await getSingleMediaItemAPI(request);
 
-      if (res.code === 200) {
-        console.log("[getSingleMediaItem]res : ", res.data);
-        const item = res.data;
-        setMediaDetail(item);
-      }
-    } catch (error) {
-      console.error("[getFeeds]error", error);
-      alert(error?.response?.message || "에러가 발생했습니다.");
-    } finally {
-      setIsInit(false);
-      hideLoading();
+    showLoading();
+    const res = await getMediaItemDetailAPI(request);
+
+    if (res.code === 200) {
+      console.log("[getSingleMediaItem]res : ", res.data);
+      const item = res.data;
+      setMediaDetail(item);
     }
+
+    setIsInit(false);
+    hideLoading();
   };
 
   // 파일 다운로드
@@ -165,10 +141,11 @@ export default function ContentDetailPage() {
 
             {/* 유저 정보 */}
             <UserInfoArea
-              avatarUrl={AWS_BASE_URL + mediaDetail.ownerProfileImageKey}
+              profileImageKey={mediaDetail.ownerProfileImageKey}
               name={mediaDetail.ownerNickname}
               uploadedDate={formatDate(mediaDetail.createdAt)}
             />
+
             {/* 설명 */}
             <ContentDesc description={mediaDetail.description || ""} />
             {/* 태그 */}

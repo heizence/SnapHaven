@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { editProfileImageAPI, editProfileInfoAPI, getProfileInfoAPI } from "@/lib/APIs";
 import { isValidPassword, isValidUsername, validateImageFile } from "@/lib/utils";
-import { EditProfileInfoRequest } from "@/lib/interfaces";
-import { AWS_BASE_URL } from "@/lib/consts";
+import { AWS_BASE_URL } from "@/constants";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
+import { useLoading } from "@/contexts/LoadingProvider";
+import { EditProfileReq } from "@/types/api-dtos";
 
 interface EditFormState {
   nickname: string;
@@ -34,27 +35,24 @@ export default function EditProfilePage() {
   const [profileImgPreview, setProfileImgPreview] = useState<string | undefined>("");
   const [isReady, setIsReady] = useState(false);
 
+  const { showLoading, hideLoading } = useLoading();
   // 현재 프로필 데이터 불러오기
   const loadProfileData = async () => {
-    try {
-      const res = await getProfileInfoAPI();
-      if (res.code === 202) {
-        const { nickname, profileImageKey } = res.data;
-        const data = res.data;
-        setForm({
-          ...form,
-          nickname,
-        });
-        setProfileImgPreview(profileImageKey ? AWS_BASE_URL + profileImageKey : undefined);
-        setAuthProvider(data.authProvider);
-      }
-
-      setIsReady(true);
-    } catch (error) {
-      console.log(error);
-      alert(error.message);
-      setIsReady(true);
+    showLoading();
+    const res = await getProfileInfoAPI();
+    if (res.code === 202) {
+      const { nickname, profileImageKey } = res.data;
+      const data = res.data;
+      setForm({
+        ...form,
+        nickname,
+      });
+      setProfileImgPreview(profileImageKey ? AWS_BASE_URL + profileImageKey : undefined);
+      setAuthProvider(data.authProvider);
     }
+
+    setIsReady(true);
+    hideLoading();
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -78,23 +76,18 @@ export default function EditProfilePage() {
       return;
     }
 
-    try {
-      const formData = new FormData();
-      formData.append("files", selectedFile[0]);
+    const formData = new FormData();
+    formData.append("files", selectedFile[0]);
 
-      const res = await editProfileImageAPI(formData);
-      console.log("res : ", res);
-      if (res.code === 202) {
-        setProfileImgPreview(AWS_BASE_URL + res.data);
-        CustomLocalStorage.updateUserInfo({
-          profileImageKey: res.data!,
-        });
-        alert(res.message);
-        router.refresh();
-      }
-    } catch (error) {
-      console.error(error);
-      alert(error.message);
+    const res = await editProfileImageAPI(formData);
+    console.log("res : ", res);
+    if (res.code === 202) {
+      setProfileImgPreview(AWS_BASE_URL + res.data);
+      CustomLocalStorage.updateUserInfo({
+        profileImageKey: res.data!,
+      });
+      alert(res.message);
+      router.refresh();
     }
   };
 
@@ -137,29 +130,23 @@ export default function EditProfilePage() {
       }
     }
 
-    try {
-      const request: EditProfileInfoRequest = {
-        newNickname: form.nickname || undefined,
-        currentPassword: form.currentPassword || undefined,
-        newPassword: form.newPassword || undefined,
-      };
-      console.log("request : ", request);
-      const res = await editProfileInfoAPI(request);
-      console.log("## editProfileInfoAPI res : ", res);
-      if (res.code === 202) {
-        alert(res.message);
-        setForm({
-          nickname: form.nickname,
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-      } else {
-        alert("에러가 발생하였습니다.");
-      }
-    } catch (error) {
-      console.log(error);
-      alert(error.message);
+    const request: EditProfileReq = {
+      newNickname: form.nickname || undefined,
+      currentPassword: form.currentPassword || undefined,
+      newPassword: form.newPassword || undefined,
+    };
+
+    const res = await editProfileInfoAPI(request);
+    if (res.code === 202) {
+      alert(res.message);
+      setForm({
+        nickname: form.nickname,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } else {
+      alert("에러가 발생하였습니다.");
     }
   };
 

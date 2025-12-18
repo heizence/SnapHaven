@@ -15,7 +15,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { ResponseDto } from "@/lib/ResponseDto";
+import { ResponseDto } from "@/types/ResponseDto";
 import { IncomingForm, Files, File as FormidableFile } from "formidable";
 import * as fs from "fs";
 import axios from "axios";

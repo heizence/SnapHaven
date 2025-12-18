@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { isValidEmail } from "@/lib/utils";
-import { forgotPasswordAPI } from "@/lib/APIs";
+import { sendResetPasswordLinkAPI } from "@/lib/APIs";
 import Input from "@/components/ui/Input";
 import LongButton from "@/components/ui/LongButton";
 import LinkText from "@/components/ui/LinkText";
-import { forgotPasswordRequest } from "@/lib/interfaces";
+import { SendResetPWlinkReqDto } from "@/types/api-dtos";
 
 export default function Page() {
   const [email, setEmail] = useState("");
@@ -25,17 +25,14 @@ export default function Page() {
       return;
     }
     setEmailStatus("checking");
-    try {
-      const request: forgotPasswordRequest = { email };
-      const res = await forgotPasswordAPI(request);
 
-      console.log("res : ", res);
-      if (res.code === 200) {
-        alert("해당 이메일로 재설정 링크를 발송했습니다."); // 기존 로직
-      }
-    } catch (error) {
-      console.error("Error checking email:", error);
+    const request: SendResetPWlinkReqDto = { email };
+    const res = await sendResetPasswordLinkAPI(request);
+
+    if (res.code === 200) {
+      alert("해당 이메일로 재설정 링크를 발송했습니다.");
     }
+
     setEmailStatus("idle");
   };
 

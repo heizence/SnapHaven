@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Upload, X, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import DropZone from "@/components/DropZone";
-import { requestFileUploadAPI, getTagsAPI, getMediaPresignedUrlsAPI } from "@/lib/APIs";
+import { requestFileProcessingAPI, getTagsAPI, getMediaPresignedUrlsAPI } from "@/lib/APIs";
 import {
   getImageDimensions,
   getVideoDimensions,
@@ -14,6 +14,7 @@ import {
 import { Tag } from "@/lib/interfaces";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { uploadFilesToS3 } from "./utils/uploadToS3";
+import { FileMetadata } from "@/types/api-dtos";
 
 interface FileToUpload {
   fileOrigin: File;
@@ -52,14 +53,14 @@ export default function Page() {
   const { showLoading, hideLoading } = useLoading();
 
   const getAllTags = async () => {
-    try {
-      showLoading();
-      const res = await getTagsAPI();
+    showLoading();
+
+    const res = await getTagsAPI();
+    if (res.code === 200) {
       setTagRendered(res.data);
-      hideLoading();
-    } catch (error) {
-      console.error(error);
     }
+
+    hideLoading();
   };
 
   // 파일 핸들링 로직 (기존과 동일)
@@ -237,49 +238,46 @@ export default function Page() {
 
     showLoading();
 
-    // 2. NestJS로 보낼 파일 메타데이터 준비
-    const fileMetadata = files.map((f) => ({
+    const fileMetadata: FileMetadata[] = files.map((f) => ({
       name: f.name,
       size: f.size,
       type: f.type,
       width: f.width,
       height: f.height,
     }));
-    try {
-      const res = await getMediaPresignedUrlsAPI({
-        files: fileMetadata,
-        title: title,
-        description: description,
-        tags: tags,
-        isAlbumUpload: Boolean(files.length > 1 && uploadMode === "ALBUM") ? true : false,
+
+    const request = {
+      files: fileMetadata,
+      title: title,
+      description: description,
+      tags: tags,
+      isAlbumUpload: Boolean(files.length > 1 && uploadMode === "ALBUM") ? true : false,
+    };
+    const res = await getMediaPresignedUrlsAPI(request);
+
+    if (res.code === 202) {
+      const { urls: signedUrls, albumId } = res.data!;
+      console.log("signedUrls : ", signedUrls);
+      console.log("albumId : ", albumId);
+
+      const uploadedKeys = await uploadFilesToS3({
+        files: files.map((f) => f.fileOrigin),
+        presignedData: signedUrls,
       });
 
-      if (res.code === 202) {
-        const { urls: signedUrls, albumId } = res.data!;
-        console.log("signedUrls : ", signedUrls);
-        console.log("albumId : ", albumId);
-
-        const uploadedKeys = await uploadFilesToS3({
-          files: files.map((f) => f.fileOrigin),
-          presignedData: signedUrls,
-        });
-
-        alert("파일 업로드가 접수되었습니다. 잠시 후 업로드가 완료됩니다.");
-        clearAll();
-
-        // s3 key 발급 후 서버에 파일 처리 요청 보내기
-        await requestFileUploadAPI({
-          s3Keys: uploadedKeys,
-          albumId: albumId,
-        });
-      }
-    } catch (apiError) {
-      console.error(apiError); // 서버에서 400, 413, 500 에러 반환 시 처리
-      const errorMessage =
-        (apiError as any).message || "업로드 처리 중 알 수 없는 오류가 발생했습니다.";
-      setUploadError(errorMessage);
-    } finally {
       hideLoading();
+      alert("파일 업로드가 접수되었습니다. 잠시 후 업로드가 완료됩니다.");
+      clearAll();
+
+      // s3 key 발급 후 서버에 파일 처리 요청 보내기
+      await requestFileProcessingAPI({
+        s3Keys: uploadedKeys,
+        albumId: albumId,
+      });
+    } else {
+      hideLoading();
+      const errorMessage = res.message || "업로드 처리 중 알 수 없는 오류가 발생했습니다.";
+      setUploadError(errorMessage);
     }
   };
 

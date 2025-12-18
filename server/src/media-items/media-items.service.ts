@@ -6,15 +6,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { MediaItem } from './entities/media-item.entity';
-import { GetMediaItemsDto, MediaSort } from './dto/get-media-items.dto';
+import { GetMediaItemsReqDto, MediaSort } from './dto/get-media-items.dto';
 import { ContentStatus, ContentType } from 'src/common/enums';
-import { MediaItemResponseDto } from './dto/media-item-response.dto';
-import { MediaItemDetailDto } from './dto/media-item-detail.dto';
+import { MediaItemDto } from './dto/media-items.dto';
+import { GetMediaItemDetailResDto } from './dto/get-media-item-detail.dto';
 import {} from 'src/albums/dto/album-detail.dto';
 import { Album } from 'src/albums/entities/album.entity';
 import { GetDownloadUrlDto } from './dto/get-download-url.dto';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
-import { DownloadRequestDto } from './dto/download.request.dto';
+import { GetItemDownloadUrlReqDto } from './dto/get-item-download.dto';
 import { User } from 'src/users/entities/user.entity';
 
 export type RawMediaItemResult = {
@@ -123,12 +123,12 @@ export class MediaItemsService {
 
   // 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
   async findAll(
-    query: GetMediaItemsDto,
+    query: GetMediaItemsReqDto,
     currentUserId?: number,
     isFetchingMyUploads?: boolean,
   ): Promise<{
     message: string;
-    items: MediaItemResponseDto[];
+    items: MediaItemDto[];
     totalCounts: number;
   }> {
     const limit = 40;
@@ -214,7 +214,7 @@ export class MediaItemsService {
     qb.offset(offset).limit(limit);
 
     const rawItems: RawMediaItemResult[] = await qb.getRawMany();
-    const mappedItems: MediaItemResponseDto[] = rawItems.map((rawItem) => ({
+    const mappedItems: MediaItemDto[] = rawItems.map((rawItem) => ({
       id: rawItem.media_id,
       title: rawItem.media_title,
       type: rawItem.media_type,
@@ -250,7 +250,7 @@ export class MediaItemsService {
   async findOne(
     mediaId: number,
     currentUserId?: number,
-  ): Promise<{ message: string; item: MediaItemDetailDto }> {
+  ): Promise<{ message: string; item: GetMediaItemDetailResDto }> {
     // QueryBuilder를 사용하여 통계 및 소유자 정보를 한 번에 조회
 
     const qb = this.mediaRepository
@@ -259,6 +259,7 @@ export class MediaItemsService {
       .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
 
       .leftJoin('media.owner', 'owner')
+      .withDeleted()
       .leftJoin('media.likedByUsers', 'likes')
 
       .select([
@@ -321,11 +322,11 @@ export class MediaItemsService {
 
       likeCount: parseInt(rawResult.likeCount, 10) || 0,
       downloadCount: parseInt(rawResult.media_download_count, 10) || 0,
-      ownerNickname: rawResult.owner_nickname,
+      ownerNickname: rawResult.owner_nickname || '탈퇴한 회원',
       ownerProfileImageKey: rawResult.owner_profile_image_key,
       tags: tags,
       isLikedByCurrentUser: rawResult.isLiked == 1, // isLiked 값이 '1' 로 나옴.
-    } as MediaItemDetailDto;
+    } as GetMediaItemDetailResDto;
 
     return {
       message: '미디어 아이템 상세 조회 성공',
@@ -334,8 +335,8 @@ export class MediaItemsService {
   }
 
   // 파일 다운로드를 위한 presigned url 을 반환하고 다운로드 카운트 +1 처리
-  async getDownloadUrl(
-    dto: DownloadRequestDto,
+  async getItemDownloadUrl(
+    dto: GetItemDownloadUrlReqDto,
   ): Promise<{ message: string; data: GetDownloadUrlDto }> {
     const s3Key = dto.s3Key;
 
@@ -423,8 +424,8 @@ export class MediaItemsService {
   // 사용자가 좋아요 표시한 콘텐츠들을 조회
   async getLikedMediaItems(
     userId: number,
-    query: GetMediaItemsDto,
-  ): Promise<{ message: string; likedItems: MediaItemResponseDto[] }> {
+    query: GetMediaItemsReqDto,
+  ): Promise<{ message: string; items: MediaItemDto[] }> {
     const { page } = query;
     const limit = 40;
     const offset = (page - 1) * limit;
@@ -489,6 +490,6 @@ export class MediaItemsService {
       albumId: raw.album_id || null,
     }));
 
-    return { message: '좋아요 표시한 콘텐츠 조회 성공', likedItems };
+    return { message: '좋아요 표시한 콘텐츠 조회 성공', items: likedItems };
   }
 }

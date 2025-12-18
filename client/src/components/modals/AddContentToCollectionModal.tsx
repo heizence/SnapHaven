@@ -1,9 +1,9 @@
 "use client";
 
 import { useModal } from "@/contexts/ModalProvider";
-import { getMyCollectionListAPI, toggleMediaItemAPI } from "@/lib/APIs";
-import { AWS_BASE_URL } from "@/lib/consts";
-import { MyCollection, ToggleContentsRequest } from "@/lib/interfaces";
+import { getMyCollectionsAPI, toggleMediaItemAPI } from "@/lib/APIs";
+import { AWS_BASE_URL } from "@/constants";
+import { Collection, ToggleContentsReqDto } from "@/types/api-dtos";
 import Image from "next/image";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -20,16 +20,14 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
 }) => {
   const { openCreateNewCollectionModal } = useModal();
 
-  const [collectionsList, setCollecitonsList] = useState<MyCollection[]>([]);
+  const [collectionsList, setCollecitonsList] = useState<Collection[]>([]);
   const [search, setSearch] = useState("");
 
   const getMyCollectionList = async () => {
-    try {
-      const res = await getMyCollectionListAPI(mediaId ? { mediaId } : undefined);
-      console.log("### res : ", res);
-      setCollecitonsList(res.data || []);
-    } catch (error) {
-      console.error("error : ", error);
+    const res = await getMyCollectionsAPI(mediaId ? { mediaId } : undefined);
+    console.log("### res : ", res);
+    if (res.code == 200) {
+      setCollecitonsList(res.data);
     }
   };
 
@@ -40,7 +38,7 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
       return;
     }
 
-    const request: ToggleContentsRequest = {
+    const request: ToggleContentsReqDto = {
       collectionId,
       mediaId: mediaId ?? Number(mediaId),
     };

@@ -1,6 +1,6 @@
 export interface UserState {
   nickname?: string;
-  profileImageKey?: string;
+  profileImageKey?: string | null;
 }
 
 const STORAGE_KEY = "userState";

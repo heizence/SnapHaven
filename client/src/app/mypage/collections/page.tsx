@@ -13,28 +13,23 @@ import NoDataMessage from "@/components/ui/NoDataMessage";
 import {
   deleteCollectionAPI,
   getCollectionContentsAPI,
-  getMyCollectionListAPI,
-  updateCollectionAPI,
+  getMyCollectionsAPI,
+  editCollectionAPI,
 } from "@/lib/APIs";
-import { AWS_BASE_URL, ContentType, ITEM_REQUEST_LIMIT } from "@/lib/consts";
-import { useLoading } from "@/contexts/LoadingProvider";
-import { GetCollectionContents } from "@/lib/interfaces";
-import { MediaItem } from "@/app/page";
 
-type Collection = {
-  id: number;
-  name: string;
-  itemCount: number;
-  thumbnailKey: string;
-};
+import { useLoading } from "@/contexts/LoadingProvider";
+import { AWS_BASE_URL, ITEM_REQUEST_LIMIT } from "@/constants";
+import { ContentType } from "@/constants/enums";
+import { Collection, EditCollectionReqDto, GetCollectionContentsReqDto } from "@/types/api-dtos";
+import { Photo } from "@/types/data";
 
 export default function MyCollectionsPage() {
   const [isInit, setIsInit] = useState(true);
 
-  const [collectionFolders, setCollectionFolders] = useState<Collection[] | null>(null); // 상단 컬렉션 목록
+  const [collectionFolders, setCollectionFolders] = useState<Collection[]>([]); // 상단 컬렉션 목록
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null); // 선택된 컬렉션
 
-  const [allContents, setAllContents] = useState<MediaItem[]>([]);
+  const [allContents, setAllContents] = useState<Photo[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -56,24 +51,20 @@ export default function MyCollectionsPage() {
       showLoading();
     }
 
-    try {
-      const res = await getMyCollectionListAPI();
-      console.log("getMyCollectionList res : ", res);
+    const res = await getMyCollectionsAPI();
+    console.log("getMyCollectionList res : ", res);
 
-      if (res.code === 200) {
-        setCollectionFolders(res.data);
+    if (res.code === 200) {
+      const data = res.data;
+      setCollectionFolders(data);
 
-        if (res.data.length > 0) {
-          const firstCollection = res.data[0];
-          await getCollectionContents(firstCollection);
-        }
+      if (data.length > 0) {
+        const firstCollection = data[0];
+        await getCollectionContents(firstCollection);
       }
-    } catch (error) {
-      console.error("getMyCollectionList error : ", error);
-    } finally {
-      hideLoading();
-      setIsInit(false);
     }
+    hideLoading();
+    setIsInit(false);
   };
 
   // 각 컬렉션 내 콘텐츠 불러오기
@@ -84,7 +75,7 @@ export default function MyCollectionsPage() {
   ) => {
     setSelectedCollection(_collection); // 기본 선택
 
-    const request: GetCollectionContents = {
+    const request: GetCollectionContentsReqDto = {
       collectionId: _collection.id,
       page: forcedPage ?? page,
     };
@@ -104,8 +95,7 @@ export default function MyCollectionsPage() {
         keyImageLarge: item.keyImageLarge,
         keyImageMedium: item.keyImageMedium,
         keyImageSmall: item.keyImageSmall,
-        keyVideoPreview: item.type === ContentType.VIDEO && item.keyVideoPreview,
-        keyVideoPlayback: item.type === ContentType.VIDEO && item.keyVideoPlayback,
+        keyVideoPreview: item.type === ContentType.VIDEO ? item.keyVideoPreview : null,
       }));
 
       if (isRefresh) {
@@ -122,7 +112,7 @@ export default function MyCollectionsPage() {
     }
   };
 
-  const handleItemOnclick = (photo: any) => {
+  const handleItemOnclick = (photo: Photo) => {
     if (isEditMode) {
       // 편집 모드일 때는 선택 상태 토글
       setSelectedItemKeys((prev) =>
@@ -154,7 +144,7 @@ export default function MyCollectionsPage() {
     const res = await deleteCollectionAPI(selectedCollection.id);
     //console.log("## deleted collection res : ", res);
     if (res.code === 202) {
-      let temp = [...collectionFolders!];
+      let temp = [...collectionFolders];
       temp = temp.filter((each) => each.id !== res.data?.deletedCollectionId);
       setCollectionFolders(temp);
       setSelectedCollection(null);
@@ -172,49 +162,46 @@ export default function MyCollectionsPage() {
   const handleEditCollection = async () => {
     if (!selectedCollection) return;
 
-    try {
-      showLoading();
-      const request = {
-        collectionId: selectedCollection.id,
-        name: newCollectionName,
-      };
+    showLoading();
+    const request: EditCollectionReqDto = {
+      collectionId: selectedCollection.id,
+      name: newCollectionName,
+    };
 
-      const res = await updateCollectionAPI(request);
-      console.log("## res : ", res);
-      if (res.code === 200) {
-        const editedCollection = res.data;
+    const res = await editCollectionAPI(request);
+    console.log("## res : ", res);
+    if (res.code === 200) {
+      const editedCollection = res.data;
 
-        setSelectedCollection(editedCollection);
+      setSelectedCollection((prev) => ({
+        ...prev!,
+        name: editedCollection.name,
+      }));
 
-        const temp = [...collectionFolders];
-        const editedColIndex = collectionFolders?.findIndex(
-          (each) => each.id === editedCollection.id
-        );
+      const temp = [...collectionFolders];
+      const editedColIndex = collectionFolders?.findIndex(
+        (each) => each.id === editedCollection.id
+      );
 
-        if (editedColIndex !== -1) {
-          temp[editedColIndex] = {
-            ...editedCollection,
-            thumbnailKey: temp[editedColIndex].thumbnailKey,
-          };
-          setCollectionFolders([...temp]);
-        }
+      if (editedColIndex !== -1) {
+        temp[editedColIndex] = {
+          ...editedCollection,
+          thumbnailKey: temp[editedColIndex].thumbnailKey,
+        };
+        setCollectionFolders([...temp]);
       }
-
-      // 프론트엔드 즉시 반영(추후 구현)
-      // setAllContents((prev) =>
-      //   prev.filter((item) => !selectedItemKeys.includes(item.key as number))
-      // );
-      // setSelectedItemKeys([]);
-      // setIsEditMode(false);
-
-      // 상단 폴더 카운트 업데이트 로직 추가 필요
-    } catch (error) {
-      alert(error.message || "에러가 발생했습니다.");
-      console.error(error);
-    } finally {
-      hideLoading();
-      setIsEditMode(false);
     }
+
+    // 프론트엔드 즉시 반영(추후 구현)
+    // setAllContents((prev) =>
+    //   prev.filter((item) => !selectedItemKeys.includes(item.key as number))
+    // );
+    // setSelectedItemKeys([]);
+    // setIsEditMode(false);
+
+    // 상단 폴더 카운트 업데이트 로직 추가 필요
+    hideLoading();
+    setIsEditMode(false);
   };
 
   useEffect(() => {
@@ -268,7 +255,7 @@ export default function MyCollectionsPage() {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">목록</h2>
             {/* 컬렉션 목록 그리드 */}
 
-            {collectionFolders && collectionFolders.length === 0 ? (
+            {collectionFolders.length === 0 ? (
               <div className="mt-10">
                 <NoDataMessage
                   message="컬렉션이 없습니다"
@@ -278,7 +265,7 @@ export default function MyCollectionsPage() {
             ) : (
               <div className="h-70 overflow-x-auto custom-scrollbar p-2">
                 <div className="flex flex-row flex-nowrap gap-4">
-                  {collectionFolders?.map((folder) => (
+                  {collectionFolders.map((folder) => (
                     <button
                       key={folder.id}
                       onClick={() => getCollectionContents(folder, 1, true)}
@@ -369,7 +356,7 @@ export default function MyCollectionsPage() {
               {allContents.length > 0 && (
                 <RenderContents
                   photos={allContents}
-                  onClick={({ photo }: { photo: MediaItem }) => handleItemOnclick(photo)}
+                  onClick={({ photo }: { photo: Photo }) => handleItemOnclick(photo)}
                 />
               )}
 

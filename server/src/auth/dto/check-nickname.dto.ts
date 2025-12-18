@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, MaxLength, MinLength } from 'class-validator';
 
-export class CheckNicknameDto {
+export class CheckNicknameReqDto {
   @ApiProperty({
     example: 'testnickname',
     description: '중복 확인할 닉네임 (2~20자)',

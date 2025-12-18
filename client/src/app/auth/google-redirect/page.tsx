@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { googleAuthAPI } from "@/lib/APIs";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
+import { GoogleAuthReqDto } from "@/types/api-dtos";
 
 export default function GoogleRedirectPage() {
   const router = useRouter();
@@ -46,7 +47,8 @@ export default function GoogleRedirectPage() {
 
     try {
       // ID Token을 Next.js BFF 프록시로 전송
-      const res = await googleAuthAPI({ accessToken });
+      const request: GoogleAuthReqDto = { accessToken };
+      const res = await googleAuthAPI(request);
       const { nickname, profileImageKey } = res.data;
 
       CustomLocalStorage.saveUserInfo({ nickname, profileImageKey });

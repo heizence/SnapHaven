@@ -14,13 +14,12 @@ import { AuthProvider } from 'src/common/enums';
 import { OAuth2Client } from 'google-auth-library';
 import { User } from 'src/users/entities/user.entity';
 
-import { SigninDto } from './dto/signin.dto';
-import { SignUpDto } from './dto/signup.dto';
-import { CheckNicknameDto } from './dto/check-nickname.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { GoogleAuthDto } from './dto/google-auth.dto';
-import { SigninResponseDto } from './dto/signin-response.dto';
+import { SigninReqDto, SigninResDto } from './dto/signin.dto';
+import { SignUpReqDto } from './dto/signup.dto';
+import { CheckNicknameReqDto } from './dto/check-nickname.dto';
+import { ResetPasswordReqDto } from './dto/reset-password.dto';
+import { SendResetPWlinkReqDto } from './dto/send-resetpw-link.dto';
+import { GoogleAuthReqDto } from './dto/google-auth.dto';
 
 interface ServiceResDto {
   message: string;
@@ -80,10 +79,8 @@ export class AuthService {
   }
 
   // 로그인
-  async signin(
-    signinDto: SigninDto,
-  ): Promise<ServiceResDto & SigninResponseDto> {
-    const { email, password } = signinDto;
+  async signin(dto: SigninReqDto): Promise<ServiceResDto & SigninResDto> {
+    const { email, password } = dto;
 
     const user = await this.usersService.findByEmail(email);
     if (!user) {
@@ -121,7 +118,7 @@ export class AuthService {
   }
 
   // 회원가입
-  async signUp(signUpDto: SignUpDto): Promise<ServiceResDto> {
+  async signUp(signUpDto: SignUpReqDto): Promise<ServiceResDto> {
     const { email, nickname, password } = signUpDto;
 
     // 이메일 중복 확인
@@ -150,9 +147,9 @@ export class AuthService {
 
   // 구글 로그인, 회원가입
   async googleAuth(
-    googleAuthDto: GoogleAuthDto,
-  ): Promise<ServiceResDto & SigninResponseDto> {
-    const { accessToken } = googleAuthDto;
+    dto: GoogleAuthReqDto,
+  ): Promise<ServiceResDto & SigninResDto> {
+    const { accessToken } = dto;
 
     const response = await fetch(
       'https://www.googleapis.com/oauth2/v3/userinfo',
@@ -226,11 +223,9 @@ export class AuthService {
   }
 
   // 닉네임 중복 확인
-  async checkNickname(
-    checkNicknameDto: CheckNicknameDto,
-  ): Promise<ServiceResDto> {
+  async checkNickname(dto: CheckNicknameReqDto): Promise<ServiceResDto> {
     const existingNickname = await this.usersService.findByNickname(
-      checkNicknameDto.nickname,
+      dto.nickname,
     );
     if (existingNickname) {
       throw new ConflictException('이미 사용 중인 닉네임입니다.');
@@ -239,10 +234,10 @@ export class AuthService {
   }
 
   // 비밀번호 재설정 요청(이메일로 재설정 링크만 보내줌. 재설정은 별도로 진행)
-  async forgotPassword(
-    forgotPasswordDto: ForgotPasswordDto,
+  async sendResetPasswordLink(
+    dto: SendResetPWlinkReqDto,
   ): Promise<ServiceResDto> {
-    const { email } = forgotPasswordDto;
+    const { email } = dto;
     const user = await this.usersService.findByEmail(email);
     console.log('email : ', email);
     // 보안: 유저가 존재하지 않아도, 존재 여부를 알려주지 않기 위해 항상 성공처럼 응답한다.(User Enumeration 방지)
@@ -287,10 +282,8 @@ export class AuthService {
   }
 
   // 비밀번호 재설정
-  async resetPassword(
-    resetPasswordDto: ResetPasswordDto,
-  ): Promise<ServiceResDto> {
-    const { token, newPassword } = resetPasswordDto;
+  async resetPassword(dto: ResetPasswordReqDto): Promise<ServiceResDto> {
+    const { token, newPassword } = dto;
 
     let payload: { sub: number; purpose: string };
 

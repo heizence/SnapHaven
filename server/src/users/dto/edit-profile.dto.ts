@@ -7,7 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 
-export class UpdateProfileDto {
+export class EditProfileReq {
   // 현재 비밀번호
   @IsOptional()
   @IsString({ message: '기존 비밀번호는 문자열 형식이어야 합니다.' })

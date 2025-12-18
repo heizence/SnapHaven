@@ -14,7 +14,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { ResponseDto } from "@/lib/ResponseDto";
+import { ResponseDto } from "@/types/ResponseDto";
 import { serializeAuthCookies } from "@/lib/authCookieUtils";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

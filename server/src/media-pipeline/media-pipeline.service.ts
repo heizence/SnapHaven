@@ -22,8 +22,12 @@ import {
   MediaProcessorService,
   ProcessedKeys,
 } from './media-processor.service';
-import { RequestUrlsDto } from 'src/upload/dto/request-urls.dto';
+import {
+  GetMediaPresignedUrlReqDto,
+  PresignedUrlInfo,
+} from 'src/upload/dto/get-presigned-url.dto';
 import { AlbumsService } from 'src/albums/albums.service';
+import { RequestFileProcessingReqDto } from 'src/upload/dto/request-file-processing.dto';
 
 @Injectable()
 export class MediaPipelineService {
@@ -57,10 +61,10 @@ export class MediaPipelineService {
   // 파일 업로드 준비(presigned url 발급 및 메타데이터 저장)
   async readyToUpload(
     ownerId: number,
-    dto: RequestUrlsDto,
+    dto: GetMediaPresignedUrlReqDto,
   ): Promise<{
     message: string;
-    urls: Array<{ fileIndex: number; signedUrl: string; s3Key: string }>;
+    urls: PresignedUrlInfo[];
     albumId?: number;
   }> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -146,11 +150,12 @@ export class MediaPipelineService {
   }
 
   // 클라이언트에서 s3 key 를 보내줬을 때 이후 파일 처리 작업 진행
-  async requestProcessing(
+  async requestFileProcessing(
     ownerId: number,
-    s3Keys: string[],
-    albumId?: number,
+    dto: RequestFileProcessingReqDto,
   ): Promise<{ message: string }> {
+    const { s3Keys, albumId } = dto;
+
     // [DB 조회] 클라이언트가 업로드 완료를 알린 S3 Key를 기반으로 PENDING 레코드를 조회
     const mediaItems = await this.mediaItemRepository.find({
       where: {
