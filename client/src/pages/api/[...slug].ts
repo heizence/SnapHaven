@@ -23,6 +23,9 @@ import FormData from "form-data";
 import getRawBody from "raw-body";
 import { clearAuthCookies } from "@/lib/authCookieUtils";
 
+// 요청 path 가 다음 중 하나에 해당 시 쿠키 삭제해 주기
+const pathsToCleanCookies = ["users/me/delete"];
+
 export const config = {
   api: {
     bodyParser: false, // multipart/form-data 처리를 위해 비활성화
@@ -46,8 +49,8 @@ async function handleMultipart(req: NextApiRequest, res: NextApiResponse, target
     });
   });
 
-  console.log("[...slug.ts]fields : ", fields);
-  console.log("[...slug.ts]files : ", files);
+  // console.log("[...slug.ts]fields : ", fields);
+  // console.log("[...slug.ts]files : ", files);
 
   const uploadedFiles = files.files || files.file;
   const fileArray = Array.isArray(uploadedFiles)
@@ -83,7 +86,7 @@ async function handleMultipart(req: NextApiRequest, res: NextApiResponse, target
   }
 
   console.log("[...slug.ts]req.method :", req.method);
-  console.log("[...slug.ts]formData :", formData);
+  //console.log("[...slug.ts]formData :", formData);
   // NestJS 호출
   let apiRes;
   try {
@@ -103,7 +106,12 @@ async function handleMultipart(req: NextApiRequest, res: NextApiResponse, target
 }
 
 // JSON 요청 포워딩
-async function handleJson(req: NextApiRequest, res: NextApiResponse, targetUrl: string) {
+async function handleJson(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  targetUrl: string,
+  path: string
+) {
   console.log("[...slug.ts]handleJson start.");
   const accessToken = req.cookies.accessToken;
 
@@ -118,18 +126,14 @@ async function handleJson(req: NextApiRequest, res: NextApiResponse, targetUrl: 
     body = raw.length ? JSON.parse(raw.toString("utf-8")) : undefined;
   }
 
-  console.log("[...slug.ts]body :", body);
-
   const apiRes = await serverAxiosInstance(targetUrl, {
     method: req.method,
     headers,
     data: body,
   });
-  console.log("[...slug.ts]apiRes :", apiRes);
 
-  // 계정 삭제 요청일 경우 저장된 쿠키(토큰) 삭제해 주기
-  if (targetUrl.includes("users/me/delete")) {
-    console.log("[...slug.ts]clear cookies");
+  // 특정 요청 시 쿠키(토큰) 삭제해 주기
+  if (pathsToCleanCookies.includes(path)) {
     // NestJS 요청 성공 여부와 "상관없이" 쿠키를 삭제
     const deletedCookies = clearAuthCookies();
     res.setHeader("Set-Cookie", deletedCookies);
@@ -139,7 +143,6 @@ async function handleJson(req: NextApiRequest, res: NextApiResponse, targetUrl: 
 
 // main proxy handler
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log("[...slug.ts]start handler");
   const { slug } = req.query;
   const path = (slug as string[]).join("/");
 
@@ -147,21 +150,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const queryString = queryIndex >= 0 ? req.url!.substring(queryIndex) : "";
 
   const targetUrl = `${BASE_URL}/${path}${queryString}`;
-  console.log("[...slug.ts]targeturl :", targetUrl);
 
   try {
     const contentType = req.headers["content-type"] || "";
-    console.log("[...slug.ts]contentType :", contentType);
-
-    // multipart/form-data
-    if (contentType.includes("multipart/form-data")) {
-      return await handleMultipart(req, res, targetUrl);
-    }
-
-    // 그 외 → JSON 포워딩
-    return await handleJson(req, res, targetUrl);
+    if (contentType.includes("multipart/form-data")) await handleMultipart(req, res, targetUrl);
+    else await handleJson(req, res, targetUrl, path);
   } catch (error) {
-    console.error("BFF Proxy Error:", error.response.data);
+    //    console.error("BFF Proxy Error:", error.response.data);
     return res
       .status(error.status)
       .json(
