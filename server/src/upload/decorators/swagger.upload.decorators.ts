@@ -3,151 +3,126 @@ import {
   ApiOperation,
   ApiAcceptedResponse,
   ApiResponse,
+  ApiExtraModels,
   getSchemaPath,
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiBody,
 } from '@nestjs/swagger';
 import { ResponseDto } from 'src/common/dto/response.dto';
+import {
+  GetMediaPresignedUrlReqDto,
+  GetMediaPresignedUrlResDto,
+  RequestFileDto,
+  PresignedUrlInfo,
+} from '../dto/get-presigned-url.dto';
 
-export function ApiContentUpload(
-  summary: string,
-  description: string,
-  isVideo: boolean = false,
-  isMultiple: boolean = false,
-) {
-  const fileFieldName = isMultiple ? 'files' : 'file';
-  const mediaIdKey = isMultiple ? 'mediaIds' : 'mediaId';
-  const bodySchema = {
-    type: 'object',
-    properties: {
-      [fileFieldName]: {
-        type: 'array',
-        items: { type: 'string', format: 'binary' },
-        description: `업로드할 ${isVideo ? '비디오' : '이미지'} 파일${isMultiple ? ' 목록' : ''}`,
-      },
-      title: { type: 'string', description: '미디어 제목 (최대 30자)' },
-      description: {
-        type: 'string',
-        description: '미디어 상세 설명 (최대 500자, 선택 사항)',
-      },
-      tags: { type: 'string', description: '태그 (쉼표 구분, 선택 사항)' },
-    },
-    required: [fileFieldName, 'title'],
-  };
-
-  //  mediaId/mediaIds의 예시 값 결정
-  const mediaIdExample = isMultiple ? [123, 124] : 123;
-  const mediaIdType = isMultiple ? 'array' : 'number';
-
+export function ApiGetMediaPresignedUrls() {
   return applyDecorators(
-    //  인증 필수
-    ApiBearerAuth('bearerAuth'),
-    ApiResponse({
-      status: 401,
-      description: '인증 실패 (JWT Access Token 필요)',
-      schema: {
-        allOf: [
-          { $ref: getSchemaPath(ResponseDto) },
-          { properties: { data: { type: 'null' } } },
-        ],
-        example: {
-          code: 401,
-          message: '인증 실패 (JWT Access Token 필요)',
-          data: null,
-        },
-      },
+    // 중첩된 모든 DTO 모델을 등록해야 getSchemaPath가 작동합니다.
+    ApiExtraModels(
+      ResponseDto,
+      GetMediaPresignedUrlReqDto,
+      GetMediaPresignedUrlResDto,
+      RequestFileDto,
+      PresignedUrlInfo,
+    ),
+    ApiOperation({
+      summary: 'S3 Presigned URL 발급 및 업로드 준비',
+      description: [
+        '클라이언트가 업로드할 파일 정보들을 배열로 보내면, 서버는 각 파일에 대응하는 S3 업로드용 URL을 생성하여 반환합니다.',
+        '이 과정에서 DB에는 PENDING 상태의 미디어 레코드가 생성됩니다.',
+      ].join('<br>'),
     }),
-
-    // Multipart/form-data 명시
-    ApiConsumes('multipart/form-data'),
-    ApiBody({ schema: bodySchema }),
-
-    // 파일 제한 검증
-    ApiResponse({
-      status: 413,
-      description: `용량 초과 (최대 ${isVideo ? '200MB' : '20MB'})`,
-      schema: {
-        allOf: [
-          { $ref: getSchemaPath(ResponseDto) },
-          { properties: { data: { type: 'null' } } },
-        ],
-        example: {
-          code: 413,
-          message: '각 파일 용량은 최대 20MB 까지 허용됩니다.',
-          data: null,
-        },
-      },
-    }),
-    ...(isVideo
-      ? [
-          ApiResponse({
-            status: 400,
-            description: '영상 길이 초과 (60초 초과)',
-            schema: {
-              allOf: [
-                { $ref: getSchemaPath(ResponseDto) },
-                { properties: { data: { type: 'null' } } },
-              ],
-              example: {
-                code: 409,
-                message: '영상 길이는 최대 60초까지 허용됩니다.',
-                data: null,
-              },
-            },
-          }),
-        ]
-      : []),
-
-    // [성공] 비동기 처리 시작
     ApiAcceptedResponse({
-      description: '업로드 접수 및 백그라운드 처리 시작',
+      description: 'Presigned URL 발급 성공',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
           {
             properties: {
-              code: { type: 'number', example: 202 },
-              data: {
-                type: 'object',
-                properties: {
-                  // 동적 키와 타입 정의
-                  [mediaIdKey]: {
-                    type: mediaIdType,
-                    items: isMultiple ? { type: 'number' } : undefined,
-                    example: mediaIdExample,
-                  },
-                },
-              },
+              data: { $ref: getSchemaPath(GetMediaPresignedUrlResDto) },
             },
           },
         ],
+        // DTO 구조에 맞춘 구체적인 예시
         example: {
           code: 202,
-          message: 'Upload accepted, processing started.',
-          data: isMultiple
-            ? { mediaIds: mediaIdExample }
-            : { mediaId: mediaIdExample }, // 예시 데이터
+          message: '업로드 준비 및 Presigned Url 발급 완료',
+          data: {
+            urls: [
+              {
+                fileIndex: 0,
+                signedUrl:
+                  'https://snap-haven-bucket.s3.amazonaws.com/media-items/...',
+                s3Key: 'media-items/uuid-1.jpg',
+              },
+              {
+                fileIndex: 1,
+                signedUrl:
+                  'https://snap-haven-bucket.s3.amazonaws.com/media-items/...',
+                s3Key: 'media-items/uuid-2.jpg',
+              },
+            ],
+            albumId: 42, // 단일 파일 업로드 시 null이거나 생략될 수 있음
+          },
         },
       },
     }),
-
-    ApiOperation({ summary, description }),
+    ApiResponse({
+      status: 400,
+      description: '지원하지 않는 형식 또는 유효성 검사 실패',
+      schema: {
+        allOf: [{ $ref: getSchemaPath(ResponseDto) }],
+        example: {
+          code: 400,
+          message: '지원하지 않는 형식입니다. (이미지/비디오만 가능)',
+          data: null,
+        },
+      },
+    }),
   );
 }
 
-export const ApiUploadImages = () =>
-  ApiContentUpload(
-    '이미지 묶음 (앨범) 업로드',
-    '이미지 파일 배열과 메타데이터를 받아 백그라운드 처리를 요청합니다.',
-    false,
-    true,
+export function ApiRequestFileProcessing() {
+  return applyDecorators(
+    ApiExtraModels(ResponseDto),
+    ApiOperation({
+      summary: '업로드 완료 후 파일 처리(파이프라인) 시작 요청',
+      description: [
+        '클라이언트가 S3 업로드를 마친 후 호출합니다.',
+        '서버는 해당 파일의 상태를 PROCESSING으로 변경하고 비동기 변환(썸네일 생성, 트랜스코딩 등) 파이프라인을 가동합니다.',
+      ].join('<br>'),
+    }),
+    ApiAcceptedResponse({
+      description: '파이프라인 시작 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+        example: {
+          code: 202,
+          message: '파일 백그라운드 처리 중',
+          data: null,
+        },
+      },
+    }),
+    ApiResponse({
+      status: 400,
+      description: '잘못된 요청',
+      content: {
+        'application/json': {
+          schema: { $ref: getSchemaPath(ResponseDto) },
+          examples: {
+            '유효하지 않은 키': {
+              value: {
+                code: 400,
+                message:
+                  '완료할 유효한 PENDING 상태의 미디어 항목을 찾을 수 없습니다.',
+                data: null,
+              },
+            },
+          },
+        },
+      },
+    }),
   );
-
-export const ApiUploadVideo = () =>
-  ApiContentUpload(
-    '비디오 단일 업로드',
-    '비디오 파일과 메타데이터를 받아 백그라운드 처리를 요청합니다.',
-    true,
-    false,
-  );
+}

@@ -336,7 +336,7 @@ export class UsersService {
   ): Promise<{ message: string }> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      select: ['id', 'password_hash', 'authProvider'],
+      select: ['id', 'password_hash', 'authProvider', 'nickname'],
     });
 
     if (!user) {
@@ -360,7 +360,6 @@ export class UsersService {
     }
 
     await this.usersRepository.softDelete(userId);
-
     return {
       message: '계정이 삭제되었습니다.',
     };

@@ -45,10 +45,7 @@ export class AuthController {
   @Post('signin')
   @HttpCode(HttpStatus.OK)
   @ApiSignin()
-  async signin(
-    @Body() dto: SigninReqDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseDto<SigninResDto>> {
+  async signin(@Body() dto: SigninReqDto): Promise<ResponseDto<SigninResDto>> {
     const { message, accessToken, refreshToken, nickname, profileImageKey } =
       await this.authService.signin(dto);
 
@@ -65,11 +62,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiSignout()
-  async signout(
-    @Req() req,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<ResponseDto<null>> {
-    const user = req.user as User;
+  async signout(@Req() req: { user: User }): Promise<ResponseDto<null>> {
+    const user = req.user;
     const serviceRes = await this.authService.signout(user.id);
 
     return ResponseDto.successWithoutData(HttpStatus.OK, serviceRes.message);
@@ -81,10 +75,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiRefreshToken()
   async refreshTokens(
-    @Req() req,
-    @Res({ passthrough: true }) res: Response,
+    @Req() req: { user: User },
   ): Promise<ResponseDto<{ accessToken: string; refreshToken: string }>> {
-    const user = req.user as User;
+    const user = req.user;
 
     const { accessToken, refreshToken, message } =
       await this.authService.refreshTokens(user);
@@ -112,10 +105,7 @@ export class AuthController {
   @Post('google')
   @HttpCode(HttpStatus.OK)
   @ApiGoogleAuth()
-  async googleAuth(
-    @Body() dto: GoogleAuthReqDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<
+  async googleAuth(@Body() dto: GoogleAuthReqDto): Promise<
     ResponseDto<{
       accessToken: string;
       refreshToken: string;

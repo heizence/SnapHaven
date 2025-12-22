@@ -5,6 +5,7 @@ import {
   ApiQuery,
   ApiResponse,
   getSchemaPath,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { MediaSort } from 'src/media-items/dto/get-media-items.dto';
 import {
@@ -53,7 +54,7 @@ export function ApiMediaFeed() {
       example: '여행',
     }),
     ApiOkResponse({
-      description: '성공적으로 미디어 목록 반환',
+      description: '성공적으로 피드 목록 반환',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -68,7 +69,7 @@ export function ApiMediaFeed() {
         ],
         example: {
           code: 200,
-          message: '미디어 피드 조회 성공',
+          message: '전체 콘텐츠 불러오기 성공',
           data: PaginatedMediaItemsExample,
         },
       },
@@ -80,9 +81,8 @@ export function ApiMediaFeed() {
 export function ApiMediaDetail() {
   return applyDecorators(
     ApiOperation({
-      summary: '단일 콘텐츠 상세 조회',
-      description:
-        '콘텐츠 ID를 사용하여 상세 정보, 태그, 통계 데이터를 조회합니다.',
+      summary: '단일 미디어 아이템 상세 조회',
+      description: '단일 미디어 아이템의 상세 정보를 조회합니다.',
     }),
 
     ApiResponse({
@@ -102,7 +102,7 @@ export function ApiMediaDetail() {
       },
       example: ResponseDto.success(
         HttpStatus.OK,
-        '콘텐츠 상세 조회 성공',
+        '미디어 아이템 상세 조회 성공',
         MediaItemDetailExample,
       ),
     }),
@@ -110,7 +110,7 @@ export function ApiMediaDetail() {
     // 응답 실패 형식
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: '콘텐츠를 찾을 수 없음.',
+      description: '해당 콘텐츠를 찾을 수 없음.',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -119,7 +119,7 @@ export function ApiMediaDetail() {
       },
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
-        '요청하신 콘텐츠를 찾을 수 없습니다.',
+        '요청하신 콘텐츠를 찾을 수 없거나 삭제되었습니다.',
         null,
       ),
     }),
@@ -132,7 +132,7 @@ export function ApiAlbumDetail() {
     ApiOperation({
       summary: '앨범 상세 조회',
       description:
-        '앨범 ID를 사용하여 앨범 정보와 포함된 모든 ACTIVE 콘텐츠 목록을 조회합니다. 로그인된 경우 좋아요 상태를 포함합니다.',
+        '앨범 ID를 사용하여 앨범 상세 정보와 포함된 하위 아이템 목록을 조회합니다.',
     }),
 
     ApiResponse({
@@ -152,7 +152,7 @@ export function ApiAlbumDetail() {
       },
       example: ResponseDto.success(
         HttpStatus.OK,
-        '앨범 상세 정보 조회 성공',
+        '앨범 상세 조회 성공',
         AlbumDetailExample,
       ),
     }),
@@ -169,7 +169,7 @@ export function ApiAlbumDetail() {
       },
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
-        '요청하신 앨범을 찾을 수 없습니다.',
+        '요청하신 앨범을 찾을 수 없거나 삭제되었습니다.',
         null,
       ),
     }),
@@ -219,7 +219,7 @@ export function ApiGetItemDownloadUrl() {
       },
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
-        '요청하신 콘텐츠를 찾을 수 없습니다.',
+        '다운로드 가능한 콘텐츠를 찾을 수 없습니다.',
         null,
       ),
     }),
@@ -274,6 +274,7 @@ export function ApiDownloadAlbum() {
 // 콘텐츠 좋아요 토글 기능
 export function ApiLikeToggle() {
   return applyDecorators(
+    ApiExtraModels(ResponseDto),
     ApiOperation({
       summary: '콘텐츠(단일 아이템, 앨범) 좋아요/취소',
       description:
@@ -281,19 +282,29 @@ export function ApiLikeToggle() {
     }),
 
     ApiResponse({
-      status: HttpStatus.CREATED,
+      status: 201,
       description: '좋아요 상태 변경 성공',
-      schema: {
-        allOf: [
-          { $ref: getSchemaPath(ResponseDto) },
-          { properties: { data: { type: 'LikeToggleResponseDto' } } },
-        ],
+      content: {
+        'application/json': {
+          schema: { $ref: getSchemaPath(ResponseDto) },
+          examples: {
+            좋아요: {
+              value: {
+                code: 201,
+                message: '좋아요 취소 처리가 완료되었습니다.',
+                data: { isLiked: true },
+              },
+            },
+            '좋아요 취소': {
+              value: {
+                code: 201,
+                message: '좋아요 취소 처리가 취소되었습니다.',
+                data: { isLiked: false },
+              },
+            },
+          },
+        },
       },
-      example: ResponseDto.success(
-        HttpStatus.CREATED,
-        '좋아요 상태 변경 성공',
-        { isLiked: true },
-      ),
     }),
 
     // 응답 실패 형식
@@ -308,7 +319,7 @@ export function ApiLikeToggle() {
       },
       example: ResponseDto.fail(
         HttpStatus.UNAUTHORIZED,
-        '인증 정보 없음',
+        '로그인된 사용자만 좋아요를 누를 수 있습니다.',
         null,
       ),
     }),
@@ -324,7 +335,7 @@ export function ApiLikeToggle() {
       },
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
-        '사용자 또는 콘텐츠를 찾을 수 없음',
+        '사용자 또는 콘텐츠를 찾을 수 없습니다.',
         null,
       ),
     }),
