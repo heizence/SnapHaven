@@ -89,6 +89,8 @@ export class User {
   likedAlbums: Album[];
 
   // Collection 과의 One-to-Many 관계 (역방향)
-  @OneToMany(() => Collection, (collection) => collection.owner)
+  @OneToMany(() => Collection, (collection) => collection.owner, {
+    onDelete: 'CASCADE',
+  })
   collections: Collection[];
 }

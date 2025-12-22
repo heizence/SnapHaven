@@ -6,7 +6,6 @@ import {
   ManyToMany,
   JoinColumn,
   JoinTable,
-  DeleteDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
@@ -37,16 +36,15 @@ export class Collection {
   })
   updatedAt: Date;
 
-  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
-  deletedAt: Date | null;
-
   // User 와의 Many-to-One 관계
   @ManyToOne(() => User, (user) => user.collections)
   @JoinColumn({ name: 'user_id' })
   owner: User;
 
   // MediaItem과의 Many-to-Many 관계
-  @ManyToMany(() => MediaItem, (mediaItem) => mediaItem.collections)
+  @ManyToMany(() => MediaItem, (mediaItem) => mediaItem.collections, {
+    onDelete: 'CASCADE',
+  })
   @JoinTable({
     name: 'collection_media_items',
     joinColumn: {

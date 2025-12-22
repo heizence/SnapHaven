@@ -12,7 +12,6 @@ import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { Tag } from 'src/tags/entities/tag.entity';
 import { ContentStatus } from 'src/common/enums';
-import { Collection } from 'src/collections/entities/collection.entity';
 
 @Entity('albums')
 export class Album {

@@ -226,7 +226,6 @@ export class CollectionsService {
     // 컬렉션 이름 중복 확인 (사용자당 이름은 고유해야 함)
     const existingCollection = await this.collectionRepository.findOne({
       where: { name },
-      withDeleted: false,
     });
 
     if (existingCollection) {
@@ -314,7 +313,7 @@ export class CollectionsService {
     collectionId: number,
     userId: number,
   ): Promise<{ message: string; deletedCollectionId: number }> {
-    const result = await this.collectionRepository.softDelete({
+    const result = await this.collectionRepository.delete({
       id: collectionId,
       userId: userId,
     });

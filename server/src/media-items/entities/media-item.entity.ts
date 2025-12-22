@@ -6,6 +6,7 @@ import {
   ManyToMany,
   JoinColumn,
   JoinTable,
+  DeleteDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { Album } from 'src/albums/entities/album.entity';
@@ -49,6 +50,9 @@ export class MediaItem {
 
   @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.PENDING })
   status: ContentStatus;
+
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt: Date;
 
   @Column({ name: 's3_key_original', type: 'varchar', length: 2048 })
   s3KeyOriginal: string; // Private S3 Key
@@ -116,7 +120,9 @@ export class MediaItem {
   owner: User;
 
   // Album 과의 Many-to-One 관계
-  @ManyToOne(() => Album, (album) => album.mediaItems)
+  @ManyToOne(() => Album, (album) => album.mediaItems, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'album_id' })
   album: Album | null;
 
