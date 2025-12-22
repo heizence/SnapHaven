@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
@@ -223,6 +224,7 @@ export class S3UtilityService {
 
   /**
    * [DELETE] S3에서 객체를 삭제합니다. (롤백, 소프트 삭제 관리용)
+   * TODO : 추후 내 업로드 삭제 기능 추가 시 다시 작업하기
    */
   async deleteObject(
     bucket: 'originals' | 'assets',
@@ -248,5 +250,21 @@ export class S3UtilityService {
       `[S3 Utility Service - ${method}] Error: ${error.message}`,
       error,
     );
+  }
+
+  // 여러 데이터를 한 번에 지우기
+  async deleteObjects(keys: any[]) {
+    if (keys.length === 0) return;
+    const command = new DeleteObjectsCommand({
+      Bucket: this.ASSETS_BUCKET,
+      Delete: {
+        //Objects: keys.map((key) => ({ Key: key })),
+        Objects: keys.map((key) => {
+          if (typeof key === 'string') return { Key: key };
+          else return { Key: '' };
+        }),
+      },
+    });
+    return this.s3Client.send(command);
   }
 }

@@ -13,6 +13,7 @@ import { TagsModule } from './tags/tags.module';
 import { UploadModule } from './upload/upload.module';
 import { MediaItemsModule } from './media-items/media-items.module';
 import { CollectionsModule } from './collections/collections.module';
+import { BackgroundTaskModules } from './common/background-tasks/background-tasks.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { CollectionsModule } from './collections/collections.module';
     UploadModule,
     MediaItemsModule,
     CollectionsModule,
+    BackgroundTaskModules,
   ],
   controllers: [AppController],
   providers: [AppService],
