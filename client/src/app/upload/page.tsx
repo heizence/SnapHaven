@@ -11,10 +11,10 @@ import {
   validateImageFile,
   validateVideoFile,
 } from "@/lib/utils";
-import { Tag } from "@/lib/interfaces";
+
 import { useLoading } from "@/contexts/LoadingProvider";
-import { uploadFilesToS3 } from "./utils/uploadToS3";
-import { FileMetadata } from "@/types/api-dtos";
+import { uploadFilesToS3, uploadLargeVideoToS3 } from "./utils/uploadToS3";
+import { Tag } from "@/types/api-dtos";
 
 interface FileToUpload {
   fileOrigin: File;
@@ -237,47 +237,71 @@ export default function Page() {
     }
 
     showLoading();
+    const startTime = performance.now();
 
-    const fileMetadata: FileMetadata[] = files.map((f) => ({
-      name: f.name,
-      size: f.size,
-      type: f.type,
-      width: f.width,
-      height: f.height,
-    }));
+    try {
+      const fileMetadata = files.map((f) => ({
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        width: f.width,
+        height: f.height,
+      }));
 
-    const request = {
-      files: fileMetadata,
-      title: title,
-      description: description,
-      tags: tags,
-      isAlbumUpload: Boolean(files.length > 1 && uploadMode === "ALBUM") ? true : false,
-    };
-    const res = await getMediaPresignedUrlsAPI(request);
+      const request = {
+        files: fileMetadata,
+        title: title,
+        description: description,
+        tags: tags,
+        isAlbumUpload: files.length > 1 && uploadMode === "ALBUM",
+      };
 
-    if (res.code === 202) {
-      const { urls: signedUrls, albumId } = res.data!;
-      console.log("signedUrls : ", signedUrls);
-      console.log("albumId : ", albumId);
+      // 3. 서버에 Presigned URL / Multipart 세션 요청
+      // 서버는 영상 단일 파일일 때만 res.data.isMultipart = true를 준다고 가정합니다.
+      const res = await getMediaPresignedUrlsAPI(request);
+      console.log("[Upload] getMediaPresignedUrlsAPI res : ", res);
+      if (res.code === 202) {
+        const { urls, albumId, isMultipart, uploadId } = res.data;
+        console.log("");
+        let uploadedKeys: string[] = [];
 
-      const uploadedKeys = await uploadFilesToS3({
-        files: files.map((f) => f.fileOrigin),
-        presignedData: signedUrls,
-      });
+        if (isMultipart && uploadId) {
+          console.log("[Upload] 멀티파트 업로드 시작...");
+          const videoFile = files[0].fileOrigin;
 
+          // uploadLargeVideoToS3 내부에서 complete-multipart API 호출까지 완료한다고 가정
+          const s3Key = await uploadLargeVideoToS3({ file: videoFile, presignedData: urls[0] });
+          uploadedKeys.push(s3Key);
+        } else {
+          console.log("[Upload] 일반 병렬 업로드 시작...");
+          const uploadedFileKeys = await uploadFilesToS3({
+            files: files.map((f) => f.fileOrigin),
+            presignedData: urls,
+          });
+          uploadedKeys = uploadedFileKeys;
+        }
+        console.log("[Upload] uploadedKeys :", uploadedKeys);
+
+        // 이미지의 경우 필수이며, 영상의 경우 서버에서 complete-multipart 시 자동 처리해도 무방하지만
+        // 일관성을 위해 s3Keys를 전달하여 상태를 PENDING -> PROCESSING으로 바꿉니다.
+        await requestFileProcessingAPI({
+          s3Keys: uploadedKeys,
+          albumId: albumId,
+        });
+
+        const endTime = performance.now();
+        console.log(`⏱️ 전체 공정 소요 시간: ${((endTime - startTime) / 1000).toFixed(2)}초`);
+
+        hideLoading();
+        alert("파일 업로드가 완료되었습니다. 서버에서 처리를 시작합니다.");
+        clearAll();
+      } else {
+        throw new Error(res.message || "서버 응답 오류");
+      }
+    } catch (error: any) {
       hideLoading();
-      alert("파일 업로드가 접수되었습니다. 잠시 후 업로드가 완료됩니다.");
-      clearAll();
-
-      // s3 key 발급 후 서버에 파일 처리 요청 보내기
-      await requestFileProcessingAPI({
-        s3Keys: uploadedKeys,
-        albumId: albumId,
-      });
-    } else {
-      hideLoading();
-      const errorMessage = res.message || "업로드 처리 중 알 수 없는 오류가 발생했습니다.";
-      setUploadError(errorMessage);
+      console.error("[Upload Error]", error);
+      setUploadError(error.message || "업로드 중 오류가 발생했습니다.");
     }
   };
 

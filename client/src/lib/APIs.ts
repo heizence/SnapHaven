@@ -39,6 +39,11 @@ import {
   GetItemDownloadUrlReqDto,
   GetItemDownloadUrlResDto,
   requestAlbumDownloadReqDto,
+  initiateMultipartReqDto,
+  getPresignedPartsReqDto,
+  completeMultipartReqDto,
+  initiateMultipartResDto,
+  getPresignedPartsResDto,
 } from "@/types/api-dtos";
 
 /** 기본적인 API 요청 method 형식
@@ -325,6 +330,24 @@ export const getMediaPresignedUrlsAPI = (requestBody: GetMediaPresignedUrlReqDto
 // S3 key 생성 후 파일 처리 요청
 export const requestFileProcessingAPI = (requestBody: requestFileProcessingReqDto) =>
   postRequest<requestFileProcessingReqDto, null>("upload/request-processing", requestBody);
+
+// 영상 multipart 업로드 시작 요청
+export const initiateMultipartAPI = (requestBody: initiateMultipartReqDto) =>
+  postRequest<initiateMultipartReqDto, initiateMultipartResDto>(
+    `upload/initiate-multipart`,
+    requestBody
+  );
+
+// 영상 multipart 조각별 presigned url 받아오기 요청
+export const getPresignedPartsAPI = (requestBody: getPresignedPartsReqDto) =>
+  getRequest<getPresignedPartsReqDto, getPresignedPartsResDto>(
+    `upload/get-presigned-parts`,
+    requestBody
+  );
+
+// 영상 multipart 업로드 완료 처리 요청
+export const completeMultipartAPI = (requestBody: completeMultipartReqDto) =>
+  postRequest<completeMultipartReqDto, null>(`upload/complete-multipart`, requestBody);
 
 // 미디어 아이템 다운로드 url 발급 요청
 export const getItemDownloadUrlAPI = (requestBody: GetItemDownloadUrlReqDto) =>

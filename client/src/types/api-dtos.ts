@@ -103,7 +103,7 @@ export interface GetCollectionContentsResDto {
   name: string;
   userId: number;
   totalItems: number;
-  items: MediaItem[];
+  items: MediaItemDto[];
 }
 
 // 새 컬렉션 생성
@@ -277,12 +277,50 @@ export interface PresignedUrlInfo {
 export interface GetMediaPresignedUrlResDto {
   urls: PresignedUrlInfo[];
   albumId?: number;
+  isMultipart?: boolean;
+  uploadId?: string | number;
 }
 
 // S3 key 생성 후 파일 처리 요청
 export interface requestFileProcessingReqDto {
   s3Keys: string[];
   albumId?: number;
+}
+
+// 영상 multipart 업로드 시작
+export interface initiateMultipartReqDto {
+  fileName: string;
+  contentType: string;
+  s3Key: string;
+}
+export interface initiateMultipartResDto {
+  uploadId: string;
+  s3Key: string;
+}
+
+// 영상 multipart 조각별 presigned url 받아오기
+export interface getPresignedPartsReqDto {
+  uploadId: string;
+  s3Key: string;
+  //partNumbers: number[];
+  partNumbers: string; // "1,2,3,4,5" 형태
+}
+export interface getPresignedPartsResDto {
+  urls: {
+    partNumber: number;
+    url: string;
+  }[];
+}
+
+// 영상 multipart 업로드 완료 처리 요청
+export interface PartDto {
+  PartNumber: number;
+  ETag: string;
+}
+export interface completeMultipartReqDto {
+  uploadId: string;
+  s3Key: string;
+  parts: PartDto;
 }
 
 // 미디어 아이템 다운로드 url 발급 요청
