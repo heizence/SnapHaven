@@ -28,6 +28,7 @@ export type RawMediaItemResult = {
   media_key_image_large: string;
   media_key_video_preview: string;
   media_key_video_playback: string;
+  media_created_at: Date;
   user_nickname: string;
   album_id: number | null;
   likeCount: string;
@@ -145,11 +146,12 @@ export class MediaItemsService {
         { currentUserId },
       )
 
-      // 앨범 내에 포함된 아이템들 중 대표 콘텐츠 1건만 불러오기
+      // 앨범 내 아이템 중 대표 콘텐츠만 필터링
       .andWhere(
-        new Brackets((qb) => {
-          qb.where('media.albumId IS NULL') // 일반 개별 사진
-            .orWhere('media.isRepresentative = 1'); // 앨범의 대표 사진만
+        new Brackets((subQb) => {
+          subQb
+            .where('media.albumId IS NULL')
+            .orWhere('media.isRepresentative = 1');
         }),
       )
       .leftJoin('media.owner', 'user')
@@ -157,15 +159,10 @@ export class MediaItemsService {
       .leftJoin('media.tags', 'tag')
       .leftJoin('media.album', 'album')
 
-      // 타입 필터링
       .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type });
-
-    // 태그 필터링
     if (tag) {
       qb.andWhere('tag.name = :searchTag', { searchTag: tag });
     }
-
-    // [키워드 필터링] 제목 또는 설명에 키워드가 포함된 경우
     if (keyword) {
       const searchPattern = `%${keyword}%`;
       qb.andWhere(
@@ -195,20 +192,26 @@ export class MediaItemsService {
       'user.nickname',
       'album.id',
     ])
-      .addSelect('COUNT(likes.id)', 'likeCount')
+      // DISTINCT를 추가하여 조인으로 인한 중복 카운트 방지
+      .addSelect('COUNT(DISTINCT likes.id)', 'likeCount')
+      // 서브쿼리에 LIMIT 1을 추가하여 성능 최적화 및 결과 보장
       .addSelect(
         currentUserId
-          ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id)`
-          : `FALSE`, // 비로그인 시 NULL 반환
+          ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id LIMIT 1)`
+          : `FALSE`,
         'isLiked',
       )
-      .groupBy('media.id, user.id, user.nickname, media.createdAt');
+      .groupBy('media.id')
+      .addGroupBy('user.id')
+      .addGroupBy('album.id');
 
-    // 정렬
     if (sort === MediaSort.LATEST) {
-      qb.orderBy('media.createdAt', 'DESC');
+      qb.orderBy('media.createdAt', 'DESC').addOrderBy('media.id', 'DESC');
     } else if (sort === MediaSort.POPULAR) {
-      qb.orderBy('likeCount', 'DESC');
+      qb.orderBy('likeCount', 'DESC').addOrderBy('media.id', 'DESC');
+    } else {
+      // 기본 정렬값 명시
+      qb.orderBy('media.id', 'DESC');
     }
 
     qb.offset(offset).limit(limit);
@@ -225,6 +228,7 @@ export class MediaItemsService {
       keyImageLarge: rawItem.media_key_image_large,
       keyVideoPreview: rawItem.media_key_video_preview,
       keyVideoPlayback: rawItem.media_key_video_playback,
+      createdAt: rawItem.media_created_at,
       albumId: rawItem.album_id || null,
       isLikedByCurrentUser: rawItem.isLiked === 1,
     }));
