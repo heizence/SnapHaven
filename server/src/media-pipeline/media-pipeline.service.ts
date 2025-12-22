@@ -24,10 +24,17 @@ import {
 } from './media-processor.service';
 import {
   GetMediaPresignedUrlReqDto,
-  PresignedUrlInfo,
+  GetMediaPresignedUrlResDto,
 } from 'src/upload/dto/get-presigned-url.dto';
 import { AlbumsService } from 'src/albums/albums.service';
 import { RequestFileProcessingReqDto } from 'src/upload/dto/request-file-processing.dto';
+import {
+  GetPresignedPartsReqDto,
+  InitiateMultipartUploadReqDto,
+  CompleteMultipartUploadReqDto,
+  InitiateMultipartUploadResDto,
+  EachPresignedPartDto,
+} from 'src/upload/dto/multipart-upload.dto';
 
 @Injectable()
 export class MediaPipelineService {
@@ -64,8 +71,7 @@ export class MediaPipelineService {
     dto: GetMediaPresignedUrlReqDto,
   ): Promise<{
     message: string;
-    urls: PresignedUrlInfo[];
-    albumId?: number;
+    data: GetMediaPresignedUrlResDto;
   }> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -77,7 +83,9 @@ export class MediaPipelineService {
       const tagEntities = await this.tagsService.findTagsByName(tagsArray);
       const isAlbum = dto.isAlbumUpload && dto.files.length > 1;
 
-      console.log('ready to upload. dto : ', dto);
+      const isMultipart =
+        dto.files.length === 1 &&
+        this.determineContentType(dto.files[0].type) === ContentType.VIDEO;
 
       // 1. 앨범 생성
       if (isAlbum) {
@@ -90,56 +98,116 @@ export class MediaPipelineService {
         const savedAlbum = await queryRunner.manager.save(album);
         albumId = savedAlbum.id;
       }
+      // media-items/5b09098d-7981-48b7-81bd-8ef6a532bd55.mp4
+      let resultUrls: any[] = [];
+      let globalUploadId: string | undefined = undefined;
+      if (isMultipart) {
+        /**
+         * [CASE 1] Multipart Upload (단일 영상)
+         */
+        const file = dto.files[0];
+        const fileExtension = file.name.split('.').pop() || 'mp4';
+        const s3Key = `media-items/${uuidv4()}.${fileExtension}`;
+        console.log('[readyToupload] file s3key : ', s3Key);
+        // S3 Multipart 세션 시작 및 UploadId 발급
+        const multipartSession =
+          await this.s3UtilityService.createMultipartUpload(s3Key, file.type);
+        globalUploadId = multipartSession.uploadId;
 
-      // 2. Presigned URL 준비 + MediaItem 데이터 준비 (병렬)
-      const fileMetaList = await Promise.all(
-        dto.files.map(async (file, index) => {
-          const contentType = this.determineContentType(file.type);
-          const fileExtension = file.name.split('.').pop() || 'dat';
-          const s3Key = `media-items/${uuidv4()}.${fileExtension}`;
+        // 조각 개수 계산 (프론트와 동일한 10MB 기준)
+        const PART_SIZE = 10 * 1024 * 1024;
+        const totalParts = Math.ceil(file.size / PART_SIZE);
+        const partNumbers = Array.from({ length: totalParts }, (_, i) => i + 1);
 
-          const signedUrl = await this.s3UtilityService.getPresignedPutUrl(
-            s3Key,
-            file.type,
-            file.size,
-          );
+        // 각 조각별 Presigned URL 발급
+        const urls = await Promise.all(
+          partNumbers.map(async (partNumber) => {
+            const url = await this.s3UtilityService.getPresignedPartUrl(
+              globalUploadId!,
+              s3Key,
+              partNumber,
+            );
+            return { partNumber, url, s3Key };
+          }),
+        );
 
-          return {
-            index,
-            signedUrl,
-            s3Key,
-            mediaItemData: {
-              ownerId,
-              albumId,
-              title: dto.title,
-              description: dto.description,
-              isRepresentative: index === 0 ? 1 : undefined,
-              type: contentType,
-              s3KeyOriginal: s3Key,
-              tags: tagEntities,
-              status: ContentStatus.PENDING,
-              width: file.width,
-              height: file.height,
-            },
-          };
-        }),
-      );
+        resultUrls = urls;
 
-      // 3. DB Bulk Insert
-      const mediaItems = fileMetaList.map((meta) =>
-        queryRunner.manager.create(MediaItem, meta.mediaItemData),
-      );
-      await queryRunner.manager.save(MediaItem, mediaItems);
-      await queryRunner.commitTransaction();
+        // DB 레코드 생성 (PENDING 상태)
+        const mediaItem = queryRunner.manager.create(MediaItem, {
+          ownerId,
+          albumId,
+          title: dto.title,
+          description: dto.description,
+          isRepresentative: 1,
+          type: ContentType.VIDEO,
+          s3KeyOriginal: s3Key,
+          tags: tagEntities,
+          status: ContentStatus.PENDING,
+          width: file.width,
+          height: file.height,
+          mimeType: file.type, // 재처리를 위해 mimeType 저장 권장
+        });
+        await queryRunner.manager.save(MediaItem, mediaItem);
+      } else {
+        // 2. Presigned URL 준비 + MediaItem 데이터 준비 (병렬)
+        const fileMetaList = await Promise.all(
+          dto.files.map(async (file, index) => {
+            const contentType = this.determineContentType(file.type);
+            const fileExtension = file.name.split('.').pop() || 'dat';
+            const s3Key = `media-items/${uuidv4()}.${fileExtension}`;
 
-      return {
-        message: '업로드 준비 및 Presigned Url 발급 완료',
-        urls: fileMetaList.map((meta) => ({
+            const signedUrl = await this.s3UtilityService.getPresignedPutUrl(
+              s3Key,
+              file.type,
+              file.size,
+            );
+
+            return {
+              index,
+              signedUrl,
+              s3Key,
+              mediaItemData: {
+                ownerId,
+                albumId,
+                title: dto.title,
+                description: dto.description,
+                isRepresentative: index === 0 ? 1 : undefined,
+                type: contentType,
+                s3KeyOriginal: s3Key,
+                tags: tagEntities,
+                status: ContentStatus.PENDING,
+                width: file.width,
+                height: file.height,
+              },
+            };
+          }),
+        );
+
+        resultUrls = fileMetaList.map((meta) => ({
           fileIndex: meta.index,
           signedUrl: meta.signedUrl,
           s3Key: meta.s3Key,
-        })),
+        }));
+
+        // 3. DB Bulk Insert
+        const mediaItems = fileMetaList.map((meta) =>
+          queryRunner.manager.create(MediaItem, meta.mediaItemData),
+        );
+        await queryRunner.manager.save(MediaItem, mediaItems);
+        await queryRunner.commitTransaction();
+      }
+
+      const data = {
+        urls: resultUrls,
         albumId,
+        isMultipart,
+        uploadId: globalUploadId,
+      };
+
+      return {
+        message: '업로드 준비 및 Presigned Url 발급 완료',
+        data,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -154,6 +222,8 @@ export class MediaPipelineService {
     ownerId: number,
     dto: RequestFileProcessingReqDto,
   ): Promise<{ message: string }> {
+    console.log('[requestFileProcessing]ownerId : ', ownerId);
+    console.log('[requestFileProcessing]dto : ', dto);
     const { s3Keys, albumId } = dto;
 
     // [DB 조회] 클라이언트가 업로드 완료를 알린 S3 Key를 기반으로 PENDING 레코드를 조회
@@ -202,6 +272,77 @@ export class MediaPipelineService {
     }
 
     return { message: '파일 백그라운드 처리 중' };
+  }
+
+  /******************** 영상 파일 multipart 업로드 처리 ******************/
+  async initiateMultipart(dto: InitiateMultipartUploadReqDto): Promise<{
+    message: string;
+    data: InitiateMultipartUploadResDto;
+  }> {
+    try {
+      const data = await this.s3UtilityService.createMultipartUpload(
+        dto.s3Key,
+        dto.contentType,
+      );
+      console.log('[initiateMultipart]data : ', data);
+
+      return {
+        message: '영상 multipart 업로드 준비 및 Presigned Url 발급 완료',
+        data,
+      };
+    } catch (error) {
+      console.error('[initiateMultipart]error : ', error);
+      throw new InternalServerErrorException('멀티파트 업로드 시작 실패');
+    }
+  }
+
+  async getPresignedParts(query: GetPresignedPartsReqDto): Promise<{
+    message: string;
+    urls: EachPresignedPartDto[];
+  }> {
+    try {
+      const { uploadId, s3Key, partNumbers } = query;
+
+      const partNumbersArr = partNumbers.split(',').map(Number);
+      console.log('[getPresignedParts]partNumbersArr : ', partNumbersArr);
+      const urls = await Promise.all(
+        partNumbersArr.map(async (partNumber) => {
+          const url = await this.s3UtilityService.getPresignedPartUrl(
+            uploadId,
+            s3Key,
+            partNumber,
+          );
+          return { partNumber, url };
+        }),
+      );
+      console.log('[getPresignedParts]urls : ', urls);
+      return {
+        message: '업로드 준비 및 Presigned Url 발급 완료',
+        urls,
+      };
+    } catch (error) {
+      console.error('[getPresignedParts]error : ', error);
+      throw new InternalServerErrorException('조각 URL 발급 실패');
+    }
+  }
+
+  async completeMultipart(dto: CompleteMultipartUploadReqDto): Promise<{
+    message: string;
+    s3Key: string;
+  }> {
+    try {
+      console.log('[completeMultipart]start ');
+      await this.s3UtilityService.completeMultipartUpload(
+        dto.uploadId,
+        dto.s3Key,
+        dto.parts,
+      );
+      console.log('[completeMultipart]done ');
+      return { message: '업로드 및 병합 완료', s3Key: dto.s3Key };
+    } catch (error) {
+      console.error('[completeMultipart]error : ', error);
+      throw new InternalServerErrorException('멀티파트 병합 실패');
+    }
   }
 
   // [비동기 워커] media.uploaded 이벤트 수신 및 처리 파이프라인 실행

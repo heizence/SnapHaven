@@ -82,11 +82,26 @@ export class PresignedUrlInfo {
   signedUrl: string;
   s3Key: string;
 }
-export class GetMediaPresignedUrlResDto {
+
+export class GetMediaPresignedUrlResDto_ {
   @IsArray()
   @ValidateNested({ each: true })
   urls: PresignedUrlInfo[];
 
   @IsOptional()
   albumId?: number;
+}
+
+export class GetMediaPresignedUrlResDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  urls: any[];
+
+  @IsOptional()
+  albumId?: number;
+
+  isMultipart: boolean;
+
+  @IsOptional()
+  uploadId?: string;
 }

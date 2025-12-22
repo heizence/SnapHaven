@@ -5,6 +5,9 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { ConfigService } from '@nestjs/config';
@@ -13,6 +16,7 @@ import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import Stream, { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
+import { PartDto } from 'src/upload/dto/multipart-upload.dto';
 
 @Injectable()
 export class S3UtilityService {
@@ -220,6 +224,43 @@ export class S3UtilityService {
     throw new InternalServerErrorException(
       `예상치 못한 오류: getS3FileStreamWithRetry가 스트림을 반환하지 못했습니다.`,
     );
+  }
+
+  /**
+   * 영상 파일 multipart 업로드 처리
+   */
+  async createMultipartUpload(key: string, contentType: string) {
+    const command = new CreateMultipartUploadCommand({
+      Bucket: this.ORIGINALS_BUCKET,
+      Key: key,
+      ContentType: contentType,
+    });
+    const res = await this.s3Client.send(command);
+    return { uploadId: res.UploadId, s3Key: key };
+  }
+
+  async getPresignedPartUrl(uploadId: string, key: string, partNumber: number) {
+    const command = new UploadPartCommand({
+      Bucket: this.ORIGINALS_BUCKET,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+    return await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+  }
+
+  async completeMultipartUpload(
+    uploadId: string,
+    key: string,
+    parts: PartDto[],
+  ) {
+    const command = new CompleteMultipartUploadCommand({
+      Bucket: this.ORIGINALS_BUCKET,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts },
+    });
+    return await this.s3Client.send(command);
   }
 
   /**
