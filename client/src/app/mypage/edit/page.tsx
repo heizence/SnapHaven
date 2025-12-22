@@ -145,8 +145,6 @@ export default function EditProfilePage() {
         newPassword: "",
         confirmPassword: "",
       });
-    } else {
-      alert("에러가 발생하였습니다.");
     }
   };
 
