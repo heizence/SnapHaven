@@ -5,7 +5,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { ContentStatus, ContentType } from 'src/common/enums';
-import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 
 @Injectable()
 export class BackgroundTasksService {
@@ -14,7 +13,6 @@ export class BackgroundTasksService {
   constructor(
     private dataSource: DataSource,
     private eventEmitter: EventEmitter2,
-    private s3Service: S3UtilityService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
@@ -39,43 +37,6 @@ export class BackgroundTasksService {
         // 유저 삭제
         await queryRunner.manager.delete(User, { id: In(userIds) });
         this.logger.log(`[Cron] 탈퇴 회원 ${userIds.length}명 영구 삭제 완료`);
-      }
-
-      // 30일 경과 삭제된 미디어(MediaItem) S3 리소스 및 DB 정리
-      const expiredMedia = await queryRunner.manager.find(MediaItem, {
-        where: {
-          status: ContentStatus.DELETED,
-          deletedAt: LessThan(thirtyDaysAgo),
-        },
-        withDeleted: true,
-      });
-
-      if (expiredMedia.length > 0) {
-        // S3 Key 수집
-        const keysToDelete = expiredMedia
-          .flatMap((m) => [
-            m.s3KeyOriginal,
-            m.keyImageSmall,
-            m.keyImageMedium,
-            m.keyImageLarge,
-            m.keyVideoPreview,
-            m.keyVideoPlayback,
-          ])
-          .filter(Boolean);
-
-        // S3 실제 파일 삭제
-        if (keysToDelete.length > 0) {
-          await this.s3Service.deleteObjects(keysToDelete);
-        }
-
-        // DB 레코드 삭제
-        await queryRunner.manager.delete(MediaItem, {
-          id: In(expiredMedia.map((t) => t.id)),
-        });
-
-        this.logger.log(
-          `[Cron] 미디어 리소스 ${expiredMedia.length}건 영구 삭제 완료`,
-        );
       }
 
       await queryRunner.commitTransaction();

@@ -138,6 +138,15 @@ export class MediaItemsService {
     const qb = this.mediaRepository
       .createQueryBuilder('media')
       .where('media.status = :status', { status: ContentStatus.ACTIVE })
+      .andWhere(
+        new Brackets((subQb) => {
+          subQb
+            .where('media.albumId IS NULL') // 단일 콘텐츠인 경우 그대로 노출
+            .orWhere('album.status = :status', {
+              status: ContentStatus.ACTIVE,
+            }); // 앨범 콘텐츠인 경우 앨범도 ACTIVE여야 함
+        }),
+      )
 
       // 내가 업로드한 콘텐츠 필터링(내 업로드 콘텐츠 조회 시 사용)
       .andWhere(
