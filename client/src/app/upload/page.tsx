@@ -63,8 +63,37 @@ export default function Page() {
     hideLoading();
   };
 
+  const validateContentTitle = (title: string): { isValid: boolean; message: string } => {
+    // 1. 길이 체크 (최대 30자)
+    if (title.length > 30) {
+      return {
+        isValid: false,
+        message: "제목은 최대 30자까지 입력 가능합니다.",
+      };
+    }
+
+    // 2. 특수문자 필터링 (파일명 금지 문자 및 주요 특수문자)
+    // \ / : * ? " < > | 및 기타 제어문자 제거
+    const specialCharsRegex = /[\\/:*?"<>|]/g;
+
+    if (specialCharsRegex.test(title)) {
+      return {
+        isValid: false,
+        message: "파일명에 사용할 수 없는 특수문자가 포함되어 있습니다.",
+      };
+    }
+
+    // 3. 공백만 있는 경우 체크
+    if (title.trim().length === 0) {
+      return { isValid: false, message: "제목을 입력해 주세요." };
+    }
+
+    return { isValid: true, message: "" };
+  };
+
   // 파일 핸들링 로직 (기존과 동일)
   const handleFiles = async (selectedFiles: File[]) => {
+    showLoading();
     setUploadError(null);
 
     // 유효성 검사 (이미지/비디오만 허용)
@@ -168,6 +197,8 @@ export default function Page() {
       setFiles((prev) => [...prev, ...newFiles].slice(0, 100));
       setPreviews((prev) => [...prev, ...fileURLs].slice(0, 100));
     }
+
+    hideLoading();
   };
 
   // 파일 선택 핸들러 (기존과 동일)
@@ -231,8 +262,11 @@ export default function Page() {
       setUploadError("업로드할 파일을 선택하세요.");
       return;
     }
-    if (!title.trim()) {
-      setUploadError("제목을 입력하세요.");
+
+    const { isValid, message } = validateContentTitle(title);
+
+    if (!isValid) {
+      setUploadError(message);
       return;
     }
 
@@ -368,8 +402,11 @@ export default function Page() {
                 </label>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,video/mp4,video/mov,video/m4v,video/mwebm,video/mkv"
-                  //multiple={uploadMode === "ALBUM"}
+                  accept={
+                    uploadMode === "ALBUM"
+                      ? "image/jpeg,image/png,image/webp"
+                      : "image/jpeg,image/png,image/webp,video/mp4,video/mov,video/m4v,video/mwebm,video/mkv"
+                  }
                   multiple={uploadMode !== "SINGLE"}
                   className="hidden"
                   id="fileInput"
