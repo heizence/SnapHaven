@@ -13,6 +13,7 @@ import {
   MediaItemDetailExample,
   AlbumDetailExample,
   GetDownloadUrlExample,
+  GetAlbumDownloadUrlExample,
 } from 'src/media-items/decorators/media-swagger.examples';
 import { ResponseDto } from 'src/common/dto/response.dto';
 
@@ -180,21 +181,21 @@ export function ApiAlbumDetail() {
 export function ApiGetItemDownloadUrl() {
   return applyDecorators(
     ApiOperation({
-      summary: '콘텐츠 다운로드 링크 생성',
+      summary: '아이템 다운로드 링크 생성',
       description:
-        '다운로드 횟수를 기록하고, 콘텐츠 파일에 대한 임시 Presigned URL을 반환합니다.',
+        '해당 콘텐츠 아이템의 원본 파일을 다운로드 하기 위한 S3 Presigned url 을 발급합니다.',
     }),
 
     ApiResponse({
       status: HttpStatus.OK,
-      description: '앨범 상세 정보 조회 성공',
+      description: '다운로드 URL 발급 성공',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
           {
             properties: {
               data: {
-                type: 'GetDownloadUrlDto',
+                type: 'GetItemDownloadUrlResDto',
               },
             },
           },
@@ -202,7 +203,7 @@ export function ApiGetItemDownloadUrl() {
       },
       example: ResponseDto.success(
         HttpStatus.OK,
-        'Presigned URL 반환 및 카운트 증가 성공',
+        '다운로드 URL 발급 성공',
         GetDownloadUrlExample,
       ),
     }),
@@ -210,7 +211,7 @@ export function ApiGetItemDownloadUrl() {
     // 응답 실패 형식
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: '해당 콘텐츠를 찾을 수 없음.',
+      description: '아이템을 찾을 수 없습니다.',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -219,7 +220,7 @@ export function ApiGetItemDownloadUrl() {
       },
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
-        '다운로드 가능한 콘텐츠를 찾을 수 없습니다.',
+        '아이템을 찾을 수 없습니다.',
         null,
       ),
     }),
@@ -230,14 +231,14 @@ export function ApiGetItemDownloadUrl() {
 export function ApiDownloadAlbum() {
   return applyDecorators(
     ApiOperation({
-      summary: '앨범 ZIP 다운로드 요청',
+      summary: '앨범 다운로드 랑크 생성',
       description:
-        '앨범 내 모든 ACTIVE 파일을 S3에서 가져와 ZIP으로 압축하여 스트리밍합니다. 실패 파일은 최대 5회 재시도합니다.',
+        '앨범 내 모든 아이템의 원본 파일을 다운로드 하기 위한 S3 Presigned url 을 발급해 줍니다.',
     }),
 
     ApiResponse({
       status: HttpStatus.OK,
-      description: 'ZIP 파일 스트리밍 시작',
+      description: '앨범 다운로드 URL 리스트 발급 성공',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -246,16 +247,17 @@ export function ApiDownloadAlbum() {
           },
         ],
       },
-      example: ResponseDto.successWithoutData(
+      example: ResponseDto.success(
         HttpStatus.OK,
-        'ZIP 파일 스트리밍 시작',
+        '앨범 다운로드 URL 리스트 발급 성공',
+        GetAlbumDownloadUrlExample,
       ),
     }),
 
     // 응답 실패 형식
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: '앨범 또는 콘텐츠를 찾을 수 없음',
+      description: '앨범을 찾을 수 없습니다.',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -264,7 +266,7 @@ export function ApiDownloadAlbum() {
       },
       example: ResponseDto.fail(
         HttpStatus.NOT_FOUND,
-        '앨범 또는 콘텐츠를 찾을 수 없음',
+        '앨범을 찾을 수 없습니다.',
         null,
       ),
     }),

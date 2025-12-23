@@ -12,10 +12,9 @@ import { MediaItemDto } from './dto/media-items.dto';
 import { GetMediaItemDetailResDto } from './dto/get-media-item-detail.dto';
 import {} from 'src/albums/dto/album-detail.dto';
 import { Album } from 'src/albums/entities/album.entity';
-import { GetDownloadUrlDto } from './dto/get-download-url.dto';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
-import { GetItemDownloadUrlReqDto } from './dto/get-item-download.dto';
 import { User } from 'src/users/entities/user.entity';
+import { GetItemDownloadUrlResDto } from './dto/get-download-urls.dto';
 
 export type RawMediaItemResult = {
   media_id: number;
@@ -340,29 +339,18 @@ export class MediaItemsService {
 
   // 파일 다운로드를 위한 presigned url 을 반환하고 다운로드 카운트 +1 처리
   async getItemDownloadUrl(
-    dto: GetItemDownloadUrlReqDto,
-  ): Promise<{ message: string; data: GetDownloadUrlDto }> {
-    const s3Key = dto.s3Key;
+    id: number,
+  ): Promise<{ message: string; data: GetItemDownloadUrlResDto }> {
+    const mediaItem = await this.mediaRepository.findOne({ where: { id } });
+    if (!mediaItem) throw new NotFoundException('아이템을 찾을 수 없습니다.');
 
-    // 콘텐츠 유효성 검사 및 키 조회
-    const mediaItem = await this.mediaRepository
-      .createQueryBuilder('media')
-      .where('media.status = :status', { status: ContentStatus.ACTIVE })
-      .andWhere(
-        new Brackets((qb) => {
-          // 전달받은 key와 일치하는 레코드를 찾음
-          qb.where('media.keyImageLarge = :key', { key: s3Key })
-            .orWhere('media.keyImageMedium = :key', { key: s3Key })
-            .orWhere('media.keyImageSmall = :key', { key: s3Key })
-            .orWhere('media.keyVideoPlayback = :key', { key: s3Key });
-        }),
-      )
-      .select(['media.id', 'media.title'])
-      .getOne();
+    const fileExtension = mediaItem.s3KeyOriginal.split('.').pop();
+    const fileName = `${mediaItem.title}.${fileExtension}`;
 
-    if (!mediaItem) {
-      throw new NotFoundException('다운로드 가능한 콘텐츠를 찾을 수 없습니다.');
-    }
+    const url = await this.s3UtilityService.getDownloadPresignedUrl(
+      mediaItem.s3KeyOriginal,
+      fileName,
+    );
 
     await this.mediaRepository.increment(
       { id: mediaItem.id },
@@ -370,16 +358,15 @@ export class MediaItemsService {
       1,
     );
 
-    const fileExtension = s3Key.split('.').pop();
-    const fileName = `${mediaItem.title}.${fileExtension}`;
-    const downloadUrl = this.s3UtilityService.getDownloadUrl(s3Key);
-
     const data = {
-      downloadUrl,
+      url,
       fileName,
     };
 
-    return { message: '다운로드 링크 생성 성공', data };
+    return {
+      message: '다운로드 URL 발급 성공',
+      data,
+    };
   }
 
   // 미디어 아이템 좋아요 표시/취소 기능

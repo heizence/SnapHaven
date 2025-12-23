@@ -6,7 +6,6 @@ import {
   Param,
   Req,
   Post,
-  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -26,16 +25,17 @@ import {
   ApiMediaFeed,
 } from './decorators/swagger.media-items.decorators';
 import { GetAlbumDetailResDto } from 'src/albums/dto/album-detail.dto';
-import {
-  GetItemDownloadUrlReqDto,
-  GetItemDownloadUrlResDto,
-} from './dto/get-item-download.dto';
+
 import { AlbumsService } from 'src/albums/albums.service';
 
 import { ToogleLikedResDto } from './dto/toggle-liked.response.dto';
 import { OptionalAuthGuard } from 'src/auth/optional-auth.guard';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { GetMediaItemDetailResDto } from './dto/get-media-item-detail.dto';
+import {
+  GetAlbumDownloadUrlsResDto,
+  GetItemDownloadUrlResDto,
+} from './dto/get-download-urls.dto';
 
 @ApiTags('Media Items')
 @Controller('media')
@@ -89,7 +89,6 @@ export class MediaItemsController {
   ): Promise<ResponseDto<GetAlbumDetailResDto>> {
     const id = Number(albumId);
     const currentUserId = req.user ? req.user.id : undefined;
-    console.log('currentUserId : ', currentUserId);
     const { message, album } = await this.albumsService.findAlbumContents(
       id,
       currentUserId,
@@ -99,13 +98,14 @@ export class MediaItemsController {
   }
 
   // 단일 콘텐츠 다운로드 URL 요청
-  @Get('download')
+  @Get(':id/download')
   @ApiGetItemDownloadUrl()
   async getItemDownloadUrl(
-    @Query() query: GetItemDownloadUrlReqDto,
+    @Param('id') mediaId: number,
   ): Promise<ResponseDto<GetItemDownloadUrlResDto>> {
+    const id = Number(mediaId);
     const { message, data } =
-      await this.mediaItemsService.getItemDownloadUrl(query);
+      await this.mediaItemsService.getItemDownloadUrl(id);
 
     return ResponseDto.success(HttpStatus.OK, message, data);
   }
@@ -114,34 +114,15 @@ export class MediaItemsController {
    * 앨범 전체 콘텐츠를 ZIP 파일로 다운로드
    * 주의: 스트리밍 다운로드는 NestJS 표준 응답 형식을 사용하지 않음.
    */
-  @Post('album/download/:id')
+  @Get('albums/:id/download')
   @ApiDownloadAlbum()
-  async downloadAlbumZip(
+  async getAlbumDownloadUrls(
     @Param('id') albumId: number,
-    @Res({ passthrough: true }) res: any,
-  ): Promise<void> {
-    console.log('## album/download/:id request incoming!!');
+  ): Promise<ResponseDto<GetAlbumDownloadUrlsResDto>> {
     const id = Number(albumId);
 
-    try {
-      console.log('[downloadAlbumZip controller]start');
-      // Service에서 스트리밍 및 응답 헤더 설정을 모두 처리
-      await this.albumsService.downloadAlbumZip(id, res);
-      console.log('[downloadAlbumZip controller]finished');
-    } catch (error) {
-      // 오류 발생 시 NestJS 기본 예외 처리 방식을 따르지 않고, Response 객체에 직접 오류를 작성
-      const status = error.getStatus
-        ? error.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-      const message =
-        error.message || 'ZIP 파일 다운로드 중 서버 오류가 발생했습니다.';
-
-      // 오류 발생 시 스트리밍을 종료하고 오류 메시지를 반환
-      res.status(status).send({
-        statusCode: status,
-        message: message,
-      });
-    }
+    const { message, data } = await this.albumsService.getAlbumDownloadUrls(id);
+    return ResponseDto.success(HttpStatus.OK, message, data);
   }
 
   // 콘텐츠 좋아요 토글 기능(단일 콘텐츠, 앨범 모두 처리)
@@ -154,8 +135,6 @@ export class MediaItemsController {
     @Req() req: { user: User },
   ): Promise<ResponseDto<ToogleLikedResDto>> {
     const userId = req.user.id;
-
-    //console.log('id : ', id);
     const { message, isLiked } = await this.mediaItemsService.toggleLikedItem(
       mediaId,
       userId,

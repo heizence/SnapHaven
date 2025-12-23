@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
-import Stream, { Readable } from 'stream';
+import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { PartDto } from 'src/upload/dto/multipart-upload.dto';
 
@@ -78,8 +78,19 @@ export class S3UtilityService {
   /**
    * 클라이언트에서 파일 다운로드를 위한 URL 을 조합하여 반환
    */
-  getDownloadUrl(key: string): string {
-    return `${this.CDN_BASE_URL}/${key}`;
+  async getDownloadPresignedUrl(
+    key: string,
+    fileName: string,
+  ): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.ORIGINALS_BUCKET,
+      Key: key,
+      // 브라우저에서 다운로드를 강제하고 파일명을 지정하는 헤더 설정
+      ResponseContentDisposition: `attachment; filename="${encodeURIComponent(fileName)}"`,
+    });
+
+    // 다운로드 URL은 유효시간을 짧게 설정 (예: 15분)
+    return await getSignedUrl(this.s3Client, command, { expiresIn: 900 });
   }
 
   /**

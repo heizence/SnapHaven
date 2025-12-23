@@ -5,7 +5,10 @@ import {
   GetAlbumDetailResDto,
 } from 'src/albums/dto/album-detail.dto';
 import { ContentType } from 'src/common/enums';
-import { GetDownloadUrlDto } from '../dto/get-download-url.dto';
+import {
+  GetAlbumDownloadUrlsResDto,
+  GetItemDownloadUrlResDto,
+} from '../dto/get-download-urls.dto';
 import { GetMediaItemsResDto } from '../dto/get-media-items.dto';
 import { GetMediaItemDetailResDto } from '../dto/get-media-item-detail.dto';
 
@@ -92,7 +95,21 @@ export const AlbumDetailExample: GetAlbumDetailResDto = {
   ],
 };
 
-export const GetDownloadUrlExample: GetDownloadUrlDto = {
-  downloadUrl: 'https://s3.amazonaws.com/presigned-url?AWSAccessKeyId=...',
+export const GetDownloadUrlExample: GetItemDownloadUrlResDto = {
   fileName: '파리_에펠탑.jpg',
+  url: 'https://s3.amazonaws.com/presigned-url?AWSAccessKeyId=...',
+};
+
+export const GetAlbumDownloadUrlExample: GetAlbumDownloadUrlsResDto = {
+  albumTitle: '여행 모음',
+  files: [
+    {
+      fileName: '파리_에펠탑.jpg',
+      url: 'https://s3.amazonaws.com/presigned-url?AWSAccessKeyId=...',
+    },
+    {
+      fileName: '로마 콜로세움.jpg',
+      url: 'https://s3.amazonaws.com/presigned-url?AWSAccessKeyId=...',
+    },
+  ],
 };
