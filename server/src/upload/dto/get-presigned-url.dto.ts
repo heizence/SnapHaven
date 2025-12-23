@@ -5,8 +5,11 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
+  MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -61,6 +64,12 @@ export class GetMediaPresignedUrlReqDto {
   @ApiProperty({ example: '제주도 여행' })
   @IsNotEmpty()
   @IsString()
+  @MinLength(1, { message: '제목은 최소 1자 이상이어야 합니다.' })
+  @MaxLength(30, { message: '제목은 최대 30자까지만 가능합니다.' })
+  // 파일 시스템 금지 문자 정규식으로 검증
+  @Matches(/^[^\\/:*?"<>|]+$/, {
+    message: '제목에 금지된 특수문자(\\ / : * ? " < > |)가 포함되어 있습니다.',
+  })
   title: string;
 
   @ApiProperty({ example: '2025년 여름 휴가 사진들', required: false })

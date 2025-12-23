@@ -36,6 +36,8 @@ import {
   EachPresignedPartDto,
 } from 'src/upload/dto/multipart-upload.dto';
 
+const MAX_RETRIES = 5;
+
 @Injectable()
 export class MediaPipelineService {
   private readonly logger = new Logger(MediaPipelineService.name);
@@ -52,6 +54,14 @@ export class MediaPipelineService {
     private readonly s3UtilityService: S3UtilityService,
     private readonly mediaProcessorService: MediaProcessorService,
   ) {}
+
+  // 양 끝 공백 제거 및 금지 문자 제거
+  private sanitizeTitle(title: string): string {
+    return title
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, '')
+      .substring(0, 30);
+  }
 
   // MIME 타입을 기반으로 ContentType을 결정
   private determineContentType(mimeType: string): ContentType {
@@ -91,7 +101,7 @@ export class MediaPipelineService {
       if (isAlbum) {
         const album = queryRunner.manager.create(Album, {
           ownerId,
-          title: dto.title,
+          title: this.sanitizeTitle(dto.title),
           description: dto.description,
           tags: tagEntities,
         });
@@ -137,7 +147,7 @@ export class MediaPipelineService {
         const mediaItem = queryRunner.manager.create(MediaItem, {
           ownerId,
           albumId,
-          title: dto.title,
+          title: this.sanitizeTitle(dto.title),
           description: dto.description,
           isRepresentative: 1,
           type: ContentType.VIDEO,
@@ -222,8 +232,6 @@ export class MediaPipelineService {
     ownerId: number,
     dto: RequestFileProcessingReqDto,
   ): Promise<{ message: string }> {
-    console.log('[requestFileProcessing]ownerId : ', ownerId);
-    console.log('[requestFileProcessing]dto : ', dto);
     const { s3Keys, albumId } = dto;
 
     // [DB 조회] 클라이언트가 업로드 완료를 알린 S3 Key를 기반으로 PENDING 레코드를 조회
@@ -243,23 +251,20 @@ export class MediaPipelineService {
       );
     }
 
-    // [상태 업데이트] PENDING -> PROCESSING으로 변경
     await this.mediaItemRepository.update(
       { id: In(mediaItems.map((item) => item.id)) },
       { status: ContentStatus.PROCESSING },
     );
 
-    // [이벤트 발행] 각 미디어 항목에 대해 비동기 파이프라인 시작 요청
     for (const item of mediaItems) {
       try {
-        // 파이프라인이 S3에서 다운로드하고 변환할 수 있도록 이벤트 발행
         this.eventEmitter.emit('media.uploaded', {
           mediaId: item.id,
           s3Key: item.s3KeyOriginal,
           mimeType:
             item.type === ContentType.IMAGE ? 'image/jpeg' : 'video/mp4',
           contentType: item.type,
-        } as MediaUploadedEvent);
+        });
       } catch (error) {
         this.logger.error(
           '[Pipeline Error]failed to execute process. MediaId : ',
@@ -284,7 +289,6 @@ export class MediaPipelineService {
         dto.s3Key,
         dto.contentType,
       );
-      console.log('[initiateMultipart]data : ', data);
 
       return {
         message: '영상 multipart 업로드 준비 및 Presigned Url 발급 완료',
@@ -302,9 +306,8 @@ export class MediaPipelineService {
   }> {
     try {
       const { uploadId, s3Key, partNumbers } = query;
-
       const partNumbersArr = partNumbers.split(',').map(Number);
-      console.log('[getPresignedParts]partNumbersArr : ', partNumbersArr);
+
       const urls = await Promise.all(
         partNumbersArr.map(async (partNumber) => {
           const url = await this.s3UtilityService.getPresignedPartUrl(
@@ -315,7 +318,7 @@ export class MediaPipelineService {
           return { partNumber, url };
         }),
       );
-      console.log('[getPresignedParts]urls : ', urls);
+
       return {
         message: '업로드 준비 및 Presigned Url 발급 완료',
         urls,
@@ -331,13 +334,11 @@ export class MediaPipelineService {
     s3Key: string;
   }> {
     try {
-      console.log('[completeMultipart]start ');
       await this.s3UtilityService.completeMultipartUpload(
         dto.uploadId,
         dto.s3Key,
         dto.parts,
       );
-      console.log('[completeMultipart]done ');
       return { message: '업로드 및 병합 완료', s3Key: dto.s3Key };
     } catch (error) {
       console.error('[completeMultipart]error : ', error);
@@ -350,66 +351,65 @@ export class MediaPipelineService {
   async handleMediaUpload(payload: MediaUploadedEvent): Promise<void> {
     const { mediaId, s3Key, contentType, mimeType } = payload;
 
-    // 임시 스토리지 경로 설정
-    const originalLocalPath = path.join(
-      os.tmpdir(),
-      `${mediaId}_original_${Date.now()}`,
-    );
-
-    try {
-      // Private S3에서 원본 파일 다운로드
-      await this.s3UtilityService.downloadOriginal(s3Key, originalLocalPath);
-
-      let processedkeys: ProcessedKeys;
-
-      // 미디어 타입 분기 및 처리 실행
-      if (contentType === ContentType.IMAGE) {
-        // 이미지 처리: L, M, S 생성 및 Public S3 업로드 (sharp)
-        processedkeys = await this.mediaProcessorService.processImage(
-          originalLocalPath,
-          mediaId,
-          mimeType,
-        );
-      } else {
-        // 비디오 처리: 트랜스코딩, 썸네일, 클립 생성 (FFmpeg)
-        processedkeys = await this.mediaProcessorService.processVideo(
-          originalLocalPath,
-          mediaId,
-        );
-      }
-
-      // DB URL 및 최종 상태 업데이트
-      await this.mediaItemRepository.update(mediaId, {
-        ...processedkeys,
-        status: ContentStatus.ACTIVE,
-      });
-
-      this.logger.log(
-        `[Pipeline] Successfully processed and set ACTIVE for Media ID: ${mediaId}`,
-      );
-    } catch (error) {
-      // sharp/FFmpeg 또는 S3 처리 중 에러 발생
-      this.logger.error(
-        `[Pipeline Error] Failed to process Media ID: ${mediaId}`,
-        error.stack,
+    let attempt = 1;
+    while (attempt <= MAX_RETRIES) {
+      // 임시 스토리지 경로 설정
+      const originalLocalPath = path.join(
+        os.tmpdir(),
+        `${mediaId}_original_${Date.now()}`,
       );
 
-      // DB 상태를 FAILED로 업데이트
-      await this.mediaItemRepository.update(mediaId, {
-        status: ContentStatus.FAILED,
-      });
-    } finally {
-      // 임시 스토리지의 원본 파일 삭제
       try {
-        await fsPromises.unlink(originalLocalPath);
-      } catch (cleanupError) {
-        this.logger.error(
-          '[media-pipeline.service]cleanupError : ',
-          cleanupError,
-        );
-        this.logger.warn(
-          `Failed to clean up local file ${originalLocalPath}: ${cleanupError.message}`,
-        );
+        // Private S3에서 원본 파일 다운로드
+        await this.s3UtilityService.downloadOriginal(s3Key, originalLocalPath);
+
+        let processedkeys: ProcessedKeys;
+
+        // 미디어 타입 분기 및 처리 실행
+        if (contentType === ContentType.IMAGE) {
+          // 이미지 처리: L, M, S 생성 및 Public S3 업로드 (sharp)
+          processedkeys = await this.mediaProcessorService.processImage(
+            originalLocalPath,
+            mediaId,
+            mimeType,
+          );
+        } else {
+          // 비디오 처리: 트랜스코딩, 썸네일, 클립 생성 (FFmpeg)
+          processedkeys = await this.mediaProcessorService.processVideo(
+            originalLocalPath,
+            mediaId,
+          );
+        }
+
+        // DB URL 및 최종 상태 업데이트
+        await this.mediaItemRepository.update(mediaId, {
+          ...processedkeys,
+          status: ContentStatus.ACTIVE,
+        });
+        break; // 성공 시 종료
+      } catch (error) {
+        // DB 상태를 FAILED로 업데이트
+        if (attempt === MAX_RETRIES) {
+          await this.mediaItemRepository.update(mediaId, {
+            status: ContentStatus.FAILED,
+          });
+          break;
+        } else {
+          await new Promise((res) => setTimeout(res, 1000 * attempt));
+          attempt++;
+        }
+      } finally {
+        try {
+          await fsPromises.unlink(originalLocalPath);
+        } catch (cleanupError) {
+          this.logger.error(
+            '[media-pipeline.service]cleanupError : ',
+            cleanupError,
+          );
+          this.logger.warn(
+            `Failed to clean up local file ${originalLocalPath}: ${cleanupError.message}`,
+          );
+        }
       }
     }
   }

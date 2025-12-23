@@ -36,6 +36,9 @@ const VIDEO_PREVIEW_DURATION = 5; // 5 seconds
 ffmpeg.setFfmpegPath(ffmpegStatic.path);
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
+sharp.cache(false); // 캐시를 비활성화하여 비정상 데이터 처리에 따른 간섭 방지
+sharp.concurrency(1); // 개별 프로세스 내 병렬성을 제한하여 안정성 확보 (필요 시)
+
 @Injectable()
 export class MediaProcessorService {
   private readonly logger = new Logger(MediaProcessorService.name);
@@ -73,7 +76,7 @@ export class MediaProcessorService {
           const tempOutputPath = path.join(tempLocalDir, `${suffix}.jpg`);
 
           // 리사이징 및 로컬 저장
-          await sharp(localPath)
+          await sharp(localPath, { failOn: 'none' })
             .resize(size, size, {
               fit: sharp.fit.inside,
               withoutEnlargement: true,
@@ -99,8 +102,7 @@ export class MediaProcessorService {
       return keys;
     } catch (error) {
       this.logger.error(
-        '[media-processor.service]error in resizing image. mediaId : ',
-        mediaId,
+        `[media-processor.service]error in resizing image. mediaId : ${mediaId}`,
       );
       this.logger.error(error);
 
