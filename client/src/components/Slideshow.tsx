@@ -18,22 +18,40 @@ interface SlideshowProps {
 const Slideshow: React.FC<SlideshowProps> = ({ images, startIndex = 0, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // 마우스 이동 감지 상태
+  const [showControls, setShowControls] = useState(true);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const slideshowRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
   const wheelTimeout = useRef<NodeJS.Timeout | null>(null);
-
   const [showToast, setShowToast] = useState(false);
 
-  // 컴포넌트 마운트 시 토스트 표시 로직
-  useEffect(() => {
-    const showTimer = setTimeout(() => {
-      setShowToast(true);
-    }, 200);
-    const hideTimer = setTimeout(() => {
-      setShowToast(false);
+  // 1. 마우스 유휴 상태 감지 로직
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+
+    // 3초 후 컨트롤 숨김
+    idleTimerRef.current = setTimeout(() => {
+      setShowControls(false);
     }, 3000);
+  };
+
+  useEffect(() => {
+    // 초기 마운트 시 타이머 시작
+    handleMouseMove();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, []);
+
+  // 컴포넌트 마운트 시 토스트 표시
+  useEffect(() => {
+    const showTimer = setTimeout(() => setShowToast(true), 200);
+    const hideTimer = setTimeout(() => setShowToast(false), 3000);
     return () => {
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
@@ -48,7 +66,6 @@ const Slideshow: React.FC<SlideshowProps> = ({ images, startIndex = 0, onClose }
     }
   }, [isPlaying, currentIndex, images.length]);
 
-  // Fullscreen toggle
   const toggleFullscreen = () => {
     if (!isFullscreen && slideshowRef.current) {
       slideshowRef.current.requestFullscreen();
@@ -57,22 +74,22 @@ const Slideshow: React.FC<SlideshowProps> = ({ images, startIndex = 0, onClose }
     }
   };
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (images.length > 1) {
         if (e.key === "ArrowRight") goToNext();
         else if (e.key === "ArrowLeft") goToPrev();
+        // 2. 스페이스바 (재생/일시정지)
+        else if (e.key === " " || e.key === "Spacebar") {
+          // 브라우저 호환성을 위해 두 케이스 체크
+          e.preventDefault(); // 페이지 스크롤 방지
+          setIsPlaying((prev) => !prev);
+          handleMouseMove(); // 키 입력 시에도 컨트롤 표시
+        }
       }
 
-      if (e.key === "Escape") {
-        onClose();
-      }
-
-      // 'f' 키로 전체화면 토글 기능 추가
-      if (e.key === "f" || e.key === "F") {
-        toggleFullscreen();
-      }
+      if (e.key === "Escape") onClose();
+      if (e.key === "f" || e.key === "F") toggleFullscreen();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -82,9 +99,7 @@ const Slideshow: React.FC<SlideshowProps> = ({ images, startIndex = 0, onClose }
   const goToPrev = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
@@ -103,97 +118,46 @@ const Slideshow: React.FC<SlideshowProps> = ({ images, startIndex = 0, onClose }
 
   const handleWheel = (e: React.WheelEvent) => {
     if (images.length <= 1) return;
-    e.preventDefault();
     if (wheelTimeout.current) return;
-    if (e.deltaX > 5 || e.deltaY > 5) {
-      goToNext();
-    } else if (e.deltaX < -5 || e.deltaY < -5) {
-      goToPrev();
+    if (Math.abs(e.deltaX) > 10 || Math.abs(e.deltaY) > 10) {
+      if (e.deltaX > 0 || e.deltaY > 0) goToNext();
+      else goToPrev();
+      wheelTimeout.current = setTimeout(() => (wheelTimeout.current = null), 400);
     }
-    wheelTimeout.current = setTimeout(() => {
-      wheelTimeout.current = null;
-    }, 300);
   };
 
-  const arrowButtonStyle: React.CSSProperties = {
-    position: "absolute",
-    top: "50%",
-    transform: "translateY(-50%)",
-    background: "rgba(0,0,0,0.3)",
-    border: "none",
-    cursor: "pointer",
-    borderRadius: "50%",
-    padding: "8px",
-    opacity: isHovering ? 1 : 0,
-    transition: "opacity 0.2s ease-in-out",
-    zIndex: 1002,
-  };
+  // 공통 버튼 스타일
+  const controlBtnBase = "transition-opacity duration-300 ease-in-out z-[1002]";
+  const arrowBtnStyle = `${controlBtnBase} absolute top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 p-3 rounded-full text-white cursor-pointer hidden md:block`;
 
   return (
     <div
       ref={slideshowRef}
+      onMouseMove={handleMouseMove}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
       onWheel={handleWheel}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.9)",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className="fixed inset-0 bg-black/95 z-[1000] flex items-center justify-center overflow-hidden touch-none"
     >
-      {/* 토스트 메시지 */}
+      {/* 1. 토스트 메시지 */}
       <div
-        style={{
-          position: "absolute",
-          top: showToast ? "20px" : "-50px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "rgba(0, 0, 0, 0.7)",
-          color: "white",
-          padding: "10px 20px",
-          borderRadius: "20px",
-          fontSize: "14px",
-          zIndex: 1004,
-          transition: "top 0.3s ease-in-out, opacity 0.3s ease-in-out", // [수정] opacity 추가
-          opacity: showToast ? 1 : 0,
-        }}
+        className={`fixed left-1/2 -translate-x-1/2 bg-black/70 text-white px-5 py-2.5 rounded-full text-sm z-[1004] transition-all duration-500
+        ${showToast ? "top-5 opacity-100" : "-top-12 opacity-0"}`}
       >
-        전체화면은 F, 슬라이드 종료는 Esc 키를 눌러주세요.
+        전체화면은 F, 슬라이드 재생은 Space Bar 키를 눌러주세요.
       </div>
 
-      {/* Close Button */}
+      {/* 2. Close Button */}
       <button
         onClick={onClose}
-        style={{
-          position: "absolute",
-          top: "20px",
-          right: "20px",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          zIndex: 1003,
-        }}
+        className={`absolute top-5 right-5 text-white p-2 hover:bg-white/10 rounded-full z-[1003] ${controlBtnBase} 
+        ${showControls ? "opacity-100" : "opacity-0 cursor-none"}`}
       >
-        <X color="white" size={32} />
+        <X size={32} />
       </button>
 
-      {/* Main Image Container */}
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      {/* 3. Main Content Container */}
+      <div className="relative w-full h-full flex items-center justify-center select-none">
         <NextImage
           src={images[currentIndex].src}
           alt={images[currentIndex].name || ""}
@@ -202,54 +166,40 @@ const Slideshow: React.FC<SlideshowProps> = ({ images, startIndex = 0, onClose }
           priority
         />
 
+        {/* 4. Navigation Arrows */}
         {images.length > 1 && (
-          <>
-            <button onClick={goToPrev} style={{ ...arrowButtonStyle, left: "20px" }}>
-              <ChevronLeft color="white" size={32} />
+          <div className={`${showControls ? "opacity-100" : "opacity-0 cursor-none"}`}>
+            <button onClick={goToPrev} className={`${arrowBtnStyle} left-5`}>
+              <ChevronLeft size={36} />
             </button>
-            <button onClick={goToNext} style={{ ...arrowButtonStyle, right: "20px" }}>
-              <ChevronRight color="white" size={32} />
+            <button onClick={goToNext} className={`${arrowBtnStyle} right-5`}>
+              <ChevronRight size={36} />
             </button>
-          </>
+          </div>
         )}
       </div>
 
-      {/* Bottom Controls */}
+      {/* 5. Bottom Controls */}
       <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          display: "flex",
-          gap: "20px",
-          background: "rgba(0,0,0,0.3)",
-          padding: "10px 20px",
-          borderRadius: "20px",
-          color: "white",
-          alignItems: "center",
-          userSelect: "none",
-          zIndex: 1002,
-        }}
+        className={`absolute bottom-8 flex items-center gap-6 bg-black/40 backdrop-blur-sm px-6 py-3 rounded-full text-white z-[1002] transition-opacity duration-300
+        ${showControls ? "opacity-100" : "opacity-0 cursor-none"}`}
       >
         {images.length > 1 && (
           <>
             <button
               onClick={() => setIsPlaying(!isPlaying)}
-              style={{ background: "none", border: "none", cursor: "pointer" }}
+              className="hover:scale-110 transition-transform"
             >
-              {isPlaying ? <Pause color="white" /> : <Play color="white" />}
+              {isPlaying ? <Pause fill="white" /> : <Play fill="white" />}
             </button>
-            <span style={{ fontSize: "14px", minWidth: "50px", textAlign: "center" }}>
+            <span className="text-sm font-medium min-w-[60px] text-center">
               {currentIndex + 1} / {images.length}
             </span>
           </>
         )}
 
-        {/* Fullscreen 버튼 */}
-        <button
-          onClick={toggleFullscreen}
-          style={{ background: "none", border: "none", cursor: "pointer" }}
-        >
-          {isFullscreen ? <Minimize color="white" /> : <Maximize color="white" />}
+        <button onClick={toggleFullscreen} className="hover:scale-110 transition-transform">
+          {isFullscreen ? <Minimize /> : <Maximize />}
         </button>
       </div>
     </div>
