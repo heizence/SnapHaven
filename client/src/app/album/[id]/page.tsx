@@ -15,7 +15,7 @@ import { GetAlbumDetailReqDto, GetAlbumDetailResDto } from "@/types/api-dtos";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { getAlbumDetailAPI } from "@/lib/APIs";
 import { AWS_BASE_URL } from "@/constants";
-import { handleAlbumZipDownload } from "@/lib/downloadFiles";
+import { startDownloadAlbum } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import { formatDate } from "@/lib/utils";
 
@@ -74,8 +74,8 @@ export default function CollectionDetailPage() {
   };
 
   const handleDownloadZip = () => {
-    const { id } = albumDetail!;
-    handleAlbumZipDownload(id);
+    if (!albumDetail) return;
+    startDownloadAlbum(albumDetail.id);
   };
 
   // 슬라이드쇼 열기 핸들러

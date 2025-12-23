@@ -14,7 +14,7 @@ import { getMediaItemDetailAPI } from "@/lib/APIs";
 import { AWS_BASE_URL } from "@/constants";
 import { useLoading } from "@/contexts/LoadingProvider";
 import { formatDate } from "@/lib/utils";
-import { handleDownloadContent } from "@/lib/downloadFiles";
+import { startDownloadItem } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import { GetMediaItemDetailResDto } from "@/types/api-dtos";
 
@@ -52,8 +52,8 @@ export default function ContentDetailPage() {
 
   // 파일 다운로드
   const handleDownload = () => {
-    // 추후 사이즈별 다운로드로 변경하기
-    handleDownloadContent(mediaDetail!.keyImageLarge);
+    if (!mediaDetail) return;
+    startDownloadItem(mediaDetail.id);
   };
 
   // 슬라이드쇼 열기 핸들러

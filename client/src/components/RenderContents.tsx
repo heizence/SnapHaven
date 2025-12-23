@@ -8,7 +8,7 @@ import { LikeButtonForFeeds } from "./ui/LikeButton";
 import { AWS_BASE_URL } from "@/constants";
 import { ContentType } from "@/constants/enums";
 import Image from "next/image";
-import { handleDownloadContent } from "@/lib/downloadFiles";
+import { startDownloadAlbum, startDownloadItem } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import { useModal } from "@/contexts/ModalProvider";
 import { Photo } from "@/types/data";
@@ -43,8 +43,9 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentPro
   // 메인 화면에서 다운로드(large 사이즈만 다운로드 가능)
   const downloadFile = (e) => {
     e.stopPropagation();
-    const key = photo.type === ContentType.IMAGE ? photo.keyImageLarge : photo.keyVideoPlayback;
-    handleDownloadContent(key);
+    const isAlbum = Boolean(photo.albumId);
+    if (isAlbum) startDownloadAlbum(photo.albumId!);
+    else startDownloadItem(photo.key);
   };
 
   const handleMouseEnter = () => {

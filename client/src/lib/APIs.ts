@@ -36,14 +36,13 @@ import {
   GetMediaPresignedUrlReqDto,
   GetMediaPresignedUrlResDto,
   requestFileProcessingReqDto,
-  GetItemDownloadUrlReqDto,
   GetItemDownloadUrlResDto,
-  requestAlbumDownloadReqDto,
   initiateMultipartReqDto,
   getPresignedPartsReqDto,
   completeMultipartReqDto,
   initiateMultipartResDto,
   getPresignedPartsResDto,
+  GetAlbumDownloadUrlsResDto,
 } from "@/types/api-dtos";
 
 /** 기본적인 API 요청 method 형식
@@ -350,13 +349,9 @@ export const completeMultipartAPI = (requestBody: completeMultipartReqDto) =>
   postRequest<completeMultipartReqDto, null>(`upload/complete-multipart`, requestBody);
 
 // 미디어 아이템 다운로드 url 발급 요청
-export const getItemDownloadUrlAPI = (requestBody: GetItemDownloadUrlReqDto) =>
-  getRequest<GetItemDownloadUrlReqDto, GetItemDownloadUrlResDto>(`media/download`, requestBody);
+export const getItemDownloadUrlAPI = (mediaId: number) =>
+  getRequest<null, GetItemDownloadUrlResDto>(`media/${mediaId}/download`, null);
 
-//! Could be deprecated
 // 앨범 다운로드 요청(바로 다운로드)
-export const requestAlbumDownloadAPI = (requestBody: requestAlbumDownloadReqDto) =>
-  postRequest<requestAlbumDownloadReqDto, ToogleLikedResDto>(
-    `media/album/download/${requestBody.albumId}`,
-    requestBody
-  );
+export const getAlbumDownloadUrlsAPI = (albumId: number) =>
+  getRequest<null, GetAlbumDownloadUrlsResDto>(`media/albums/${albumId}/download`, null);

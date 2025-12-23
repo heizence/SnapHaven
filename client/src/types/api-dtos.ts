@@ -324,16 +324,13 @@ export interface completeMultipartReqDto {
 }
 
 // 미디어 아이템 다운로드 url 발급 요청
-export interface GetItemDownloadUrlReqDto {
-  s3Key: string;
-}
-
 export interface GetItemDownloadUrlResDto {
-  downloadUrl: string;
   fileName: string;
+  url: string;
 }
 
-// 앨범 다운로드 요청
-export interface requestAlbumDownloadReqDto {
-  albumId: number;
+// 앨범 다운로드 url 발급
+export interface GetAlbumDownloadUrlsResDto {
+  albumTitle: string;
+  files: GetItemDownloadUrlResDto[];
 }
