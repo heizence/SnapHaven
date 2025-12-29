@@ -146,11 +146,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (contentType.includes("multipart/form-data")) await handleMultipart(req, res, targetUrl);
     else await handleJson(req, res, targetUrl, path);
   } catch (error) {
-    //    console.error("BFF Proxy Error:", error.response.data);
-    return res
-      .status(error.status)
-      .json(
-        ResponseDto.fail(error.status, error.response?.data.message || "에러가 발생했습니다.", null)
-      );
+    const statusCode = error.response?.status || error.status || 500;
+    const errorMessage =
+      error.response?.data?.message || error.message || "서버 내부 에러가 발생했습니다.";
+
+    console.error("[BFF Proxy Error]", {
+      path,
+      statusCode,
+      message: errorMessage,
+    });
+
+    return res.status(statusCode).json(ResponseDto.fail(statusCode, errorMessage, null));
   }
 }

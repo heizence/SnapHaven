@@ -41,7 +41,6 @@ export default function ContentDetailPage() {
     const res = await getMediaItemDetailAPI(request);
 
     if (res.code === 200) {
-      console.log("[getSingleMediaItem]res : ", res.data);
       const item = res.data;
       setMediaDetail(item);
     }
