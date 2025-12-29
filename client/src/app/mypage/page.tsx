@@ -31,7 +31,7 @@ export default function MyProfilePage() {
 
   const getProfileData = async () => {
     const res = await getProfileInfoAPI();
-    console.log("## res : ", res);
+
     if (res.code === 202) {
       const { nickname, profileImageKey, uploads, likes, collections } = res.data;
       setProfileInfo({
@@ -87,8 +87,8 @@ export default function MyProfilePage() {
             unoptimized
           />
         ) : (
-          <div className="w-[140] h-[140] rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-            <User size={80} className="text-gray-500" />
+          <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+            <User size={70} className="text-gray-500" />
           </div>
         )}
         <h1 className="text-2xl font-semibold mt-4">{profileInfo.nickname}</h1>

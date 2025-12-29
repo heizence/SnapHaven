@@ -52,7 +52,6 @@ export default function MyCollectionsPage() {
     }
 
     const res = await getMyCollectionsAPI();
-    console.log("getMyCollectionList res : ", res);
 
     if (res.code === 200) {
       const data = res.data;
@@ -80,7 +79,6 @@ export default function MyCollectionsPage() {
       page: forcedPage ?? page,
     };
     const res = await getCollectionContentsAPI(request);
-    console.log("# getCollectionContents res : ", res);
     if (res.code === 200) {
       const items = res.data.items;
       const photos = items.map((item) => ({
@@ -142,7 +140,6 @@ export default function MyCollectionsPage() {
     if (!isSure) return;
 
     const res = await deleteCollectionAPI(selectedCollection.id);
-    //console.log("## deleted collection res : ", res);
     if (res.code === 202) {
       let temp = [...collectionFolders];
       temp = temp.filter((each) => each.id !== res.data?.deletedCollectionId);
@@ -169,7 +166,6 @@ export default function MyCollectionsPage() {
     };
 
     const res = await editCollectionAPI(request);
-    console.log("## res : ", res);
     if (res.code === 200) {
       const editedCollection = res.data;
 
@@ -221,7 +217,6 @@ export default function MyCollectionsPage() {
 
       if (bottom && hasMore) {
         scrollPositionRef.current = window.scrollY; // 현재 위치 저장
-        //console.log("scroll reached to the bottom!!");
         if (selectedCollection) getCollectionContents(selectedCollection);
       }
     };

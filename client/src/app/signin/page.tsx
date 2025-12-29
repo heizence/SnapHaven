@@ -10,6 +10,7 @@ import LinkText from "@/components/ui/LinkText";
 import { signinAPI } from "@/lib/APIs";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
 import { SignInReqDto } from "@/types/api-dtos";
+import { useLoading } from "@/contexts/LoadingProvider";
 
 export default function Page() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Page() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const { showLoading, hideLoading } = useLoading();
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   const typeEmail = (value: string) => {
@@ -51,6 +53,7 @@ export default function Page() {
 
     setEmailStatus("checking");
 
+    showLoading();
     const request: SignInReqDto = {
       email,
       password,
@@ -66,6 +69,7 @@ export default function Page() {
     }
 
     setEmailStatus("idle");
+    hideLoading();
   };
 
   return (

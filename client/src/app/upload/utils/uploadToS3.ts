@@ -37,7 +37,7 @@ export async function uploadFilesToS3({
   concurrency?: number;
 }) {
   //const startTime = performance.now(); // 성능 측정을 위한 시간 계산
-  console.log(`[Upload] 업로드 시작 - 총 파일 개수: ${files.length}`);
+  //console.log(`[Upload] 업로드 시작 - 총 파일 개수: ${files.length}`);
 
   const uploadedKeys: string[] = new Array(files.length);
   let currentIndex = 0;
@@ -88,7 +88,6 @@ export async function uploadLargeVideoToS3({
   file: File;
   presignedData: PresignedData;
 }) {
-  console.log("[uploadLargetVideoToS3]start.  : ");
   const startTime = performance.now();
   const s3Key = presignedData.s3Key;
 
@@ -98,25 +97,18 @@ export async function uploadLargeVideoToS3({
     contentType: file.type,
     s3Key,
   });
-  console.log("[uploadLargetVideoToS3]initiateMultipartAPI res : ", initiateRes);
   const { uploadId } = initiateRes.data;
 
   const totalParts = Math.ceil(file.size / PART_SIZE);
   const partNumbers = Array.from({ length: totalParts }, (_, i) => i + 1);
 
   // 2. 조각별 Presigned URL 한꺼번에 받아오기
-  console.log("[uploadLargetVideoToS3]getPresignedPartsAPI req : ", {
-    uploadId,
-    s3Key: presignedData.s3Key,
-    partNumbers,
-  });
   const getPresignedRes = await getPresignedPartsAPI({
     uploadId,
     s3Key: presignedData.s3Key,
     partNumbers: partNumbers.join(","),
   });
   const urls = getPresignedRes.data;
-  console.log("[uploadLargetVideoToS3]getPresignedPartsAPI res : ", getPresignedRes);
   // 3. 조각 업로드 (Worker Queue 적용)
   const completedParts: { PartNumber: number; ETag: string }[] = new Array(totalParts);
   let currentIndex = 0;
@@ -142,8 +134,6 @@ export async function uploadLargeVideoToS3({
           PartNumber: part.partNumber,
           ETag: etag.replace(/"/g, ""), // 따옴표 제거
         };
-
-        console.log(`[Multipart] 조각 ${part.partNumber}/${totalParts} 완료`);
       } catch (err) {
         console.error(`[Multipart Error] 조각 ${part.partNumber} 실패:`, err);
         throw err; // 조각 하나라도 최종 실패하면 중단
@@ -167,7 +157,7 @@ export async function uploadLargeVideoToS3({
 
   const endTime = performance.now();
   const duration = ((endTime - startTime) / 1000).toFixed(2);
-  console.log(`⏱️ 대용량 영상 업로드 완료: ${duration}초`);
+  //console.log(`⏱️ 대용량 영상 업로드 완료: ${duration}초`);
 
   return s3Key;
 }

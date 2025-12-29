@@ -40,7 +40,6 @@ export default function RenderMyContentsPage({ type }: { type: RenderType }) {
     const res = await apiToCall(request);
 
     if (res.code === 200) {
-      console.log("[getMyContents]items : ", res.data.items);
       const items = res.data.items;
       const photos = items.map((item) => ({
         width: item.width,
@@ -90,7 +89,6 @@ export default function RenderMyContentsPage({ type }: { type: RenderType }) {
 
       if (bottom && hasMore) {
         scrollPositionRef.current = window.scrollY; // 현재 위치 저장
-        //console.log("scroll reached to the bottom!!");
         getData();
       }
     };

@@ -9,6 +9,7 @@ import LinkText from "@/components/ui/LinkText";
 import { signupAPI, checkNicknameAPI } from "@/lib/APIs";
 import { isValidPassword } from "@/lib/utils";
 import { CheckNicknameReqDto, SignUpReqDto } from "@/types/api-dtos";
+import { useLoading } from "@/contexts/LoadingProvider";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -34,6 +35,8 @@ export default function SignupPage() {
 
   const [formStatus, setFormStatus] = useState<"idle" | "submitting">("idle");
 
+  const { showLoading, hideLoading } = useLoading();
+
   const typeEmail = (value: string) => {
     setEmail(value);
     setEmailError("");
@@ -57,7 +60,8 @@ export default function SignupPage() {
     setNicknameStatus("checking");
     setNicknameMessage("");
 
-    const param: CheckNicknameReqDto = { nickname };
+    showLoading();
+    const param = { nickname };
 
     const res = await checkNicknameAPI(param);
 
@@ -74,6 +78,7 @@ export default function SignupPage() {
         setNicknameStatus("idle");
       }
     }
+    hideLoading();
   };
 
   // 비밀번호 강도 체크

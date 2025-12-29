@@ -67,7 +67,6 @@ export default function EditProfilePage() {
   // 프로필 이미지 변경
   const handleProfileImgChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files;
-    console.log("#handleImgChange. selectedFile : ", selectedFile);
     if (!selectedFile || selectedFile.length === 0) return;
 
     const fileCheck = validateImageFile(selectedFile[0]);
@@ -80,7 +79,6 @@ export default function EditProfilePage() {
     formData.append("files", selectedFile[0]);
 
     const res = await editProfileImageAPI(formData);
-    console.log("res : ", res);
     if (res.code === 202) {
       setProfileImgPreview(AWS_BASE_URL + res.data);
       CustomLocalStorage.updateUserInfo({
@@ -93,7 +91,6 @@ export default function EditProfilePage() {
 
   // 저장하기 버튼 클릭(닉네임 및 비밀번호 변경)
   const handleSave = async () => {
-    console.log("## handleSave start");
     // 에러 초기화
     setNicknameError("");
     setPasswordError("");
@@ -173,8 +170,8 @@ export default function EditProfilePage() {
                 unoptimized
               />
             ) : (
-              <div className="w-[140] h-[140] rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                <User size={80} className="text-gray-500" />
+              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                <User size={70} className="text-gray-500" />
               </div>
             )}
 

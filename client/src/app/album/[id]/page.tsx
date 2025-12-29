@@ -46,7 +46,6 @@ export default function CollectionDetailPage() {
     const res = await getAlbumDetailAPI(request);
 
     if (res.code === 200) {
-      console.log("[getAlbumDetail]res : ", res.data);
       const items = res.data.items;
 
       const photos = items.map((item) => ({

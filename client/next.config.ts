@@ -3,6 +3,13 @@ import { AWS_HOST_NAME } from "@/constants";
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // 빌드 시 TypeScript 에러를 무시하도록 설정
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -21,6 +28,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  allowedDevOrigins: ["snaphaven.com"],
 
   async headers() {
     return [

@@ -293,28 +293,25 @@ export default function Page() {
       // 3. 서버에 Presigned URL / Multipart 세션 요청
       // 서버는 영상 단일 파일일 때만 res.data.isMultipart = true를 준다고 가정합니다.
       const res = await getMediaPresignedUrlsAPI(request);
-      console.log("[Upload] getMediaPresignedUrlsAPI res : ", res);
       if (res.code === 202) {
         const { urls, albumId, isMultipart, uploadId } = res.data;
-        console.log("");
         let uploadedKeys: string[] = [];
 
         if (isMultipart && uploadId) {
-          console.log("[Upload] 멀티파트 업로드 시작...");
+          //console.log("[Upload] 멀티파트 업로드 시작...");
           const videoFile = files[0].fileOrigin;
 
           // uploadLargeVideoToS3 내부에서 complete-multipart API 호출까지 완료한다고 가정
           const s3Key = await uploadLargeVideoToS3({ file: videoFile, presignedData: urls[0] });
           uploadedKeys.push(s3Key);
         } else {
-          console.log("[Upload] 일반 병렬 업로드 시작...");
+          //console.log("[Upload] 일반 병렬 업로드 시작...");
           const uploadedFileKeys = await uploadFilesToS3({
             files: files.map((f) => f.fileOrigin),
             presignedData: urls,
           });
           uploadedKeys = uploadedFileKeys;
         }
-        console.log("[Upload] uploadedKeys :", uploadedKeys);
 
         // 이미지의 경우 필수이며, 영상의 경우 서버에서 complete-multipart 시 자동 처리해도 무방하지만
         // 일관성을 위해 s3Keys를 전달하여 상태를 PENDING -> PROCESSING으로 바꿉니다.
@@ -324,10 +321,10 @@ export default function Page() {
         });
 
         const endTime = performance.now();
-        console.log(`⏱️ 전체 공정 소요 시간: ${((endTime - startTime) / 1000).toFixed(2)}초`);
+        //console.log(`⏱️ 전체 공정 소요 시간: ${((endTime - startTime) / 1000).toFixed(2)}초`);
 
         hideLoading();
-        alert("파일 업로드가 완료되었습니다. 서버에서 처리를 시작합니다.");
+        alert("파일 업로드가 완료되었습니다. 처리를 시작합니다.");
         clearAll();
       } else {
         throw new Error(res.message || "서버 응답 오류");

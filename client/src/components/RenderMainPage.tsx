@@ -56,12 +56,10 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
         keyword: keyword || "",
         tag: tagName || "",
       };
-      console.log("#getFeeds request : ", request);
 
       const res = await getMediaItemsAPI(request);
 
       if (res.code === 200) {
-        console.log("[getFeeds]items : ", res.data.items);
         const items = res.data.items;
         const photos: Photo[] = items.map((item) => ({
           key: item.id,
@@ -125,7 +123,6 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
 
       if (bottom && hasMore) {
         scrollPositionRef.current = window.scrollY; // 현재 위치 저장
-        console.log("scroll reached to the bottom!!");
         getFeeds();
       }
     };

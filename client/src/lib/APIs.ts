@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { InternalAxiosRequestConfig } from "axios";
 import { ResponseDto } from "../types/ResponseDto";
 import { cloneDeep } from "lodash";
 import {
@@ -73,13 +73,19 @@ const retryRequest = (error) => {
   return axiosInstance.request(originalConfig);
 };
 
+// Nginx 로 인해 bff 를 통과하지 않는 현상 방지
+axiosInstance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  config.baseURL = "/api";
+  return config;
+});
+
 const interceptorErrorHandler = async (error) => {
   // 토큰 재발급
   if (error.status === 401) {
-    console.log("axios interceptors 401 error : ", error);
-    console.log("path : ", error.request.responseURL || "");
+    // console.log("axios interceptors 401 error : ", error);
+    // console.log("path : ", error.request.responseURL || "");
     const res: ResponseDto<RefreshTokenResDto> = await refreshToken();
-    console.log("refresh token res : ", res);
+    //console.log("refresh token res : ", res);
     if (res.code === 200) {
       return retryRequest(error);
     }
@@ -99,7 +105,6 @@ const commonAPI = async <TRequest, TResponse>(
   showErrorAlert: boolean = true
 ): Promise<ResponseDto<TResponse>> => {
   return axiosInstance({
-    baseURL: "/api",
     url: path,
     method,
     headers: {
@@ -110,7 +115,7 @@ const commonAPI = async <TRequest, TResponse>(
     timeout: 40000,
   })
     .then((response) => {
-      console.log("[commomAPI]response.data : ", response?.data);
+      //console.log("[commomAPI]response.data : ", response?.data);
       return response?.data;
     })
     .catch((error) => {
@@ -136,7 +141,6 @@ const commonMultipartAPI = async <TRequest, TResponse>(
   showErrorAlert: boolean = true
 ): Promise<ResponseDto<TResponse>> => {
   return axiosInstance({
-    baseURL: "/api",
     url: path,
     method: "POST",
     headers: {

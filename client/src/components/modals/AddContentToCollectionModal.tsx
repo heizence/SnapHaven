@@ -25,7 +25,6 @@ export const AddContentToCollectionModal: React.FC<ModalProps> = ({
 
   const getMyCollectionList = async () => {
     const res = await getMyCollectionsAPI(mediaId ? { mediaId } : undefined);
-    console.log("### res : ", res);
     if (res.code == 200) {
       setCollecitonsList(res.data);
     }

@@ -37,8 +37,6 @@ const serverAxiosInstance = axios.create();
 
 // multipart 요청 포워딩
 async function handleMultipart(req: NextApiRequest, res: NextApiResponse, targetUrl: string) {
-  console.log("[...slug.ts]handleMultipart start.");
-  console.log("targetUrl : ", targetUrl);
   const accessToken = req.cookies.accessToken;
   const form = new IncomingForm({ multiples: true });
 
@@ -48,9 +46,6 @@ async function handleMultipart(req: NextApiRequest, res: NextApiResponse, target
       resolve({ fields, files });
     });
   });
-
-  // console.log("[...slug.ts]fields : ", fields);
-  // console.log("[...slug.ts]files : ", files);
 
   const uploadedFiles = files.files || files.file;
   const fileArray = Array.isArray(uploadedFiles)
@@ -77,7 +72,6 @@ async function handleMultipart(req: NextApiRequest, res: NextApiResponse, target
     tempFilesToClean.push(file);
 
     const stream = await fs.createReadStream(file.filepath);
-    console.log("[...slug.ts]stream : ", stream);
     formData.append("file", stream, {
       filename: file.originalFilename || "upload",
       contentType: file.mimetype || "application/octet-stream",
@@ -85,9 +79,6 @@ async function handleMultipart(req: NextApiRequest, res: NextApiResponse, target
     });
   }
 
-  console.log("[...slug.ts]req.method :", req.method);
-  //console.log("[...slug.ts]formData :", formData);
-  // NestJS 호출
   let apiRes;
   try {
     apiRes = await serverAxiosInstance.post(targetUrl, formData, {
@@ -112,7 +103,6 @@ async function handleJson(
   targetUrl: string,
   path: string
 ) {
-  console.log("[...slug.ts]handleJson start.");
   const accessToken = req.cookies.accessToken;
 
   const headers: Record<string, string> = {
