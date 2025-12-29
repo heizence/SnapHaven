@@ -84,10 +84,6 @@ export class ValidationService {
     contentType: ContentType,
     maxCount: number,
   ) {
-    console.log('[validation.service]validateFileArray start');
-    console.log('[validation.service]files : ', files);
-    console.log('[validation.service]contentType : ', contentType);
-    console.log('[validation.service]maxCount : ', maxCount);
     if (!files || files.length === 0) {
       throw new BadRequestException('업로드할 파일이 없습니다.');
     }
@@ -102,7 +98,6 @@ export class ValidationService {
         ? this.MAX_IMAGE_SIZE
         : this.MAX_VIDEO_SIZE;
 
-    console.log('[validation.service]maxSize : ', maxSize);
     for (const file of files) {
       this.validateFileType(file, contentType);
       if (file.size > maxSize) {
@@ -116,12 +111,7 @@ export class ValidationService {
 
   // 비디오 길이 검증(60초 이하)
   async validateVideoDuration(file: Express.Multer.File) {
-    console.log('[validation.service]validateVideoDuration start.');
-    console.log('[validation.service]file : ', file);
-    //const filePath = file.path || file.filename;
-
     const s3Key = (file as any).key;
-    console.log('[validation.service]s3Key : ', s3Key);
     const originalName = file.originalname;
 
     if (!s3Key) {
@@ -150,13 +140,10 @@ export class ValidationService {
           resolve(metadata);
         });
       });
-      console.log('[validation.service]metadata : ', metadata);
 
       const durationSeconds = metadata?.format?.duration
         ? parseFloat(metadata.format.duration)
         : 0;
-
-      console.log('[validation.service]durationSeconds : ', durationSeconds);
 
       if (isNaN(durationSeconds) || durationSeconds <= 0) {
         throw new BadRequestException(

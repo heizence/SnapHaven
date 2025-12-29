@@ -9,10 +9,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1); // for deployment
   app.setGlobalPrefix('api/v1'); // 모든 API 경로가 /api/v1/... 로 시작됨
   app.enableCors({
-    origin: 'http://localhost:3000', // 클라이언트 주소 (추후 수정)
+    origin: process.env.CLIENT_ADDRESS,
     credentials: true,
+    exposedHeaders: ['Authorization'], // 혹시 헤더를 직접 읽어야 할 경우 대비
   });
   app.useGlobalFilters(new HttpExceptionFilter());
 

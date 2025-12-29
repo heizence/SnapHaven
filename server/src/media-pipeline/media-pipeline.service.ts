@@ -118,7 +118,7 @@ export class MediaPipelineService {
         const file = dto.files[0];
         const fileExtension = file.name.split('.').pop() || 'mp4';
         const s3Key = `media-items/${uuidv4()}.${fileExtension}`;
-        console.log('[readyToupload] file s3key : ', s3Key);
+
         // S3 Multipart 세션 시작 및 UploadId 발급
         const multipartSession =
           await this.s3UtilityService.createMultipartUpload(s3Key, file.type);

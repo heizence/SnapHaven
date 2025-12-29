@@ -54,7 +54,6 @@ export class MediaItemsController {
     @Req() req: { user?: User },
   ): Promise<ResponseDto<GetMediaItemsResDto>> {
     const currentUserId = req.user?.id;
-    console.log('items controller. user : ', currentUserId);
     const { message, items, totalCounts } =
       await this.mediaItemsService.findAll(query, currentUserId);
 

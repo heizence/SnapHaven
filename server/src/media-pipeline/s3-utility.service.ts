@@ -58,7 +58,6 @@ export class S3UtilityService {
       Bucket: this.ORIGINALS_BUCKET,
       Key: key,
       ContentType: contentType,
-      // [CRITICAL] 클라이언트가 PUT 요청 시 해당 크기와 타입으로만 업로드 허용하도록 제한
       ContentLength: contentLength,
     });
 
@@ -195,46 +194,6 @@ export class S3UtilityService {
         '프로필 이미지 업로드 중 오류가 발생했습니다.',
       );
     }
-  }
-
-  /**
-   * S3에서 파일을 가져오는 스트림을 반환. 여러 파일 zip 다운로드 시 사용
-   */
-  async getS3FileStream(key: string, fileName: string): Promise<Readable> {
-    for (let attempt = 1; attempt <= 5; attempt++) {
-      try {
-        const command = new GetObjectCommand({
-          Bucket: this.ASSETS_BUCKET,
-          Key: key,
-        });
-        console.log('## getS3FileStream. key : ', key);
-        const response = await this.s3Client.send(command);
-
-        if (!response.Body) {
-          throw new Error('S3 응답 바디가 비어있습니다.');
-        }
-
-        console.log(
-          `[ZIP] 파일 스트리밍 성공: ${fileName} (시도: ${attempt}회)`,
-        );
-        return response.Body as Readable; // 성공 시 스트림 반환
-      } catch (error) {
-        console.warn(
-          `[ZIP] 파일 스트리밍 실패: ${fileName} (시도: ${attempt}회). 오류: ${error.message}`,
-        );
-        if (attempt === 5) {
-          // 마지막 시도 실패 시 오류를 던집니다.
-          throw new InternalServerErrorException(
-            `파일을 5회 시도했으나 가져오지 못했습니다: ${fileName}`,
-          );
-        }
-        // 짧게 대기 후 재시도
-        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-      }
-    }
-    throw new InternalServerErrorException(
-      `예상치 못한 오류: getS3FileStreamWithRetry가 스트림을 반환하지 못했습니다.`,
-    );
   }
 
   /**

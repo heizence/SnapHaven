@@ -20,9 +20,8 @@ import { BackgroundTaskModules } from './common/background-tasks/background-task
     ConfigModule.forRoot({
       isGlobal: true,
       // NODE_ENV 값에 따라 동적으로 .env 파일 경로 설정
-      envFilePath: path.resolve(
-        __dirname,
-        '..',
+      envFilePath: path.join(
+        process.cwd(),
         `.env.${process.env.NODE_ENV || 'dev'}`,
       ),
 

@@ -303,7 +303,6 @@ export class MediaItemsService {
       .groupBy('media.id, owner.id');
 
     const rawResult = (await qb.getRawOne()) as RawMediaItemDetailResult;
-    console.log('## rawResult : ', rawResult);
     if (!rawResult) {
       throw new NotFoundException(
         '요청하신 콘텐츠를 찾을 수 없거나 삭제되었습니다.',

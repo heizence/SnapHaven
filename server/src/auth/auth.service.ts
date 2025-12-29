@@ -239,7 +239,6 @@ export class AuthService {
   ): Promise<ServiceResDto> {
     const { email } = dto;
     const user = await this.usersService.findByEmail(email);
-    console.log('email : ', email);
     // 보안: 유저가 존재하지 않아도, 존재 여부를 알려주지 않기 위해 항상 성공처럼 응답한다.(User Enumeration 방지)
     if (!user) {
       console.warn(`[Forgot PW] Non-existent email requested: ${email}`);
@@ -258,7 +257,8 @@ export class AuthService {
     });
 
     // 클라이언트의 재설정 페이지 URL
-    const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+    const clientAddress = this.configService.get<string>('CLIENT_ADDRESS');
+    const resetUrl = `${clientAddress}/reset-password?token=${resetToken}`;
 
     try {
       // 이메일 발송
@@ -266,7 +266,7 @@ export class AuthService {
       await this.mailerService.sendMail({
         to: email,
         //to: 'heizence6626@gmail.com', // for test
-        from: 'SnapHaven <noreply@snaphaven.com>',
+        from: this.configService.get<string>('EMAIL_FROM_NAME'),
         subject: '[SnapHaven] 비밀번호 재설정 링크입니다.',
         html: `
         <p>비밀번호를 재설정하려면 아래 링크를 클릭하세요 (10분 내 만료):</p>

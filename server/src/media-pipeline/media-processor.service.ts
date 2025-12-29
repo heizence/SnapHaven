@@ -126,7 +126,6 @@ export class MediaProcessorService {
     localPath: string,
     mediaId: number,
   ): Promise<ProcessedKeys> {
-    console.log('[media-processor.service]processVideo start.');
     const keys: ProcessedKeys = {};
     const uniqueFolderName = `${mediaId}_${Date.now()}`;
     const tempBaseKey = `media-items/${uniqueFolderName}`;
