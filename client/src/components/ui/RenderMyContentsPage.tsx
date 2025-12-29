@@ -20,6 +20,7 @@ export default function RenderMyContentsPage({ type }: { type: RenderType }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  const isFetching = useRef(false);
   const router = useRouter();
   const { showLoading, hideLoading } = useLoading();
 
@@ -27,6 +28,9 @@ export default function RenderMyContentsPage({ type }: { type: RenderType }) {
   const scrollPositionRef = useRef(0);
 
   const getData = useCallback(async () => {
+    if (isFetching.current) return;
+    isFetching.current = true;
+
     if (isInit) {
       showLoading();
     }
@@ -65,8 +69,12 @@ export default function RenderMyContentsPage({ type }: { type: RenderType }) {
       }
     }
 
+    if (isInit) {
+      setIsInit(false);
+    }
+
     hideLoading();
-    setIsInit(false);
+    isFetching.current = false;
   }, [page]);
 
   const handleItemOnclick = (photo: Photo) => {

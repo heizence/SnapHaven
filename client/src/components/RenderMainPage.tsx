@@ -27,6 +27,7 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState(true);
 
+  const isFetching = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -40,6 +41,9 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
 
   const getFeeds = useCallback(
     async (forcedPage?: number, forcedOrder?: OrderType, forcedFilter?: FilterType) => {
+      if (isFetching.current) return;
+      isFetching.current = true;
+
       const loadPage = forcedPage ?? page;
       const loadOrder = forcedOrder ?? orderType;
       const loadFilter = forcedFilter ?? filterType;
@@ -93,6 +97,7 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
       }
 
       hideLoading();
+      isFetching.current = false;
     },
     [page, orderType, filterType, keyword, tagName]
   );
