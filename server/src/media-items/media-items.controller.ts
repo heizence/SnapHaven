@@ -56,7 +56,6 @@ export class MediaItemsController {
     const currentUserId = req.user?.id;
     const { message, items, totalCounts } =
       await this.mediaItemsService.findAll(query, currentUserId);
-
     return ResponseDto.success(HttpStatus.OK, message, { items, totalCounts });
   }
 

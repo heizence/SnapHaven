@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { TerminusModule } from '@nestjs/terminus';
+import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,6 +16,7 @@ import { UploadModule } from './upload/upload.module';
 import { MediaItemsModule } from './media-items/media-items.module';
 import { CollectionsModule } from './collections/collections.module';
 import { BackgroundTaskModules } from './common/background-tasks/background-tasks.module';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -55,7 +58,7 @@ import { BackgroundTaskModules } from './common/background-tasks/background-task
 
         // 테스트 환경일 때는 true. 실행 시마다 데이터 자동 초기화
         // 그 외 환경에서는 false. 엔티티와 DB 스키마 자동 동기화 안 함 (데이터 유실 방지)
-        synchronize: false, // configService.get<string>('NODE_ENV') === 'development',
+        synchronize: false,
 
         // 실행되는 SQL 쿼리문 로깅하기. 'development' 환경일 때만 logging: true
         logging: configService.get<string>('NODE_ENV') === 'development',
@@ -71,8 +74,10 @@ import { BackgroundTaskModules } from './common/background-tasks/background-task
     MediaItemsModule,
     CollectionsModule,
     BackgroundTaskModules,
+    TerminusModule, // Health Check 기능 활성화
+    HttpModule, // 내부/외부 HTTP 요청 기능 활성화
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { WinstonModule } from 'nest-winston';
+import { winstonLoggerConfig } from './utils/winston.config';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common'; // 요청 데이터 유효성 검사를 위한 ValidationPipe
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'; // API 문서 자동화를 위한 swagger
@@ -6,7 +8,9 @@ import { ConfigService } from '@nestjs/config'; // 환경 변수 관리 모듈
 import { HttpExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger(winstonLoggerConfig),
+  });
   const configService = app.get(ConfigService);
 
   (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1); // for deployment
@@ -37,7 +41,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/v1/swagger', app, document); // 'api' 경로에 Swagger UI 생성
 
-  const port = configService.get<number>('SERVER_PORT', 8000);
+  const port = configService.get<number>('SERVER_PORT', 8001);
 
   app.enableShutdownHooks(); // 정상 종료 훅 활성화
   await app.listen(port);
