@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
+import helmet from 'helmet';
 import { winstonLoggerConfig } from './utils/winston.config';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common'; // 요청 데이터 유효성 검사를 위한 ValidationPipe
@@ -30,6 +31,7 @@ async function bootstrap() {
       transform: true, // 들어오는 데이터를 DTO 클래스 타입으로 변환
     }),
   );
+  app.use(helmet());
 
   // Swagger 설정을 위한 DocumentBuilder 생성
   const config = new DocumentBuilder()

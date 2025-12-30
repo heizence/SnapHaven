@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -65,6 +67,13 @@ import { HealthController } from './health/health.controller';
       }),
     }),
 
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1분 (ms 단위)
+        limit: 100, // 1분 동안 최대 100번 요청 허용
+      },
+    ]),
+
     EventEmitterModule.forRoot(),
 
     AuthModule,
@@ -78,6 +87,12 @@ import { HealthController } from './health/health.controller';
     HttpModule, // 내부/외부 HTTP 요청 기능 활성화
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard, // 전역적으로 가드 적용
+    },
+  ],
 })
 export class AppModule {}
