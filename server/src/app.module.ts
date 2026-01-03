@@ -33,8 +33,8 @@ import { HealthController } from './health/health.controller';
       // 환경 변수 유효성 검사 스키마 추가
       validationSchema: Joi.object({
         NODE_ENV: Joi.string()
-          .valid('dev', 'staging', 'prod', 'test.dev')
-          .default('dev'),
+          .valid('local', 'dev', 'prod', 'test.dev')
+          .default('local'),
         SERVER_PORT: Joi.number().default(8000),
         DB_HOST: Joi.string().required(),
         DB_PORT: Joi.number().required(),

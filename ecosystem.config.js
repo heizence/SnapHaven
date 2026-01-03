@@ -10,28 +10,16 @@ module.exports = {
       cwd: "./client", // 명령어를 실행하기 전 이 폴더로 이동(cd)
       script: "npm", // 실행할 프로그램
       args: "run start", // script 뒤에 붙을 명령어 인자
-      // --env dev 옵션을 주었을 때 주입될 변수
-      env_dev: {
-        NODE_ENV: "development",
-        PORT: 3000,
-      },
-      // --env prod 옵션을 주었을 때 주입될 변수
-      env_prod: {
-        NODE_ENV: "production",
-        PORT: 3000,
-      },
+      env_dev: { NODE_ENV: "dev" },
+      env_prod: { NODE_ENV: "prod" },
     },
     {
       name: "snaphaven-server",
       cwd: "./server",
       script: "node",
       args: "dist/main.js",
-      env_dev: {
-        NODE_ENV: "dev",
-      },
-      env_prod: {
-        NODE_ENV: "prod",
-      },
+      env_dev: { NODE_ENV: "dev" },
+      env_prod: { NODE_ENV: "prod" },
     },
   ],
 };

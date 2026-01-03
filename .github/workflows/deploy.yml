@@ -1,0 +1,24 @@
+name: SnapHaven Docker CI/CD
+
+on:
+  push:
+    branches: [develop, production]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ github.ref == 'refs/heads/production' && secrets.PROD_HOST || secrets.DEV_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/SnapHaven
+            chmod +x deploy.sh
+            # develop 브랜치면 dev로, production 브랜치면 prod로 실행
+            ./deploy.sh ${{ github.ref == 'refs/heads/production' && 'prod' || 'dev' }}

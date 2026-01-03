@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start:local": "env-cmd -f .env.dev next dev -p 3000 -H 0.0.0.0",
+    "start:local": "env-cmd -f .env.local next dev -p 3000 -H 0.0.0.0",
     "start:dev": "env-cmd -f .env.dev next start -p 3000",
     "build:dev": "env-cmd -f .env.dev next build",
     "start:prod": "env-cmd -f .env.prod next start -p 3000",
     "build:prod": "env-cmd -f .env.prod next build",
+    "docker:build:dev": "docker build --build-arg TARGET_ENV=dev -t snaphaven-client-dev .",
+    "docker:run:dev": "docker run -d -p 3000:3000 --name snaphaven-client-dev --env-file .env.dev snaphaven-client-dev",
+    "docker:build:prod": "docker build --build-arg TARGET_ENV=prod -t snaphaven-client-prod .",
+    "docker:run:prod": "docker run -d -p 3000:3000 --name snaphaven-client-prod --env-file .env.prod snaphaven-client-prod",
+    "docker:stop": "docker stop snaphaven-client-dev snaphaven-client-prod 2>/dev/null && docker rm snaphaven-client-dev snaphaven-client-prod 2>/dev/null",
+    "start": "if [ \"$NODE_ENV\" = \"prod\" ]; then npm run start:prod; else npm run start:dev; fi",
     "run": "yarn build && yarn start",
     "lint": "next lint"
   },
