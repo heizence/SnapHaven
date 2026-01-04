@@ -48,6 +48,12 @@ export interface ResetPasswordReqDto {
   newPassword: string;
 }
 
+// 회원가입 시 인증 코드 검증
+export interface VerifyCodeReqDto {
+  email: string;
+  code: string;
+}
+
 /******************* 내 프로필 ******************/
 
 // 프로필 정보 불러오기

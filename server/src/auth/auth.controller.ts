@@ -30,9 +30,13 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshGuard } from './jwt-refresh.guard';
 import { User } from 'src/users/entities/user.entity';
 import { CheckNicknameReqDto } from './dto/check-nickname.dto';
-import { SendResetPWlinkReqDto } from './dto/send-resetpw-link.dto';
+import {
+  SendResetPWlinkReqDto,
+  SendVerificationCodeReqDto,
+} from './dto/send-resetpw-link.dto';
 import { ResetPasswordReqDto } from './dto/reset-password.dto';
 import { GoogleAuthReqDto } from './dto/google-auth.dto';
+import { VerifyCodeReqDto } from './dto/verify-code.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -119,6 +123,24 @@ export class AuthController {
       nickname,
       profileImageKey,
     });
+  }
+
+  // **************** 회원가입 시 인증 코드 발송 요청 ****************
+  @Post('email-verification/request')
+  @HttpCode(HttpStatus.OK)
+  async requestVerification(
+    @Body() dto: SendVerificationCodeReqDto,
+  ): Promise<ResponseDto<null>> {
+    const { message } = await this.authService.sendVerificationCode(dto);
+    return ResponseDto.successWithoutData(HttpStatus.OK, message);
+  }
+
+  // **************** 회원가입 시 인증 코드 검증 ****************
+  @Post('email-verification/verify')
+  @HttpCode(HttpStatus.OK)
+  verifyCode(@Body() dto: VerifyCodeReqDto): ResponseDto<null> {
+    const { message } = this.authService.verifyCode(dto);
+    return ResponseDto.successWithoutData(HttpStatus.OK, message);
   }
 
   // **************** 닉네임 중복 확인 ****************

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -18,8 +19,12 @@ import { SigninReqDto, SigninResDto } from './dto/signin.dto';
 import { SignUpReqDto } from './dto/signup.dto';
 import { CheckNicknameReqDto } from './dto/check-nickname.dto';
 import { ResetPasswordReqDto } from './dto/reset-password.dto';
-import { SendResetPWlinkReqDto } from './dto/send-resetpw-link.dto';
+import {
+  SendResetPWlinkReqDto,
+  SendVerificationCodeReqDto,
+} from './dto/send-resetpw-link.dto';
 import { GoogleAuthReqDto } from './dto/google-auth.dto';
+import { VerifyCodeReqDto } from './dto/verify-code.dto';
 
 interface ServiceResDto {
   message: string;
@@ -28,6 +33,10 @@ interface ServiceResDto {
 @Injectable()
 export class AuthService {
   private googleClient: OAuth2Client;
+  private verificationCodes = new Map<
+    string,
+    { code: string; expiry: number }
+  >();
 
   constructor(
     private usersService: UsersService,
@@ -82,7 +91,12 @@ export class AuthService {
   async signin(dto: SigninReqDto): Promise<ServiceResDto & SigninResDto> {
     const { email, password } = dto;
 
-    const user = await this.usersService.findByEmail(email);
+    //const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailAndProvider(
+      email,
+      AuthProvider.EMAIL,
+    );
+
     if (!user) {
       throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
@@ -143,6 +157,48 @@ export class AuthService {
     });
 
     return { message: '회원가입이 완료되었습니다.' };
+  }
+
+  // 가입할 이메일로 인증 코드 전송
+  async sendVerificationCode(dto: SendVerificationCodeReqDto) {
+    const { email } = dto;
+
+    const code = Math.random().toString().substring(2, 8); // 6자리 생성
+    const expiry = Date.now() + 5 * 60 * 1000; // 5분 뒤 만료
+
+    this.verificationCodes.set(email, { code, expiry });
+
+    await this.mailerService.sendMail({
+      to: email,
+      from: this.configService.get<string>('EMAIL_FROM_NAME'),
+      subject: '[SnapHaven] 회원가입 인증 코드입니다.',
+      text: `인증 코드: ${code}`,
+      html: `<b>인증 코드: ${code}</b> (5분 내에 입력해 주세요)`,
+    });
+
+    return { message: '이메일로 인증 코드가 발송되었습니다.' };
+  }
+
+  // 가입할 이메일로 전송된 인증 코드 확인
+  verifyCode(dto: VerifyCodeReqDto): ServiceResDto {
+    const { email, code } = dto;
+    const data = this.verificationCodes.get(email);
+
+    if (!data || data.expiry < Date.now()) {
+      throw new BadRequestException(
+        '인증 코드가 만료되었거나 존재하지 않습니다.',
+      );
+    }
+    if (data.code !== code) {
+      throw new BadRequestException('인증 코드가 일치하지 않습니다.');
+    }
+
+    this.verificationCodes.set(email, {
+      code: 'VERIFIED',
+      expiry: Date.now() + 10 * 60 * 1000,
+    });
+
+    return { message: '인증이 완료되었습니다.' };
   }
 
   // 구글 로그인, 회원가입
@@ -238,7 +294,11 @@ export class AuthService {
     dto: SendResetPWlinkReqDto,
   ): Promise<ServiceResDto> {
     const { email } = dto;
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmailAndProvider(
+      email,
+      AuthProvider.EMAIL,
+    );
+
     // 보안: 유저가 존재하지 않아도, 존재 여부를 알려주지 않기 위해 항상 성공처럼 응답한다.(User Enumeration 방지)
     if (!user) {
       console.warn(`[Forgot PW] Non-existent email requested: ${email}`);
@@ -262,7 +322,6 @@ export class AuthService {
 
     try {
       // 이메일 발송
-      // 추후 옵션 파라미터 변경
       await this.mailerService.sendMail({
         to: email,
         //to: 'heizence6626@gmail.com', // for test
