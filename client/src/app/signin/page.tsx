@@ -129,11 +129,7 @@ export default function Page() {
 
         {/* SNS 로그인 버튼 */}
         <div className="w-full space-y-3">
-          <SnsLoginBtn
-            type="google"
-            title="Google 계정으로 로그인"
-            onClick={() => alert("Google 로그인 API 연동 필요")}
-          />
+          <SnsLoginBtn type="google" title="Google 계정으로 로그인" />
           {/* <SnsLoginBtn
             type="apple"
             title="Apple 계정으로 로그인"

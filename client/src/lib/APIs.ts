@@ -43,6 +43,7 @@ import {
   initiateMultipartResDto,
   getPresignedPartsResDto,
   GetAlbumDownloadUrlsResDto,
+  VerifyCodeReqDto,
 } from "@/types/api-dtos";
 
 /** 기본적인 API 요청 method 형식
@@ -222,9 +223,17 @@ export const checkNicknameAPI = (requestBody: CheckNicknameReqDto) =>
 export const sendResetPasswordLinkAPI = (requestBody: SendResetPWlinkReqDto) =>
   postRequest<SendResetPWlinkReqDto, null>("auth/send-reset-pw-link", requestBody);
 
-// 비밀번호 재설정*실제로 비밀번호 재설정하는 api)
+// 비밀번호 재설정(실제로 비밀번호 재설정하는 api)
 export const resetPasswordAPI = (requestBody: ResetPasswordReqDto) =>
   postRequest<ResetPasswordReqDto, null>("auth/reset-password", requestBody);
+
+// 회원가입 할 이메일로 인증번호 전송(인증 요청)
+export const requestEmailVerificationAPI = (requestBody: { email: string }) =>
+  postRequest<{ email: string }, null>("auth/email-verification/request", requestBody);
+
+// 회원가입 시 인증 코드 검증
+export const verifyCodeAPI = (requestBody: VerifyCodeReqDto) =>
+  postRequest<VerifyCodeReqDto, null>("auth/email-verification/verify", requestBody);
 
 /******************* 내 프로필 ******************/
 
