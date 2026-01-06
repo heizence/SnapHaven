@@ -1,0 +1,52 @@
+/* 기본 그리드 아이템 애니메이션 */
+#grid > div {
+  cursor: pointer;
+}
+
+#grid > div:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 삭제 모드 시 체크 표시 레이어 */
+.check-overlay {
+  backdrop-filter: blur(1px);
+  transition: opacity 0.2s ease;
+}
+
+/* 소프트 삭제된 아이템 스타일 */
+.grayscale {
+  filter: grayscale(100%);
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+/* 로딩 애니메이션 (필요 시) */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.loading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 스크롤바 커스텀 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

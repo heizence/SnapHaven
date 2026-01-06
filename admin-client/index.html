@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SnapHaven Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css" />
+    <script src="config.js"></script>
+  </head>
+  <body class="bg-gray-100 text-gray-900">
+    <nav class="bg-white shadow-sm sticky top-0 z-50 p-4">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <h1 class="font-bold text-xl text-blue-600">SnapHaven Admin</h1>
+        <div class="flex gap-3">
+          <button id="modeBtn" class="px-4 py-2 border rounded hover:bg-gray-50 text-sm">
+            삭제 모드 활성화
+          </button>
+          <button
+            id="deleteBtn"
+            class="hidden px-4 py-2 bg-red-500 text-white rounded text-sm font-bold"
+          >
+            선택 삭제 (0)
+          </button>
+          <button onclick="logout()" class="px-4 py-2 text-gray-500 text-sm">로그아웃</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6">
+      <div
+        id="grid"
+        class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-4"
+      ></div>
+      <div class="flex justify-center mt-10 mb-20">
+        <button
+          id="loadMoreBtn"
+          class="px-10 py-3 bg-white border border-gray-300 rounded-full shadow-sm hover:bg-gray-50"
+        >
+          더 보기
+        </button>
+      </div>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
