@@ -19,6 +19,7 @@ import { MediaItemsModule } from './media-items/media-items.module';
 import { CollectionsModule } from './collections/collections.module';
 import { BackgroundTaskModules } from './common/background-tasks/background-tasks.module';
 import { HealthController } from './health/health.controller';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { HealthController } from './health/health.controller';
     BackgroundTaskModules,
     TerminusModule, // Health Check 기능 활성화
     HttpModule, // 내부/외부 HTTP 요청 기능 활성화
+    AdminModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsEmail } from 'class-validator';
+import { UserRole } from 'src/users/user-role.enum';
 
 export class SigninReqDto {
   @IsEmail()
@@ -47,4 +48,11 @@ export class SigninResDto {
     nullable: true,
   })
   profileImageKey: string | null;
+
+  @ApiProperty({
+    description: '사용자 유형',
+    example: UserRole.USER,
+    nullable: true,
+  })
+  role: UserRole;
 }

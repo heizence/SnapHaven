@@ -264,10 +264,12 @@ export class S3UtilityService {
   }
 
   // 여러 데이터를 한 번에 지우기
-  async deleteObjects(keys: any[]) {
+  async deleteObjects(bucket: 'originals' | 'assets', keys: any[]) {
     if (keys.length === 0) return;
+    const Bucket =
+      bucket === 'originals' ? this.ORIGINALS_BUCKET : this.ASSETS_BUCKET;
     const command = new DeleteObjectsCommand({
-      Bucket: this.ASSETS_BUCKET,
+      Bucket,
       Delete: {
         //Objects: keys.map((key) => ({ Key: key })),
         Objects: keys.map((key) => {

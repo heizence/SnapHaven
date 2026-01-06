@@ -10,6 +10,7 @@ import { AuthProvider } from '../../common/enums';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { Collection } from 'src/collections/entities/collection.entity';
 import { Album } from 'src/albums/entities/album.entity';
+import { UserRole } from '../user-role.enum';
 
 @Entity('users')
 export class User {
@@ -68,6 +69,13 @@ export class User {
 
   @Column({ type: 'int', default: 0 })
   token_version: number;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER, // 기본값은 일반 유저
+  })
+  role: UserRole;
 
   // ---------------- Relationships ----------------
 

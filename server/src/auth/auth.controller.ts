@@ -49,15 +49,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiSignin()
   async signin(@Body() dto: SigninReqDto): Promise<ResponseDto<SigninResDto>> {
-    const { message, accessToken, refreshToken, nickname, profileImageKey } =
-      await this.authService.signin(dto);
+    const { message, data } = await this.authService.signin(dto);
 
-    return ResponseDto.success(HttpStatus.OK, message, {
-      accessToken,
-      refreshToken,
-      nickname,
-      profileImageKey,
-    });
+    return ResponseDto.success(HttpStatus.OK, message, data);
   }
 
   // **************** 로그아웃 ****************
@@ -114,15 +108,9 @@ export class AuthController {
       refreshToken: string;
     }>
   > {
-    const { message, accessToken, refreshToken, nickname, profileImageKey } =
-      await this.authService.googleAuth(dto);
+    const { message, data } = await this.authService.googleAuth(dto);
 
-    return ResponseDto.success(HttpStatus.OK, message, {
-      accessToken,
-      refreshToken,
-      nickname,
-      profileImageKey,
-    });
+    return ResponseDto.success(HttpStatus.OK, message, data);
   }
 
   // **************** 회원가입 시 인증 코드 발송 요청 ****************

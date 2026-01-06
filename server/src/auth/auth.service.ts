@@ -25,6 +25,7 @@ import {
 } from './dto/send-resetpw-link.dto';
 import { GoogleAuthReqDto } from './dto/google-auth.dto';
 import { VerifyCodeReqDto } from './dto/verify-code.dto';
+import { UserRole } from 'src/users/user-role.enum';
 
 interface ServiceResDto {
   message: string;
@@ -88,7 +89,9 @@ export class AuthService {
   }
 
   // 로그인
-  async signin(dto: SigninReqDto): Promise<ServiceResDto & SigninResDto> {
+  async signin(
+    dto: SigninReqDto,
+  ): Promise<{ message: string; data: SigninResDto }> {
     const { email, password } = dto;
 
     //const user = await this.usersService.findByEmail(email);
@@ -111,12 +114,16 @@ export class AuthService {
       throw new NotFoundException('이메일 또는 비밀번호를 확인하세요.');
     }
     const tokens = await this.getTokens(user);
-    return {
-      message: '로그인 성공',
+    const data = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       nickname: user.nickname,
       profileImageKey: user.profileImageKey,
+      role: user.role,
+    };
+    return {
+      message: '로그인 성공',
+      data,
     };
   }
 
@@ -204,7 +211,7 @@ export class AuthService {
   // 구글 로그인, 회원가입
   async googleAuth(
     dto: GoogleAuthReqDto,
-  ): Promise<ServiceResDto & SigninResDto> {
+  ): Promise<{ message: string; data: SigninResDto }> {
     const { accessToken } = dto;
 
     const response = await fetch(
@@ -237,13 +244,16 @@ export class AuthService {
     );
     if (user) {
       const tokens = await this.getTokens(user);
-
-      return {
-        message: '구글 로그인 성공',
+      const data = {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         nickname: user.nickname,
-        profileImageKey: user.profileImageKey,
+        profileImageKey: null,
+        role: user.role,
+      };
+      return {
+        message: '구글 로그인 성공',
+        data,
       };
     }
 
@@ -268,13 +278,16 @@ export class AuthService {
     });
 
     const tokens = await this.getTokens(newUser);
-
-    return {
-      message: '구글 로그인 성공',
+    const data = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       nickname: uniqueNickname,
       profileImageKey: null,
+      role: UserRole.USER,
+    };
+    return {
+      message: '구글 로그인 성공',
+      data,
     };
   }
 
