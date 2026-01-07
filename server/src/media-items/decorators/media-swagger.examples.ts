@@ -81,6 +81,7 @@ export const AlbumDetailExample: GetAlbumDetailResDto = {
   title: '파리 여행 모음',
   description: '2025년 여름 파리에서 찍은 모든 사진.',
   ownerNickname: 'PhotoMaster',
+  ownerId: 123,
   ownerProfileImageKey: 'profiles/a1234567-1a2b-12cd-a123-a1bc12345678.jpeg',
   createdAt: '2025-11-20T10:00:00.000Z',
   tags: ['여행', '파리', '유럽'],

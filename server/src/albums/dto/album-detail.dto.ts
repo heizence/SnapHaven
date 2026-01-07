@@ -49,6 +49,12 @@ export class GetAlbumDetailResDto {
   description: string | null;
 
   @ApiProperty({
+    description: '콘텐츠를 업로드한 사용자의 id',
+    example: 123,
+  })
+  ownerId: number;
+
+  @ApiProperty({
     description: '콘텐츠를 업로드한 사용자의 닉네임',
     example: 'PhotoMaster',
   })

@@ -149,9 +149,12 @@ export class CollectionsService {
     // 컬렉션에 포함된 미디어 아이템 조회 (미디어 피드와 유사한 상세 정보 포함)
     const qb = this.mediaItemRepository
       .createQueryBuilder('media')
+      .withDeleted()
       .innerJoin('collection_media_items', 'cmi', 'cmi.media_id = media.id')
       .where('cmi.collection_id = :collectionId', { collectionId })
-      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
+      .andWhere('media.status IN (:...statuses)', {
+        statuses: [ContentStatus.ACTIVE, ContentStatus.DELETED],
+      })
 
       // JOIN 및 통계/좋아요 계산
       .leftJoin('media.owner', 'user')
@@ -162,6 +165,7 @@ export class CollectionsService {
         'media.id',
         'media.title',
         'media.type',
+        'media.status',
         'media.width',
         'media.height',
         'media.keyImageSmall',
@@ -196,6 +200,7 @@ export class CollectionsService {
       id: rawItem.media_id,
       title: rawItem.media_title,
       type: rawItem.media_type,
+      status: rawItem.media_status,
       width: rawItem.media_width,
       height: rawItem.media_height,
       keyImageSmall: rawItem.media_key_image_small,

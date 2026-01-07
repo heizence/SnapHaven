@@ -7,6 +7,7 @@ import {
   ManyToMany,
   JoinTable,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
@@ -87,4 +88,7 @@ export class Album {
     default: () => 'CURRENT_TIMESTAMP',
   })
   updatedAt: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt: Date;
 }

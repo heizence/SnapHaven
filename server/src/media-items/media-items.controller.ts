@@ -7,6 +7,10 @@ import {
   Req,
   Post,
   UseGuards,
+  Patch,
+  Delete,
+  ParseIntPipe,
+  Body,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MediaItemsService } from './media-items.service';
@@ -18,11 +22,15 @@ import { ResponseDto } from 'src/common/dto/response.dto';
 import { User } from 'src/users/entities/user.entity';
 import {
   ApiAlbumDetail,
+  ApiDeleteAlbum,
+  ApiDeleteMediaItem,
   ApiDownloadAlbum,
   ApiGetItemDownloadUrl,
   ApiLikeToggle,
   ApiMediaDetail,
   ApiMediaFeed,
+  ApiUpdateAlbum,
+  ApiUpdateMediaItem,
 } from './decorators/swagger.media-items.decorators';
 import { GetAlbumDetailResDto } from 'src/albums/dto/album-detail.dto';
 
@@ -36,6 +44,7 @@ import {
   GetAlbumDownloadUrlsResDto,
   GetItemDownloadUrlResDto,
 } from './dto/get-download-urls.dto';
+import { UpdateContentDto } from './dto/update-content.dto';
 
 @ApiTags('Media Items')
 @Controller('media')
@@ -139,5 +148,63 @@ export class MediaItemsController {
     );
 
     return ResponseDto.success(HttpStatus.CREATED, message, { isLiked });
+  }
+
+  // 내가 업로드한 미디어 아이템 수정
+  @Post('item/update')
+  @UseGuards(JwtAuthGuard)
+  @ApiUpdateMediaItem()
+  async updateMediaItem(
+    @Body() dto: UpdateContentDto,
+    @Req() req: { user: User },
+  ): Promise<ResponseDto<null>> {
+    const userId = req.user.id;
+    const { message } = await this.mediaItemsService.updateMediaItem(
+      userId,
+      dto,
+    );
+    return ResponseDto.successWithoutData(HttpStatus.ACCEPTED, message);
+  }
+
+  // 내가 업로드한 앨범 수정
+  @Post('album/update')
+  @UseGuards(JwtAuthGuard)
+  @ApiUpdateAlbum()
+  async updateAlbum(
+    @Req() req: { user: User },
+    @Body() dto: UpdateContentDto,
+  ): Promise<ResponseDto<null>> {
+    const userId = req.user.id;
+    const { message } = await this.albumsService.updateAlbum(userId, dto);
+    return ResponseDto.successWithoutData(HttpStatus.ACCEPTED, message);
+  }
+
+  // 내가 업로드한 미디어 아이템 삭제
+  @Delete('item/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiDeleteMediaItem()
+  async deleteMediaItem(
+    @Req() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ResponseDto<null>> {
+    const userId = req.user.id;
+    const { message } = await this.mediaItemsService.deleteMediaItem(
+      userId,
+      id,
+    );
+    return ResponseDto.successWithoutData(HttpStatus.OK, message);
+  }
+
+  // 내가 업로드한 앨범 삭제
+  @Delete('album/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiDeleteAlbum()
+  async deleteAlbum(
+    @Req() req: { user: User },
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ResponseDto<null>> {
+    const userId = req.user.id;
+    const { message } = await this.albumsService.deleteAlbum(userId, id);
+    return ResponseDto.successWithoutData(HttpStatus.OK, message);
   }
 }

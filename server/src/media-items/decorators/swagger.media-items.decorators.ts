@@ -6,6 +6,7 @@ import {
   ApiResponse,
   getSchemaPath,
   ApiExtraModels,
+  ApiParam,
 } from '@nestjs/swagger';
 import { MediaSort } from 'src/media-items/dto/get-media-items.dto';
 import {
@@ -211,7 +212,7 @@ export function ApiGetItemDownloadUrl() {
     // 응답 실패 형식
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: '아이템을 찾을 수 없습니다.',
+      description: '아이템을 찾을 수 없음',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -257,7 +258,7 @@ export function ApiDownloadAlbum() {
     // 응답 실패 형식
     ApiResponse({
       status: HttpStatus.NOT_FOUND,
-      description: '앨범을 찾을 수 없습니다.',
+      description: '앨범을 찾을 수 없음',
       schema: {
         allOf: [
           { $ref: getSchemaPath(ResponseDto) },
@@ -340,6 +341,180 @@ export function ApiLikeToggle() {
         '사용자 또는 콘텐츠를 찾을 수 없습니다.',
         null,
       ),
+    }),
+  );
+}
+
+// 미디어 아이템 수정
+export function ApiUpdateMediaItem() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '미디어 아이템 수정',
+      description:
+        '본인이 업로드한 미디어 아이템의 제목과 내용을 수정하고 캐시를 갱신합니다.',
+    }),
+    ApiResponse({
+      status: HttpStatus.ACCEPTED,
+      description: '아이템 수정 성공',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.successWithoutData(
+        HttpStatus.ACCEPTED,
+        '수정이 완료되었습니다.',
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: '수정 권한 없음 (본인 소유 아님)',
+      example: ResponseDto.fail(
+        HttpStatus.FORBIDDEN,
+        '수정 권한이 없습니다.',
+        null,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '아이템을 찾을 수 없음.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '아이템을 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+  );
+}
+
+// 앨범 수정
+export function ApiUpdateAlbum() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '앨범 및 하위 콘텐츠 일괄 수정',
+      description:
+        '앨범과 그에 속한 모든 미디어 아이템의 제목 및 내용을 일괄 수정하고 트랜잭션을 통해 데이터 일관성을 보장합니다.',
+    }),
+    ApiResponse({
+      status: HttpStatus.ACCEPTED,
+      description: '앨범 수정 성공',
+      example: ResponseDto.successWithoutData(
+        HttpStatus.ACCEPTED,
+        '앨범 및 하위 콘텐츠 수정이 완료되었습니다.',
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: '수정 권한 없음 (본인 소유 아님)',
+      example: ResponseDto.fail(
+        HttpStatus.FORBIDDEN,
+        '수정 권한이 없습니다.',
+        null,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '앨범을 찾을 수 없음.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '앨범을 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+  );
+}
+
+// 미디어 아이템 삭제
+export function ApiDeleteMediaItem() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '미디어 아이템 삭제',
+      description:
+        '콘텐츠 상태를 DELETED로 변경(Soft Delete)하고 S3 원본 파일을 제거합니다.',
+    }),
+    ApiParam({ name: 'id', description: '삭제할 콘텐츠 ID', example: 1 }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: '삭제 권한 없음 (본인 소유 아님)',
+      example: ResponseDto.fail(
+        HttpStatus.FORBIDDEN,
+        '삭제 권한이 없습니다.',
+        null,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '아이템을 찾을 수 없음.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '아이템을 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: '삭제 성공',
+      example: ResponseDto.successWithoutData(HttpStatus.OK, '삭제되었습니다.'),
+    }),
+  );
+}
+
+// 앨범 삭제
+export function ApiDeleteAlbum() {
+  return applyDecorators(
+    ApiOperation({
+      summary: '앨범 및 하위 콘텐츠 삭제',
+      description:
+        '앨범과 하위의 모든 미디어 아이템을 삭제 처리하며, S3 파일 삭제 및 트랜잭션 롤백을 지원합니다.',
+    }),
+    ApiParam({ name: 'id', description: '삭제할 앨범 ID', example: 10 }),
+    ApiResponse({
+      status: HttpStatus.FORBIDDEN,
+      description: '삭제 권한 없음 (본인 소유 아님)',
+      example: ResponseDto.fail(
+        HttpStatus.FORBIDDEN,
+        '삭제 권한이 없습니다.',
+        null,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.NOT_FOUND,
+      description: '앨범을 찾을 수 없음.',
+      schema: {
+        allOf: [
+          { $ref: getSchemaPath(ResponseDto) },
+          { properties: { data: { type: 'null' } } },
+        ],
+      },
+      example: ResponseDto.fail(
+        HttpStatus.NOT_FOUND,
+        '앨범을 찾을 수 없습니다.',
+        null,
+      ),
+    }),
+    ApiResponse({
+      status: HttpStatus.OK,
+      description: '앨범 전체 삭제 성공',
+      example: ResponseDto.successWithoutData(HttpStatus.OK, '삭제되었습니다.'),
     }),
   );
 }

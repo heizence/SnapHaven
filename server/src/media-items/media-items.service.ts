@@ -1,10 +1,12 @@
 import {
+  ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import { MediaItem } from './entities/media-item.entity';
 import { GetMediaItemsReqDto, MediaSort } from './dto/get-media-items.dto';
 import { ContentStatus, ContentType } from 'src/common/enums';
@@ -15,10 +17,12 @@ import { Album } from 'src/albums/entities/album.entity';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { User } from 'src/users/entities/user.entity';
 import { GetItemDownloadUrlResDto } from './dto/get-download-urls.dto';
+import { UpdateContentDto } from './dto/update-content.dto';
 
 export type RawMediaItemResult = {
   media_id: number;
   media_title: string;
+  media_status: ContentStatus;
   media_type: ContentType;
   media_width: number;
   media_height: number;
@@ -48,6 +52,7 @@ interface RawMediaItemDetailResult {
   media_key_video_playback: string | null;
   media_key_video_preview: string | null;
   media_created_at: Date;
+  owner_id: string;
   owner_nickname: string;
   owner_profile_image_key: string | null;
 
@@ -66,6 +71,7 @@ export class MediaItemsService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private s3UtilityService: S3UtilityService,
+    private dataSource: DataSource,
   ) {}
 
   // 조건에 따라 불러온 미디어 아이템 총 갯수 구하기
@@ -288,6 +294,7 @@ export class MediaItemsService {
         'media.keyVideoPlayback',
         'media.keyVideoPreview',
         'media.createdAt',
+        'owner.id',
         'owner.nickname',
         'owner.profileImageKey',
       ])
@@ -333,6 +340,7 @@ export class MediaItemsService {
 
       likeCount: parseInt(rawResult.likeCount, 10) || 0,
       downloadCount: parseInt(rawResult.media_download_count, 10) || 0,
+      ownerId: parseInt(rawResult.owner_id, 10),
       ownerNickname: rawResult.owner_nickname || '탈퇴한 회원',
       ownerProfileImageKey: rawResult.owner_profile_image_key,
       tags: tags,
@@ -431,10 +439,13 @@ export class MediaItemsService {
 
     const qb = this.mediaRepository
       .createQueryBuilder('media')
+      .withDeleted()
       // 좋아요 테이블과 JOIN (현재 사용자가 좋아요 누른 것만)
       .innerJoin('user_media_likes', 'uml', 'uml.media_id = media.id')
       .where('uml.user_id = :userId', { userId })
-      .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
+      .andWhere('media.status IN (:...statuses)', {
+        statuses: [ContentStatus.ACTIVE, ContentStatus.DELETED],
+      })
 
       // 앨범의 대표 콘텐츠만 조회
       .andWhere(
@@ -454,6 +465,7 @@ export class MediaItemsService {
         'media.id',
         'media.title',
         'media.type',
+        'media.status',
         'media.width',
         'media.height',
         'media.keyImageSmall',
@@ -477,6 +489,7 @@ export class MediaItemsService {
     const likedItems = rawItems.map((raw) => ({
       id: raw.media_id,
       title: raw.media_title,
+      status: raw.media_status,
       type: raw.media_type,
       width: raw.media_width,
       height: raw.media_height,
@@ -490,5 +503,86 @@ export class MediaItemsService {
     }));
 
     return { message: '좋아요 표시한 콘텐츠 조회 성공', items: likedItems };
+  }
+
+  // 미디어 아이템 수정
+  async updateMediaItem(
+    userId: number,
+    dto: UpdateContentDto,
+  ): Promise<{
+    message: string;
+  }> {
+    const { contentId, title, description } = dto;
+    const media = await this.mediaRepository.findOne({
+      where: { id: contentId },
+    });
+
+    if (!media) throw new NotFoundException('콘텐츠를 찾을 수 없습니다.');
+    if (media.ownerId !== userId)
+      throw new ForbiddenException('수정 권한이 없습니다.');
+
+    await this.mediaRepository.update(contentId, {
+      title,
+      description,
+    });
+
+    return { message: '수정이 완료되었습니다.' };
+  }
+
+  // 미디어 아이템 삭제
+  async deleteMediaItem(
+    userId: number,
+    mediaId: number,
+  ): Promise<{
+    message: string;
+  }> {
+    const media = await this.mediaRepository.findOne({
+      where: { id: mediaId },
+    });
+    if (!media) throw new NotFoundException('아이템을 찾을 수 없습니다.');
+    if (media.ownerId !== userId)
+      throw new ForbiddenException('삭제 권한이 없습니다.');
+
+    // 삭제할 S3 파일 키 수집
+    const keysToDelete = [
+      media.s3KeyOriginal,
+      media.keyImageSmall,
+      media.keyImageMedium,
+      media.keyImageLarge,
+      media.keyVideoPreview,
+      media.keyVideoPlayback,
+    ].filter(Boolean) as string[];
+
+    //  트랜잭션 시작
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.update(MediaItem, mediaId, {
+        status: ContentStatus.DELETED,
+      });
+
+      await queryRunner.manager.softDelete(MediaItem, mediaId);
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException(
+        '데이터베이스 삭제 처리 중 오류가 발생했습니다.',
+      );
+    } finally {
+      await queryRunner.release();
+    }
+
+    // S3 실제 파일 삭제
+    try {
+      await this.s3UtilityService.deleteObjects('assets', keysToDelete);
+      await this.s3UtilityService.deleteObjects('originals', keysToDelete);
+    } catch (err) {
+      console.error('S3 파일 삭제 실패 (고아 파일 발생 가능):', err);
+    }
+
+    return { message: '삭제되었습니다.' };
   }
 }

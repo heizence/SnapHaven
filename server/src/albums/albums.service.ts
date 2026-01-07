@@ -1,10 +1,12 @@
 import {
+  ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { ContentStatus, ContentType } from 'src/common/enums';
 import { Album } from 'src/albums/entities/album.entity';
@@ -16,6 +18,7 @@ import {
 } from './dto/album-detail.dto';
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { GetAlbumDownloadUrlsResDto } from 'src/media-items/dto/get-download-urls.dto';
+import { UpdateContentDto } from 'src/media-items/dto/update-content.dto';
 
 @Injectable()
 export class AlbumsService {
@@ -27,6 +30,7 @@ export class AlbumsService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private s3UtilityService: S3UtilityService,
+    private readonly dataSource: DataSource,
   ) {}
 
   // 특정 앨범 ID의 상세 정보와 포함된 모든 ACTIVE 미디어 아이템을 조회
@@ -102,6 +106,7 @@ export class AlbumsService {
       id: albumEntity.id,
       title: albumEntity.title,
       description: albumEntity.description,
+      ownerId: albumEntity.owner?.id,
       ownerNickname: albumEntity.owner?.nickname || '탈퇴한 회원',
       ownerProfileImageKey: albumEntity.owner?.profileImageKey || null,
       createdAt: albumEntity.createdAt.toISOString(),
@@ -117,46 +122,134 @@ export class AlbumsService {
     };
   }
 
-  // 앨범 아이템 좋아요 표시/취소 기능
-  async toggleLikedAlbum(
-    albumId: number,
+  // 앨범 수정
+  async updateAlbum(
     userId: number,
-  ): Promise<{ message: string; isLiked: boolean }> {
-    if (!userId) {
-      throw new UnauthorizedException(
-        '로그인된 사용자만 좋아요를 누를 수 있습니다.',
+    dto: UpdateContentDto,
+  ): Promise<{
+    message: string;
+  }> {
+    const { contentId, title, description } = dto;
+
+    const album = await this.albumRepository.findOne({
+      where: { id: contentId },
+    });
+    if (!album) throw new NotFoundException('앨범을 찾을 수 없습니다.');
+    if (album.ownerId !== userId)
+      throw new ForbiddenException('수정 권한이 없습니다.');
+
+    // 앨범 업데이트 트랜잭션 시작
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.update(Album, contentId, {
+        title,
+        description,
+      });
+
+      // 앨범에 속한 모든 미디어 아이템 업데이트
+      await queryRunner.manager.update(
+        MediaItem,
+        { albumId: contentId },
+        { title, description },
       );
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException(
+        '앨범 수정 중 데이터베이스 오류가 발생했습니다.',
+      );
+    } finally {
+      // 연결 해제
+      await queryRunner.release();
     }
 
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['likedAlbums'],
-    });
+    return { message: '수정이 완료되었습니다.' };
+  }
+
+  // 앨범 삭제
+  async deleteAlbum(
+    userId: number,
+    albumId: number,
+  ): Promise<{
+    message: string;
+  }> {
+    console.log('[deleteAlbum]start');
+    console.log('[deleteAlbum]userId : ', userId);
+    console.log('[deleteAlbum]albumId : ', albumId);
 
     const album = await this.albumRepository.findOne({
       where: { id: albumId },
-      relations: ['likedByUsers'],
+      relations: ['mediaItems'],
     });
 
-    if (!user || !album) {
-      throw new NotFoundException('사용자 또는 앨범을 찾을 수 없습니다.');
+    console.log('[deleteAlbum]album : ', album);
+
+    if (!album) throw new NotFoundException('앨범을 찾을 수 없습니다.');
+    if (album.ownerId !== userId)
+      throw new ForbiddenException('삭제 권한이 없습니다.');
+
+    // 삭제할 S3 파일 키 수집
+    const keysToDelete: string[] = [];
+    album.mediaItems.forEach((item) => {
+      const keys = [
+        item.s3KeyOriginal,
+        item.keyImageSmall,
+        item.keyImageMedium,
+        item.keyImageLarge,
+        item.keyVideoPreview,
+        item.keyVideoPlayback,
+      ];
+      keys.forEach((k) => {
+        if (k) keysToDelete.push(k);
+      });
+    });
+
+    // 앨범 삭제 트랜잭션 시작
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 하위 미디어 아이템 상태 변경 및 Soft Delete
+      await queryRunner.manager.update(
+        MediaItem,
+        { albumId },
+        { status: ContentStatus.DELETED },
+      );
+      await queryRunner.manager.softDelete(MediaItem, { albumId: albumId });
+
+      // 앨범 상태 변경 및 Soft Delete
+      await queryRunner.manager.update(Album, albumId, {
+        status: ContentStatus.DELETED,
+      });
+      await queryRunner.manager.softDelete(Album, { id: albumId });
+
+      // 트랜잭션 커밋
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      console.error('앨범 삭제 실패 : ', err);
+      // 에러 발생 시 롤백
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException('DB 삭제 중 오류가 발생했습니다.');
+    } finally {
+      await queryRunner.release();
     }
 
-    const isCurrentlyLiked = user.likedAlbums.some(
-      (item) => item.id === albumId,
-    );
-    if (isCurrentlyLiked) {
-      // likedMediaItems 배열에서 해당 미디어 아이템 제거
-      user.likedAlbums = user.likedAlbums.filter((item) => item.id !== albumId);
-      await this.userRepository.save(user); // 관계 테이블에서 레코드 삭제
-
-      return { message: '좋아요 취소 처리가 완료되었습니다.', isLiked: false };
-    } else {
-      user.likedAlbums.push(album);
-      await this.userRepository.save(user); // 관계 테이블에 레코드 추가
-
-      return { message: '좋아요 처리가 완료되었습니다.', isLiked: true };
+    // S3 실제 파일 삭제 (DB 작업 성공 후 수행)
+    try {
+      if (keysToDelete.length > 0) {
+        await this.s3UtilityService.deleteObjects('assets', keysToDelete);
+        await this.s3UtilityService.deleteObjects('originals', keysToDelete);
+      }
+    } catch (err) {
+      console.error('S3 파일 삭제 실패 (고아 파일 발생 가능):', err);
     }
+
+    return { message: '삭제되었습니다.' };
   }
 
   // 앨범 다운로드를 위한 모든 원본 파일 URL 발급

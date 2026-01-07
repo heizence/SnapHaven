@@ -117,6 +117,7 @@ export class AuthService {
     const data = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      id: user.id,
       nickname: user.nickname,
       profileImageKey: user.profileImageKey,
       role: user.role,
@@ -247,6 +248,7 @@ export class AuthService {
       const data = {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
+        id: user.id,
         nickname: user.nickname,
         profileImageKey: null,
         role: user.role,
@@ -281,6 +283,7 @@ export class AuthService {
     const data = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      id: newUser.id,
       nickname: uniqueNickname,
       profileImageKey: null,
       role: UserRole.USER,
