@@ -20,6 +20,7 @@ import { CollectionsModule } from './collections/collections.module';
 import { BackgroundTaskModules } from './common/background-tasks/background-tasks.module';
 import { HealthController } from './health/health.controller';
 import { AdminModule } from './admin/admin.module';
+import { RedisModule } from './common/redis/redis.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { AdminModule } from './admin/admin.module';
     ]),
 
     EventEmitterModule.forRoot(),
+    RedisModule,
 
     AuthModule,
     UsersModule,

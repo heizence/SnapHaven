@@ -18,6 +18,7 @@ import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { User } from 'src/users/entities/user.entity';
 import { GetItemDownloadUrlResDto } from './dto/get-download-urls.dto';
 import { UpdateContentDto } from './dto/update-content.dto';
+import { RedisService } from 'src/common/redis/redis.service';
 
 export type RawMediaItemResult = {
   media_id: number;
@@ -72,6 +73,7 @@ export class MediaItemsService {
     private userRepository: Repository<User>,
     private s3UtilityService: S3UtilityService,
     private dataSource: DataSource,
+    private readonly redisService: RedisService,
   ) {}
 
   // 조건에 따라 불러온 미디어 아이템 총 갯수 구하기
@@ -127,16 +129,12 @@ export class MediaItemsService {
     return totalCounts;
   }
 
-  // 메인 피드 콘텐츠를 페이지네이션 및 필터링하여 조회
-  async findAll(
+  // 메인 피드 콘텐츠를 DB 에서 조회
+  private async findAllFromDb(
     query: GetMediaItemsReqDto,
     currentUserId?: number,
     isFetchingMyUploads?: boolean,
-  ): Promise<{
-    message: string;
-    items: MediaItemDto[];
-    totalCounts: number;
-  }> {
+  ) {
     const limit = 40;
     const { page, sort, type, keyword, tag } = query;
     const offset = (page - 1) * limit;
@@ -256,30 +254,36 @@ export class MediaItemsService {
     );
 
     return {
-      message: isFetchingMyUploads
-        ? '내 업로드 콘텐츠 조회 성공'
-        : '전체 콘텐츠 불러오기 성공',
+      message: isFetchingMyUploads ? '내 업로드 조회 성공' : '전체 조회 성공',
       items: mappedItems,
       totalCounts,
     };
   }
 
-  // 단일 미디어 아이템 상세 정보를 조회
-  async findOne(
-    mediaId: number,
+  // 메인 피드 콘텐츠를 redis 또는 실제 DB 에서 조회
+  async findAll(
+    query: GetMediaItemsReqDto,
     currentUserId?: number,
-  ): Promise<{ message: string; item: GetMediaItemDetailResDto }> {
-    // QueryBuilder를 사용하여 통계 및 소유자 정보를 한 번에 조회
+    isFetchingMyUploads?: boolean,
+  ) {
+    // RedisService에 모든 판단을 맡깁니다.
+    return await this.redisService.getOrSetMediaList(
+      query,
+      () => this.findAllFromDb(query, currentUserId, isFetchingMyUploads), // DB 실행 콜백
+      currentUserId,
+      isFetchingMyUploads,
+    );
+  }
 
+  // 단일 미디어 아이템 상세 정보를 DB 에서 조회
+  private async findOneFromDb(mediaId: number, currentUserId?: number) {
     const qb = this.mediaRepository
       .createQueryBuilder('media')
       .where('media.id = :id', { id: mediaId })
       .andWhere('media.status = :status', { status: ContentStatus.ACTIVE })
-
       .leftJoin('media.owner', 'owner')
       .withDeleted()
       .leftJoin('media.likedByUsers', 'likes')
-
       .select([
         'media.id',
         'media.title',
@@ -298,32 +302,29 @@ export class MediaItemsService {
         'owner.nickname',
         'owner.profileImageKey',
       ])
-      // 좋아요 수 계산
       .addSelect('COUNT(likes.id)', 'likeCount')
-      // 현재 사용자의 좋아요 여부 확인
       .addSelect(
         currentUserId
-          ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id) IS NOT NULL`
+          ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id LIMIT 1) IS NOT NULL`
           : `FALSE`,
         'isLiked',
       )
       .groupBy('media.id, owner.id');
 
     const rawResult = (await qb.getRawOne()) as RawMediaItemDetailResult;
+
     if (!rawResult) {
       throw new NotFoundException(
         '요청하신 콘텐츠를 찾을 수 없거나 삭제되었습니다.',
       );
     }
 
-    // ManyToMany 관계인 Tags는 별도 쿼리로 가져오는 것이 가장 안정적이다.
     const tagsResult = await this.mediaRepository.findOne({
       where: { id: mediaId },
       relations: ['tags'],
     });
     const tags = tagsResult?.tags.map((t) => t.name) || [];
 
-    // DTO 변환 및 반환
     const item = {
       id: parseInt(rawResult.media_id, 10),
       title: rawResult.media_title,
@@ -331,13 +332,11 @@ export class MediaItemsService {
       type: rawResult.media_type,
       width: rawResult.media_width,
       height: rawResult.media_height,
-
       keyImageLarge: rawResult.media_key_image_large,
       keyImageMedium: rawResult.media_key_image_medium,
       keyImageSmall: rawResult.media_key_image_small,
       keyVideoPlayback: rawResult.media_key_video_playback,
-      createdAt: rawResult.media_created_at.toISOString(), // Date 객체를 문자열로 변환
-
+      createdAt: rawResult.media_created_at.toISOString(),
       likeCount: parseInt(rawResult.likeCount, 10) || 0,
       downloadCount: parseInt(rawResult.media_download_count, 10) || 0,
       ownerId: parseInt(rawResult.owner_id, 10),
@@ -351,6 +350,15 @@ export class MediaItemsService {
       message: '미디어 아이템 상세 조회 성공',
       item,
     };
+  }
+
+  // 단일 미디어 아이템 상세 정보를 조회
+  async findOne(mediaId: number, currentUserId?: number) {
+    return await this.redisService.getOrSetMediaDetail(
+      mediaId,
+      currentUserId,
+      () => this.findOneFromDb(mediaId, currentUserId),
+    );
   }
 
   // 파일 다운로드를 위한 presigned url 을 반환하고 다운로드 카운트 +1 처리
@@ -525,7 +533,7 @@ export class MediaItemsService {
       title,
       description,
     });
-
+    this.redisService.delMediaDetailCache(dto.contentId);
     return { message: '수정이 완료되었습니다.' };
   }
 

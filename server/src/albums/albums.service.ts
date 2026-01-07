@@ -19,6 +19,7 @@ import {
 import { MediaItem } from 'src/media-items/entities/media-item.entity';
 import { GetAlbumDownloadUrlsResDto } from 'src/media-items/dto/get-download-urls.dto';
 import { UpdateContentDto } from 'src/media-items/dto/update-content.dto';
+import { RedisService } from 'src/common/redis/redis.service';
 
 @Injectable()
 export class AlbumsService {
@@ -31,16 +32,14 @@ export class AlbumsService {
     private userRepository: Repository<User>,
     private s3UtilityService: S3UtilityService,
     private readonly dataSource: DataSource,
+    private readonly redisService: RedisService,
   ) {}
 
-  // 특정 앨범 ID의 상세 정보와 포함된 모든 ACTIVE 미디어 아이템을 조회
-  async findAlbumContents(
+  // 실제 DB 에서 특정 앨범 ID의 상세 정보와 포함된 모든 ACTIVE 미디어 아이템을 조회
+  private async findAlbumContentsFromDb(
     albumId: number,
     currentUserId?: number,
-  ): Promise<{
-    message: string;
-    album: GetAlbumDetailResDto;
-  }> {
+  ) {
     const qb = this.albumRepository
       .createQueryBuilder('album')
       .where('album.id = :id AND album.status = :activeStatus', {
@@ -49,7 +48,6 @@ export class AlbumsService {
       })
       .leftJoinAndSelect('album.owner', 'owner')
       .withDeleted()
-
       .leftJoinAndSelect('album.tags', 'tag')
       // 앨범 내 미디어 아이템 조인 및 필요한 필드(isRepresentative) 포함 확인
       .leftJoinAndSelect(
@@ -61,7 +59,6 @@ export class AlbumsService {
       // 정렬 순서: 대표 이미지가 가장 먼저 나오고, 나머지는 생성순 정렬
       .orderBy('media.isRepresentative', 'DESC')
       .addOrderBy('media.createdAt', 'ASC')
-
       // 앨범 내 대표 콘텐츠의 좋아요 표시 여부를 조회
       .addSelect((subQuery) => {
         return subQuery
@@ -72,8 +69,8 @@ export class AlbumsService {
             currentUserId: currentUserId || 0,
           });
       }, 'isLikedByCurrentUser');
-    const { entities, raw } = await qb.getRawAndEntities();
 
+    const { entities, raw } = await qb.getRawAndEntities();
     const albumEntity = entities[0];
     const rawData = raw[0];
 
@@ -100,8 +97,6 @@ export class AlbumsService {
       };
     });
 
-    const isLikedByCurrentUser = rawData?.isLikedByCurrentUser === 1;
-
     const album = {
       id: albumEntity.id,
       title: albumEntity.title,
@@ -111,7 +106,7 @@ export class AlbumsService {
       ownerProfileImageKey: albumEntity.owner?.profileImageKey || null,
       createdAt: albumEntity.createdAt.toISOString(),
       tags: albumEntity.tags.map((t) => t.name),
-      isLikedByCurrentUser: isLikedByCurrentUser,
+      isLikedByCurrentUser: rawData?.isLikedByCurrentUser === 1,
       representativeItemId,
       items: itemsDto,
     } as GetAlbumDetailResDto;
@@ -120,6 +115,15 @@ export class AlbumsService {
       message: '앨범 상세 조회 성공',
       album,
     };
+  }
+
+  // 특정 앨범 ID의 상세 정보와 포함된 모든 ACTIVE 미디어 아이템을 조회
+  async findAlbumContents(albumId: number, currentUserId?: number) {
+    return await this.redisService.getOrSetAlbumDetail(
+      albumId,
+      currentUserId,
+      () => this.findAlbumContentsFromDb(albumId, currentUserId),
+    );
   }
 
   // 앨범 수정
@@ -166,6 +170,8 @@ export class AlbumsService {
       // 연결 해제
       await queryRunner.release();
     }
+
+    this.redisService.delAlbumDetailCache(contentId);
 
     return { message: '수정이 완료되었습니다.' };
   }

@@ -17,6 +17,7 @@ import { EditProfileReq } from './dto/edit-profile.dto';
 import { S3UtilityService } from 'src/media-pipeline/s3-utility.service';
 import { DeleteUserReqDto } from './dto/delete-user.dto';
 import { Collection } from 'src/collections/entities/collection.entity';
+import { RedisService } from 'src/common/redis/redis.service';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,7 @@ export class UsersService {
     @InjectRepository(MediaItem)
     private readonly mediaItemsRepository: Repository<MediaItem>,
     private s3UtilityService: S3UtilityService,
+    private redisService: RedisService,
   ) {}
 
   // 회원가입 (유저 생성)
@@ -72,8 +74,8 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
-  // 유저 프로필 정보 + 내 좋아요, 내 업로드, 내 컬렉션 정보 불러오기
-  async getProfileInfo(
+  // 실제 DB 에서 유저 프로필 정보 + 내 좋아요, 내 업로드, 내 컬렉션 정보 불러오기
+  private async getProfileInfoFromDb(
     id: number,
   ): Promise<{ message: string; profileInfo: GetProfileInfoResDto }> {
     const userFound = await this.usersRepository.findOne({
@@ -221,6 +223,13 @@ export class UsersService {
     };
   }
 
+  // redis 또는 DB 에서 유저 프로필 및 관련 정보 불러오기
+  async getProfileInfo(id: number) {
+    return await this.redisService.getOrSetProfile(id, () =>
+      this.getProfileInfoFromDb(id),
+    );
+  }
+
   // 프로필 정보 수정(서비스에서 사용)
   async editProfile(
     userId: number,
@@ -279,6 +288,7 @@ export class UsersService {
     // 데이터베이스 업데이트 실행
     if (needsUpdate) {
       await this.usersRepository.update(userId, updateData);
+      await this.redisService.delProfileCache(userId);
     } else {
       // 변경할 내용이 없는 경우에도 성공으로 응답하지만, 서버 측에서 메시지를 제공하기 위해 명시
       throw new BadRequestException(
@@ -321,6 +331,7 @@ export class UsersService {
       { id: userId },
       { profileImageKey: imageKey },
     );
+    await this.redisService.delProfileCache(userId);
 
     // 4. 새 이미지 URL 반환
     return {
