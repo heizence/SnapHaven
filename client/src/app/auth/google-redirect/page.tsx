@@ -49,9 +49,9 @@ export default function GoogleRedirectPage() {
       // ID Token을 Next.js BFF 프록시로 전송
       const request: GoogleAuthReqDto = { accessToken };
       const res = await googleAuthAPI(request);
-      const { nickname, profileImageKey } = res.data;
+      const { id, nickname, profileImageKey } = res.data;
 
-      CustomLocalStorage.saveUserInfo({ nickname, profileImageKey });
+      CustomLocalStorage.saveUserInfo({ id, nickname, profileImageKey });
 
       router.push("/");
       router.refresh();

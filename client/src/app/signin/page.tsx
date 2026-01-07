@@ -61,8 +61,8 @@ export default function Page() {
     const res = await signinAPI(request);
 
     if (res.code === 200) {
-      const { nickname, profileImageKey } = res.data;
-      CustomLocalStorage.saveUserInfo({ nickname, profileImageKey });
+      const { id, nickname, profileImageKey } = res.data;
+      CustomLocalStorage.saveUserInfo({ id, nickname, profileImageKey });
 
       router.push("/");
       router.refresh();

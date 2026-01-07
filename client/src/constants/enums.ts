@@ -12,6 +12,12 @@ export enum ContentType {
   ALBUM = "ALBUM", // 클라이언트에서만 사용
 }
 
+// 콘텐츠 상태
+export enum ContentStatus {
+  ACTIVE = "ACTIVE",
+  DELETED = "DELETED",
+}
+
 export enum OrderType {
   LATEST = "LATEST",
   POPULAR = "POPULAR",

@@ -44,6 +44,7 @@ import {
   getPresignedPartsResDto,
   GetAlbumDownloadUrlsResDto,
   VerifyCodeReqDto,
+  UpdateContentReqDto,
 } from "@/types/api-dtos";
 
 /** 기본적인 API 요청 method 형식
@@ -305,6 +306,7 @@ export const toggleMediaItemAPI = (requestBody: ToggleContentsReqDto) =>
 export const getTagsAPI = () => getRequest<null, Tag[]>("tags", null);
 
 /******************* 콘텐츠 ******************/
+
 // 미디어 콘텐츠 목록 불러오기
 export const getMediaItemsAPI = (requestBody: GetMediaItemsReqDto) =>
   getRequest<GetMediaItemsReqDto, GetMediaItemsResDto>("media/items", requestBody);
@@ -329,6 +331,22 @@ export const toggleLikedItemAPI = (requestBody: ToogleLikedReqDto) =>
     `media/item/like/${requestBody.mediaId}`,
     requestBody
   );
+
+// 미디어 아이템 수정
+export const updateMediaItemAPI = (requestBody: UpdateContentReqDto) =>
+  postRequest<UpdateContentReqDto, null>(`media/item/update`, requestBody);
+
+// 앨범 수정
+export const updateAlbumAPI = (requestBody: UpdateContentReqDto) =>
+  postRequest<UpdateContentReqDto, null>(`media/album/update`, requestBody);
+
+// 미디어 아이템 삭제
+export const deleteMediaItemAPI = (mediaId: number) =>
+  deleteRequest<null, null>(`media/item/${mediaId}`, null);
+
+// 앨범 삭제
+export const deleteAlbumAPI = (albumId: number) =>
+  deleteRequest<null, null>(`media/album/${albumId}`, null);
 
 /******************* 콘텐츠 업로드, 다운로드 ******************/
 

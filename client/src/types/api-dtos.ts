@@ -1,4 +1,4 @@
-import { AuthProvider, ContentType, FilterType, OrderType } from "@/constants/enums";
+import { AuthProvider, ContentStatus, ContentType, FilterType, OrderType } from "@/constants/enums";
 
 /******************* 인증, 인가 ******************/
 
@@ -10,6 +10,7 @@ export interface SignInReqDto {
 export interface SignInResDto {
   accessToken: string;
   refreshToken: string;
+  id: number;
   nickname: string;
   profileImageKey: string | null;
 }
@@ -167,6 +168,7 @@ type MediaItemDto = {
   id: number;
   title: string;
   type: ContentType.IMAGE | ContentType.VIDEO;
+  status: ContentStatus;
   albumId: number | null;
   width: number;
   height: number;
@@ -212,6 +214,7 @@ export interface GetMediaItemDetailResDto {
   keyVideoPlayback: string | null;
 
   // 통계 및 사용자 정보
+  ownerId: number;
   likeCount: number;
   downloadCount: number;
   ownerNickname: string;
@@ -239,6 +242,7 @@ export interface GetAlbumDetailResDto {
   id: number;
   title: string;
   description: string | null;
+  ownerId: number;
   ownerNickname: string;
   ownerProfileImageKey: string | null;
   createdAt: string;
@@ -255,6 +259,13 @@ export interface ToogleLikedReqDto {
 
 export interface ToogleLikedResDto {
   isLiked: boolean;
+}
+
+// 콘텐츠(아이템, 앨범 모두 포함) 업데이트
+export interface UpdateContentReqDto {
+  contentId: number;
+  title?: string;
+  description?: string;
 }
 
 /******************* 콘텐츠 업로드, 다운로드 ******************/

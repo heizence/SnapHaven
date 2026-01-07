@@ -1,4 +1,5 @@
 export interface UserState {
+  id?: number;
   nickname?: string;
   profileImageKey?: string | null;
 }

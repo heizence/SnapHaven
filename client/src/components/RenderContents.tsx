@@ -6,7 +6,7 @@ import { BookmarkIcon, DownloadIcon, ImageIcon, ListIcon, VideoIcon } from "./ui
 import "react-photo-album/masonry.css";
 import { LikeButtonForFeeds } from "./ui/LikeButton";
 import { AWS_BASE_URL } from "@/constants";
-import { ContentType } from "@/constants/enums";
+import { ContentStatus, ContentType } from "@/constants/enums";
 import Image from "next/image";
 import { startDownloadAlbum, startDownloadItem } from "@/lib/downloadFiles";
 import CustomLocalStorage from "@/lib/CustomLocalStorage";
@@ -29,10 +29,12 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentPro
   const { openAddToCollectionModal } = useModal();
 
   const videoRef = React.useRef<HTMLVideoElement>(null);
+  const isDeleted = photo.status === ContentStatus.DELETED;
 
   // 컬렉션에 추가
   const handleAddToCollection = (e) => {
     e.stopPropagation();
+    if (isDeleted) return;
 
     openAddToCollectionModal({
       onSubmit: () => {},
@@ -43,12 +45,14 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentPro
   // 메인 화면에서 다운로드(large 사이즈만 다운로드 가능)
   const downloadFile = (e) => {
     e.stopPropagation();
+    if (isDeleted) return;
     const isAlbum = Boolean(photo.albumId);
     if (isAlbum) startDownloadAlbum(photo.albumId!);
     else startDownloadItem(photo.key);
   };
 
   const handleMouseEnter = () => {
+    if (isDeleted) return;
     setIsHovered(true);
     if (videoRef.current) {
       videoRef.current.play().catch(() => {});
@@ -63,6 +67,11 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentPro
     }
   };
 
+  const handleOnClick = (e) => {
+    if (isDeleted) return;
+    onClick({ event: e, photo });
+  };
+
   const bottmBtnStyle = `bg-none border-none cursor-pointer p-[10px] 
   rounded-[10px] transition-transform duration-150 ease`;
 
@@ -71,35 +80,48 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentPro
       className="relative cursor-pointer overflow-hidden rounded w-full h-auto"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={(e) => onClick({ event: e, photo })}
+      onClick={handleOnClick}
     >
-      {photo.type === ContentType.IMAGE ? (
-        <Image
-          className="w-full h-auto bg-black/40"
-          src={AWS_BASE_URL + photo.keyImageSmall}
-          alt={photo.title || ""}
-          width={photo.width}
-          height={photo.height}
-          priority
-        />
-      ) : (
-        <video
-          ref={videoRef}
-          key={photo.key}
-          className="w-full h-full object-cover bg-black/40"
-          width={photo.width}
-          height={photo.height}
-          controls={false}
-          muted
-          loop
-          playsInline // Important for playback on iOS
+      {isDeleted ? (
+        <div
+          style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
+          className="w-full bg-gray-200 flex flex-col items-center justify-center gap-2 p-4 text-gray-500"
         >
-          <source src={AWS_BASE_URL + photo.keyVideoPreview} type={"video/mp4"} />
-          Your browser does not support the video tag.
-        </video>
+          <span className="text-[15px] font-bold text-center leading-tight">
+            삭제된 콘텐츠입니다.
+          </span>
+        </div>
+      ) : (
+        <>
+          {photo.type === ContentType.IMAGE ? (
+            <Image
+              className="w-full h-auto bg-black/40"
+              src={AWS_BASE_URL + photo.keyImageSmall}
+              alt={photo.title || ""}
+              width={photo.width}
+              height={photo.height}
+              priority
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              key={photo.key}
+              className="w-full h-full object-cover bg-black/40"
+              width={photo.width}
+              height={photo.height}
+              controls={false}
+              muted
+              loop
+              playsInline // Important for playback on iOS
+            >
+              <source src={AWS_BASE_URL + photo.keyVideoPreview} type={"video/mp4"} />
+              Your browser does not support the video tag.
+            </video>
+          )}
+        </>
       )}
 
-      {!isAlbumPage && (
+      {!isAlbumPage && !isDeleted && (
         <div className="absolute top-4 left-4 flex justify-between items-start">
           <div>
             {photo.type === ContentType.IMAGE ? (
@@ -115,7 +137,7 @@ const RenderEachContent = ({ photo, onClick, isAlbumPage }: RenderEachContentPro
         </div>
       )}
 
-      {!isAlbumPage && (
+      {!isAlbumPage && !isDeleted && (
         <div
           className={`
         absolute inset-0 text-white 

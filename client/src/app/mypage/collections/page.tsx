@@ -56,7 +56,6 @@ export default function MyCollectionsPage() {
     if (res.code === 200) {
       const data = res.data;
       setCollectionFolders(data);
-
       if (data.length > 0) {
         const firstCollection = data[0];
         await getCollectionContents(firstCollection);
@@ -86,6 +85,7 @@ export default function MyCollectionsPage() {
         height: item.height,
         key: item.id,
         type: item.type,
+        status: item.status,
         title: item.title,
         albumId: item.albumId,
         isLikedByCurrentUser: item.isLikedByCurrentUser,

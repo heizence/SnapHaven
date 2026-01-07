@@ -53,6 +53,7 @@ export default function RenderMyContentsPage({ type }: { type: RenderType }) {
         title: item.title,
         albumId: item.albumId,
         isLikedByCurrentUser: item.isLikedByCurrentUser,
+        status: item.status,
 
         keyImageLarge: item.keyImageLarge,
         keyImageMedium: item.keyImageMedium,
