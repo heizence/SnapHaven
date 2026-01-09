@@ -4,6 +4,7 @@ import {
   OnModuleDestroy,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { GetMediaItemsReqDto } from 'src/media-items/dto/get-media-items.dto';
 
@@ -12,10 +13,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private client: Redis;
 
+  constructor(private configService: ConfigService) {}
+
   async onModuleInit() {
     this.client = new Redis({
-      host: 'localhost',
-      port: 6379,
+      host: this.configService.get('REDIS_HOST'),
+      port: this.configService.get('REDIS_PORT'),
       db: 0,
       lazyConnect: true,
     });
