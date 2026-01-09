@@ -1,22 +1,35 @@
 services:
-  client:
-    build:
-      context: ./client
-      args:
-        TARGET_ENV: ${TARGET_ENV}
-    container_name: snaphaven-client-${TARGET_ENV}
+  redis:
+    image: redis:7-alpine
+    container_name: snaphaven-redis-${TARGET_ENV}
     ports:
-      - "3000:3000"
-    env_file:
-      - ./client/.env.${TARGET_ENV}
+      - "6379:6379"
     restart: always
+    volumes:
+      - ./redis-data:/data
 
   server:
     build:
       context: ./server
+      args:
+        - TARGET_ENV=${TARGET_ENV} # 👈 서버 빌드 시 인자 전달 추가
     container_name: snaphaven-server-${TARGET_ENV}
     ports:
       - "8001:8001"
     env_file:
       - ./server/.env.${TARGET_ENV}
+    depends_on:
+      - redis
+    restart: always
+
+  client:
+    build:
+      context: ./client
+      args:
+        - TARGET_ENV=${TARGET_ENV}
+    container_name: snaphaven-client-${TARGET_ENV}
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./client/.env.${TARGET_ENV}
     restart: always
