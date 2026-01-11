@@ -10,7 +10,7 @@ RUN npm run build:${TARGET_ENV}
 FROM node:20-alpine
 WORKDIR /app
 
-ARG TARGET_ENV=dev
+ARG TARGET_ENV
 ENV NODE_ENV=${TARGET_ENV}
 
 COPY --from=builder /app ./

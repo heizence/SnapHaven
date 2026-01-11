@@ -1,0 +1,71 @@
+# ==========================================
+# 1. OS & IDE (공통)
+# ==========================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.launch
+
+# ==========================================
+# 2. 의존성 및 빌드 결과물 (Node.js 공통)
+# ==========================================
+**/node_modules/
+**/dist/
+**/build/
+.temp
+.tmp
+
+# ==========================================
+# 3. 환경 변수 파일 (보안 필수)
+# ==========================================
+**/.env
+**/.env.local
+**/.env.dev
+**/.env.test.dev
+**/.env.staging
+**/.env.prod
+
+# ==========================================
+# 4. Client (Next.js) 전용
+# ==========================================
+client/.next/
+client/out/
+
+# ==========================================
+# 5. Server (NestJS) 전용
+# ==========================================
+server/pids
+server/*.pid
+server/*.seed
+server/*.pid.lock
+server/report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+server/coverage/
+server/.nyc_output/
+
+# ==========================================
+# 6. Infrastructure (Nginx & SSL)
+# ==========================================
+nginx/ssl/*.pem
+nginx/ssl/*.key.pem
+nginx/*.local
+nginx/dev.conf
+
+# ==========================================
+# 7. Logs
+# ==========================================
+**/logs
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
