@@ -2,8 +2,8 @@ const API_BASE = window.ENV.API_BASE;
 const AWS_S3_BASE = window.ENV.AWS_S3_BASE;
 const MAIN_SERVICE_URL = window.ENV.MAIN_SERVICE_URL;
 
+let allLoadedItems = []; // 현재 로드된 모든 미디어 아이템 저장용
 let currentPage = 1;
-let selectedIds = [];
 let isSelectMode = false;
 const token = localStorage.getItem("admin_token");
 
@@ -31,7 +31,12 @@ async function fetchMedia(page = 1) {
     }
 
     const data = await res.json();
-    console.log("data : ", data);
+    //console.log("data : ", data);
+    if (page === 1) {
+      allLoadedItems = data.items;
+    } else {
+      allLoadedItems = [...allLoadedItems, ...data.items];
+    }
     renderItems(data.items, page === 1);
 
     // 더 보기 버튼 제어
@@ -187,6 +192,51 @@ function toggleSelect(item, element) {
 }
 
 /**
+ * [추가] 모든 아이템 선택/해제 토글
+ */
+function toggleSelectAll() {
+  const selectAllBtn = document.getElementById("selectAllBtn");
+  // 모든 아이템이 이미 선택되었는지 확인
+  const isAllSelected = selectedItems.length === allLoadedItems.length && allLoadedItems.length > 0;
+
+  if (isAllSelected) {
+    // 이미 다 선택된 상태라면 -> 전체 해제
+    selectedItems = [];
+    selectAllBtn.innerText = "전체 선택";
+  } else {
+    // 하나라도 선택 안 된 게 있다면 -> 전체 선택
+    selectedItems = allLoadedItems.map((item) => ({
+      id: item.albumId ? Number(item.albumId) : Number(item.id),
+      isAlbum: Boolean(item.albumId),
+    }));
+    selectAllBtn.innerText = "전체 해제";
+  }
+
+  // UI 일괄 업데이트 (링 효과 및 체크 표시)
+  const gridItems = document.querySelectorAll("#grid > div");
+  gridItems.forEach((el) => {
+    const overlay = el.querySelector(".check-overlay");
+    if (isAllSelected) {
+      el.classList.remove("ring-4", "ring-red-500");
+      overlay.classList.add("hidden");
+    } else {
+      el.classList.add("ring-4", "ring-red-500");
+      overlay.classList.remove("hidden");
+    }
+  });
+
+  updateUI();
+}
+
+/**
+ * 전체 선택 버튼
+ */
+const selectAllBtn = document.getElementById("selectAllBtn");
+if (selectAllBtn) {
+  selectAllBtn.onclick = toggleSelectAll;
+}
+
+/**
  * 상단 UI 업데이트 (삭제 버튼 등)
  */
 function updateUI() {
@@ -204,11 +254,16 @@ const modeBtn = document.getElementById("modeBtn");
 if (modeBtn) {
   modeBtn.onclick = (e) => {
     isSelectMode = !isSelectMode;
-    selectedIds = [];
+    selectedItems = []; // 기존 선택 초기화
     e.target.innerText = isSelectMode ? "선택 취소" : "삭제 모드 활성화";
     e.target.className = isSelectMode
       ? "px-4 py-2 bg-gray-200 text-gray-700 border rounded text-sm"
       : "px-4 py-2 border rounded hover:bg-gray-50 text-sm";
+
+    if (selectAllBtn) {
+      selectAllBtn.classList.toggle("hidden", !isSelectMode);
+      selectAllBtn.innerText = "전체 선택";
+    }
 
     // 모든 체크 UI 초기화
     document.querySelectorAll(".check-overlay").forEach((el) => el.classList.add("hidden"));
@@ -232,6 +287,9 @@ if (deleteBtn) {
     )
       return;
 
+    toggleLoading(true);
+    deleteBtn.disabled = true;
+
     try {
       const res = await fetch(`${API_BASE}/admin/media-items/bulk`, {
         method: "DELETE",
@@ -249,6 +307,9 @@ if (deleteBtn) {
       }
     } catch (err) {
       alert("삭제 요청 실패");
+    } finally {
+      toggleLoading(false);
+      deleteBtn.disabled = false;
     }
   };
 }
@@ -270,6 +331,18 @@ if (loadMoreBtn) {
 function logout() {
   localStorage.removeItem("admin_token");
   window.location.href = "login.html";
+}
+
+/**
+ * 로딩 표시 제어 함수
+ */
+function toggleLoading(show, text = "영구 삭제 작업을 진행 중입니다...") {
+  const overlay = document.getElementById("loadingOverlay");
+  const loadingText = document.getElementById("loadingText");
+  if (overlay) {
+    loadingText.innerText = text;
+    overlay.classList.toggle("hidden", !show);
+  }
 }
 
 // 초기 데이터 로드
