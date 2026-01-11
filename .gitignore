@@ -50,6 +50,7 @@ server/*.pid.lock
 server/report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 server/coverage/
 server/.nyc_output/
+redis-data/*.rdb
 
 # ==========================================
 # 6. Infrastructure (Nginx & SSL)
@@ -69,3 +70,4 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+

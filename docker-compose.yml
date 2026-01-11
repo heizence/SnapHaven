@@ -26,6 +26,8 @@ services:
     restart: always
     networks:
       - snaphaven-network
+    volumes:
+      - ./server/uploads:/app/uploads # 서버가 저장하는 경로
 
   client:
     build:
@@ -47,6 +49,8 @@ services:
     image: mysql:8.0
     container_name: snaphaven-db-${TARGET_ENV}
     restart: always
+    env_file:
+      - ./server/.env.${TARGET_ENV}
     environment:
       MYSQL_DATABASE: snaphaven_${TARGET_ENV}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
@@ -60,16 +64,7 @@ services:
       - snaphaven-network
     healthcheck:
       test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-u",
-          "snaphaven_admin",
-          "-p${DB_PASSWORD}",
-        ]
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME}", "-p${DB_PASSWORD}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -83,6 +78,7 @@ services:
     volumes:
       - ./nginx/dev.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./server/uploads:/var/www/uploads # Nginx가 읽을 경로
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
