@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm'; //  DataSource 를 사용하여 트랜잭션 관리
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
+import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -400,7 +401,10 @@ export class MediaPipelineService {
         }
       } finally {
         try {
-          await fsPromises.unlink(originalLocalPath);
+          if (fs.existsSync(originalLocalPath)) {
+            // 파일이 존재하는지 먼저 확인
+            await fsPromises.unlink(originalLocalPath);
+          }
         } catch (cleanupError) {
           this.logger.error(
             '[media-pipeline.service]cleanupError : ',
