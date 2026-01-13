@@ -68,13 +68,17 @@ import { RedisModule } from './common/redis/redis.module';
         logging: configService.get<string>('NODE_ENV') === 'development',
       }),
     }),
-
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 1분 (ms 단위)
-        limit: 100, // 1분 동안 최대 100번 요청 허용
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          // 테스트 환경(local)일 때는 부하 테스트를 위해 제한을 크게 설정
+          ttl: 60000, // 1분
+          limit: config.get('NODE_ENV') === 'local' ? 10000 : 100,
+        },
+      ],
+    }),
 
     EventEmitterModule.forRoot(),
     RedisModule,
