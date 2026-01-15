@@ -1,0 +1,21 @@
+# 의존성 패키지 (가장 중요!)
+node_modules
+npm-debug.log
+
+# 빌드 결과물
+dist
+.next
+out
+build
+
+# 환경 변수 및 로그
+.env.local
+*.log
+
+# Git 관련
+.git
+.gitignore
+
+# OS 관련 쓰레기 파일
+.DS_Store
+Thumbs.db
