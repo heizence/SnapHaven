@@ -1,0 +1,111 @@
+name: SnapHaven Dev CI/CD (Build-Transfer-Reload)
+
+on:
+  push:
+    branches: [develop] # develop 브랜치에 푸시될 때 실행
+
+jobs:
+  build:
+    name: Build NestJS & Next.js
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # 1. 의존성 설치 및 빌드 (GitHub Runner의 자원 사용)
+      - name: Install & Build Server (NestJS)
+        run: |
+          cd server
+          npm install
+          npm run build
+
+      - name: Install & Build Client (Next.js)
+        run: |
+          cd client
+          npm install
+          npm run build
+
+      # 2. 배포에 필요한 파일만 묶기 (Artifact 준비)
+      # 빌드 결과물(dist, .next)과 설정 파일(package.json, manage.sh)만 포함
+      - name: Prepare Deployment Artifacts
+        run: |
+          mkdir -p deploy
+          cp -r server/dist deploy/server-dist
+          cp server/package*.json deploy/server-pkg/
+          cp -r client/.next deploy/client-next
+          cp client/package*.json deploy/client-pkg/
+          cp manage.sh deploy/
+          # 서버에서 npm install --production 시 필요함
+
+      # 3. 빌드 결과물 임시 저장
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-assets
+          path: deploy/
+
+  deploy:
+    name: Transfer & Reload
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-assets
+          path: deploy/
+
+      # 4. EC2로 파일 전송 (변경된 파일만 효율적으로 전송)
+      - name: Transfer Files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USERNAME }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: 22
+          source: "deploy/*"
+          target: "/home/ubuntu/SnapHaven_tmp" # 임시 폴더에 먼저 전송
+          strip_components: 1
+
+      # 5. 원격 서버에서 배포 스크립트 실행
+      - name: Execute Remote Deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USERNAME }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            # 기존 폴더로 파일 이동 및 정리
+            mkdir -p /home/ubuntu/SnapHaven/server
+            mkdir -p /home/ubuntu/SnapHaven/client
+
+            # 빌드 파일 교체
+            cp -r /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/
+            cp /home/ubuntu/SnapHaven_tmp/server-pkg/package*.json /home/ubuntu/SnapHaven/server/
+            cp -r /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/
+            cp /home/ubuntu/SnapHaven_tmp/client-pkg/package*.json /home/ubuntu/SnapHaven/client/
+            cp /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/
+
+            cd /home/ubuntu/SnapHaven
+            chmod +x manage.sh
+
+            # 의존성 설치 (서버 부하 방지를 위해 production 모드로 필요한 것만)
+            cd server && npm install --production
+            cd ../client && npm install --production
+
+            # [핵심] 기존에 만든 manage.sh 실행 (무중단 reload)
+            cd ..
+            ./manage.sh reload dev
+
+      # 6. 에러 발생 시 알림 (선택 사항)
+      - name: On Failure Notification
+        if: failure()
+        run: echo "❌ 배포 중 에러가 발생했습니다. 로그를 확인하세요."
