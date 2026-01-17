@@ -36,13 +36,14 @@ jobs:
         run: |
           mkdir -p deploy/server-dist deploy/client-next
 
-          # 폴더 자체가 아닌 '내용물(*)'만 복사하여 중첩 방지
+          # package.json을 각각의 폴더 안으로 복사 (파일명 충돌 방지)
           cp -r server/dist/* deploy/server-dist/
-          cp server/package*.json deploy/
+          cp server/package*.json deploy/server-dist/
 
-          # .next 숨김 폴더의 내용물을 복사
           cp -r client/.next/* deploy/client-next/
-          cp client/package*.json deploy/
+          cp client/package*.json deploy/client-next/
+
+          # manage.sh는 루트 폴더에 그대로 둡니다.
           cp manage.sh deploy/
 
       - name: Upload Artifact
@@ -93,13 +94,13 @@ jobs:
             mkdir -p server/dist client/.next
 
             echo "🚚 2. 새 파일 배치 (내용물 직접 복사)"
-            # tmp의 하위 폴더 내용물을 목적지 폴더로 직접 이동
+            # 각 폴더 안에 함께 들어있는 package.json과 빌드 파일을 목적지로 복사
             cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/
             cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/
 
-            # package.json은 각 폴더 루트로
-            cp -f /home/ubuntu/SnapHaven_tmp/package*.json /home/ubuntu/SnapHaven/server/
-            cp -f /home/ubuntu/SnapHaven_tmp/package*.json /home/ubuntu/SnapHaven/client/
+            # 설치를 위해 package.json을 각 폴더 루트(server/, client/)로 한 번 더 복사
+            cp -f /home/ubuntu/SnapHaven/server/dist/package*.json /home/ubuntu/SnapHaven/server/
+            cp -f /home/ubuntu/SnapHaven/client/.next/package*.json /home/ubuntu/SnapHaven/client/
             cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/
 
             echo "🔑 3. 환경 설정 및 권한 부여"
@@ -110,9 +111,9 @@ jobs:
             chmod +x manage.sh
 
             echo "📦 4. 의존성 설치"
-            # Next.js 15 환경에서 TS 에러 방지를 위해 필요한 경우 --production 제외 고려
+            # Next.js 15 환경에서 TS 에러 방지를 위해 필요한 경우 --production 제외
             (cd server && npm install --production)
-            (cd client && npm install --production)
+            (cd client && npm install) # client는 typescript가 필요하므로 일반 install 권장
 
             echo "🔄 5. 서비스 리로드"
             ./manage.sh reload dev
