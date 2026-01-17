@@ -2,7 +2,7 @@ name: SnapHaven Dev CI/CD (Build-Transfer-Reload)
 
 on:
   push:
-    branches: [develop] # develop 브랜치에 푸시될 때 실행
+    branches: [develop]
 
 jobs:
   build:
@@ -22,44 +22,29 @@ jobs:
             server/package-lock.json
             client/package-lock.json
 
-      # 1. 서버 환경 변수 파일 생성
-      - name: Create Server Env File
+      - name: Create Env Files
         run: |
           echo "${{ secrets.SERVER_ENV_DEV }}" > server/.env.dev
-
-      # 2. 클라이언트 환경 변수 파일 생성
-      - name: Create Client Env File
-        run: |
           echo "${{ secrets.CLIENT_ENV_DEV }}" > client/.env.dev
 
-      # 1. 의존성 설치 및 빌드 (GitHub Runner의 자원 사용)
-      - name: Install & Build Server (NestJS)
+      - name: Build Server & Client
         run: |
-          cd server
-          npm install
-          npm run build
+          cd server && npm install && npm run build
+          cd ../client && npm install && npm run build:dev
 
-      - name: Install & Build Client (Next.js)
-        run: |
-          cd client
-          npm install
-          npm run build:dev
-
-      # 2. 배포에 필요한 파일만 묶기 (Artifact 준비)
-      # 빌드 결과물(dist, .next)과 설정 파일(package.json, manage.sh)만 포함
       - name: Prepare Deployment Artifacts
         run: |
-          mkdir -p deploy
-          # 폴더 자체를 복사 (내부 구조 유지)
-          cp -r server/dist deploy/server-dist
-          cp -r client/.next deploy/client-next
+          mkdir -p deploy/server-dist deploy/client-next
 
-          # 설정 파일들은 루트에 모으기
-          cp server/package*.json deploy/server-package.json
-          cp client/package*.json deploy/client-package.json
+          # 폴더 자체가 아닌 '내용물(*)'만 복사하여 중첩 방지
+          cp -r server/dist/* deploy/server-dist/
+          cp server/package*.json deploy/
+
+          # .next 숨김 폴더의 내용물을 복사
+          cp -r client/.next/* deploy/client-next/
+          cp client/package*.json deploy/
           cp manage.sh deploy/
 
-      # 3. 빌드 결과물 임시 저장
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -78,7 +63,6 @@ jobs:
           name: build-assets
           path: deploy/
 
-      # 4. EC2로 파일 전송 (변경된 파일만 효율적으로 전송)
       - name: Transfer Files to EC2
         uses: appleboy/scp-action@master
         with:
@@ -87,10 +71,9 @@ jobs:
           key: ${{ secrets.DEV_SSH_KEY }}
           port: 22
           source: "deploy/*"
-          target: "/home/ubuntu/SnapHaven_tmp" # 임시 폴더에 먼저 전송
+          target: "/home/ubuntu/SnapHaven_tmp"
           strip_components: 1
 
-      # 5. 원격 서버에서 배포 스크립트 실행
       - name: Execute Remote Deployment
         uses: appleboy/ssh-action@master
         with:
@@ -105,41 +88,36 @@ jobs:
             git reset --hard HEAD
             git clean -fd
 
-            # 기존 빌드 파일 완전 삭제 (깨끗한 상태에서 복사)
+            # 기존 빌드 파일 완전 삭제
             rm -rf server/dist client/.next
+            mkdir -p server/dist client/.next
 
-            echo "🚚 2. 새 파일 배치 (폴더 이동)"
-            # 임시 폴더에 있는 폴더를 통째로 목적지로 이동
-            mv /home/ubuntu/SnapHaven_tmp/server-dist server/dist
-            mv /home/ubuntu/SnapHaven_tmp/client-next client/.next
+            echo "🚚 2. 새 파일 배치 (내용물 직접 복사)"
+            # tmp의 하위 폴더 내용물을 목적지 폴더로 직접 이동
+            cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/
+            cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/
 
-            # package.json 파일 복구
-            cp -f /home/ubuntu/SnapHaven_tmp/server-package.json server/package.json
-            cp -f /home/ubuntu/SnapHaven_tmp/client-package.json client/package.json
-            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh ./
+            # package.json은 각 폴더 루트로
+            cp -f /home/ubuntu/SnapHaven_tmp/package*.json /home/ubuntu/SnapHaven/server/
+            cp -f /home/ubuntu/SnapHaven_tmp/package*.json /home/ubuntu/SnapHaven/client/
+            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/
 
             echo "🔑 3. 환경 설정 및 권한 부여"
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            nvm use 20 || echo "NVM use failed, using system node"
+            nvm use 20
 
             chmod +x manage.sh
 
             echo "📦 4. 의존성 설치"
-            cd server && npm install --production
-            cd client && npm install
+            # Next.js 15 환경에서 TS 에러 방지를 위해 필요한 경우 --production 제외 고려
+            (cd server && npm install --production)
+            (cd client && npm install --production)
 
             echo "🔄 5. 서비스 리로드"
-            pm2 stop all || true
             ./manage.sh reload dev
-
 
             echo "✨ 반영 확인 (서버 시간):"
             ls -l server/dist/main.js
 
             rm -rf /home/ubuntu/SnapHaven_tmp/*
-
-      # 6. 에러 발생 시 알림 (선택 사항)
-      - name: On Failure Notification
-        if: failure()
-        run: echo "❌ 배포 중 에러가 발생했습니다. 로그를 확인하세요."
