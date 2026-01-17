@@ -49,19 +49,13 @@ jobs:
       # 빌드 결과물(dist, .next)과 설정 파일(package.json, manage.sh)만 포함
       - name: Prepare Deployment Artifacts
         run: |
-          # 필요한 하위 폴더들을 미리 모두 생성
-          mkdir -p deploy/server-dist
-          mkdir -p deploy/server-pkg
-          mkdir -p deploy/client-next
-          mkdir -p deploy/client-pkg
-
-          # 각 경로로 파일들을 복사
+          mkdir -p deploy
+          # 폴더 자체를 복사하여 구조를 단순화 (중첩 방지)
           cp -r server/dist deploy/server-dist
-          cp server/package*.json deploy/server-pkg/
-          cp -r client/.next deploy/client-next
-          cp client/package*.json deploy/client-pkg/
+          cp server/package*.json deploy/
+          cp -r client/.next deploy/client-next # .next 숨김폴더 통째로 복사
+          cp client/package*.json deploy/
           cp manage.sh deploy/
-          # 서버에서 npm install --production 시 필요함
 
       # 3. 빌드 결과물 임시 저장
       - name: Upload Artifact
@@ -102,33 +96,43 @@ jobs:
           username: ${{ secrets.DEV_USERNAME }}
           key: ${{ secrets.DEV_SSH_KEY }}
           script: |
-            # Node.js 환경 로드 (nvm 경로 설정)
+            set -e
+
+            echo "🧹 1. Git 상태 초기화 및 폴더 정리"
+            cd /home/ubuntu/SnapHaven
+            git reset --hard HEAD
+            git clean -fd
+
+            # 기존 빌드 파일 완전 삭제 (깨끗한 상태에서 복사)
+            rm -rf server/dist client/.next
+
+            echo "🚚 2. 새 파일 배치 시작"
+            # 구조에 맞춰 정확하게 이동
+            cp -rf /home/ubuntu/SnapHaven_tmp/server-dist /home/ubuntu/SnapHaven/server/dist
+            cp -rf /home/ubuntu/SnapHaven_tmp/client-next /home/ubuntu/SnapHaven/client/.next
+            cp -f /home/ubuntu/SnapHaven_tmp/package*.json /home/ubuntu/SnapHaven/server/
+            cp -f /home/ubuntu/SnapHaven_tmp/package*.json /home/ubuntu/SnapHaven/client/
+            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/
+
+            echo "🔑 3. 환경 설정 및 권한 부여"
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             nvm use 20 || echo "NVM use failed, using system node"
 
-            # 파일 이동 (에러 방지를 위해 폴더 확인 후 복사)
-            mkdir -p /home/ubuntu/SnapHaven/server/dist
-            mkdir -p /home/ubuntu/SnapHaven/client/.next
-
-            # 파일이 존재하는 경우에만 복사하도록 수정
-            [ -d "/home/ubuntu/SnapHaven_tmp/server-dist" ] && cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/
-            [ -d "/home/ubuntu/SnapHaven_tmp/client-next" ] && cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/
-            cp -f /home/ubuntu/SnapHaven_tmp/server-pkg/package*.json /home/ubuntu/SnapHaven/server/ || true
-            cp -f /home/ubuntu/SnapHaven_tmp/client-pkg/package*.json /home/ubuntu/SnapHaven/client/ || true
-            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/ || true
-
-            # 배포 스크립트 실행
-            cd /home/ubuntu/SnapHaven
             chmod +x manage.sh
 
-            # 의존성 설치 (서버 부하 방지를 위해 production 모드로 필요한 것만)
-            cd server && npm install --production
-            cd ../client && npm install --production
+            echo "📦 4. 의존성 설치"
+            (cd server && npm install --production)
+            (cd client && npm install --production)
 
-            # 기존에 만든 manage.sh 실행 (무중단 reload)
-            cd ..
+            echo "🔄 5. 서비스 리로드"
             ./manage.sh reload dev
+
+
+            echo "✨ 반영 확인 (서버 시간):"
+            ls -l server/dist/main.js
+
+            rm -rf /home/ubuntu/SnapHaven_tmp/*
 
       # 6. 에러 발생 시 알림 (선택 사항)
       - name: On Failure Notification
