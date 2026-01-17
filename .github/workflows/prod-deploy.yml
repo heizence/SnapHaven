@@ -1,0 +1,122 @@
+name: SnapHaven Prod CI/CD (Build-Transfer-Reload)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build NestJS & Next.js (Production)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Create Env Files
+        run: |
+          echo "${{ secrets.SERVER_ENV_PROD }}" > server/.env.prod
+          echo "${{ secrets.CLIENT_ENV_PROD }}" > client/.env.prod
+
+      - name: Build Server & Client
+        run: |
+          cd server && npm install && npm run build
+          cd ../client && npm install && npm run build:prod
+
+      - name: Prepare Deployment Artifacts
+        run: |
+          mkdir -p deploy/server-dist deploy/client-next
+
+          # package.json을 각각의 폴더 안으로 복사 (파일명 충돌 방지)
+          cp -r server/dist/* deploy/server-dist/
+          cp server/package*.json deploy/server-dist/
+
+          cp -r client/.next/* deploy/client-next/
+          cp client/package*.json deploy/client-next/
+
+          cp manage.sh deploy/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-assets-prod
+          path: deploy/
+
+  deploy:
+    name: Transfer & Reload (Production)
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-assets-prod
+          path: deploy/
+
+      - name: Transfer Files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: 22
+          source: "deploy/*"
+          target: "/home/ubuntu/SnapHaven_tmp"
+          strip_components: 1
+
+      - name: Execute Remote Deployment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USERNAME }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "🧹 1. 운영 서버 Git 상태 초기화"
+            cd /home/ubuntu/SnapHaven
+            git reset --hard HEAD
+            git clean -fd
+
+            # 기존 빌드 파일 완전 삭제
+            rm -rf server/dist client/.next
+            mkdir -p server/dist client/.next
+
+            echo "🚚 2. 새 파일 배치 (내용물 직접 복사)"
+            # 각 폴더 안에 함께 들어있는 package.json과 빌드 파일을 목적지로 복사
+            cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/
+            cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/
+
+            # 설치를 위해 package.json을 각 폴더 루트(server/, client/)로 한 번 더 복사
+            cp -f /home/ubuntu/SnapHaven/server/dist/package*.json /home/ubuntu/SnapHaven/server/
+            cp -f /home/ubuntu/SnapHaven/client/.next/package*.json /home/ubuntu/SnapHaven/client/
+            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/
+
+            echo "🔑 3. 환경 설정 및 권한 부여"
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 20
+
+            chmod +x manage.sh
+
+            echo "📦 4. 의존성 설치"
+            (cd server && npm install --production)
+            (cd client && npm install) # Next.js 15 TS 해석을 위해 전체 설치
+
+            echo "🔄 5. 서비스 리로드"
+            ./manage.sh reload prod
+
+            echo "✨ 반영 확인 (서버 시간):"
+            ls -l server/dist/main.js
+
+            rm -rf /home/ubuntu/SnapHaven_tmp/*
