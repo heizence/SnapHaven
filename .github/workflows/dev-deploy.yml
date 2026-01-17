@@ -49,7 +49,13 @@ jobs:
       # 빌드 결과물(dist, .next)과 설정 파일(package.json, manage.sh)만 포함
       - name: Prepare Deployment Artifacts
         run: |
-          mkdir -p deploy
+          # 필요한 하위 폴더들을 미리 모두 생성
+          mkdir -p deploy/server-dist
+          mkdir -p deploy/server-pkg
+          mkdir -p deploy/client-next
+          mkdir -p deploy/client-pkg
+
+          # 각 경로로 파일들을 복사
           cp -r server/dist deploy/server-dist
           cp server/package*.json deploy/server-pkg/
           cp -r client/.next deploy/client-next
