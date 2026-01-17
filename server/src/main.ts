@@ -18,7 +18,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1'); // 모든 API 경로가 /api/v1/... 로 시작됨
   app.enableCors({
     //origin: process.env.CLIENT_ADDRESS,
-    origin: [process.env.CLIENT_ADDRESS, 'http://127.0.0.1:5500'],
+    origin: [process.env.CLIENT_ADDRESS, process.env.ADMIN_ADDRESS],
     credentials: true,
     exposedHeaders: ['Authorization'], // 혹시 헤더를 직접 읽어야 할 경우 대비
   });
