@@ -50,11 +50,13 @@ jobs:
       - name: Prepare Deployment Artifacts
         run: |
           mkdir -p deploy
-          # 폴더 자체를 복사하여 구조를 단순화 (중첩 방지)
+          # 폴더 자체를 복사 (내부 구조 유지)
           cp -r server/dist deploy/server-dist
-          cp server/package*.json deploy/
-          cp -r client/.next deploy/client-next # .next 숨김폴더 통째로 복사
-          cp client/package*.json deploy/
+          cp -r client/.next deploy/client-next
+
+          # 설정 파일들은 루트에 모으기
+          cp server/package*.json deploy/server-package.json
+          cp client/package*.json deploy/client-package.json
           cp manage.sh deploy/
 
       # 3. 빌드 결과물 임시 저장
