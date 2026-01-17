@@ -102,21 +102,21 @@ jobs:
           username: ${{ secrets.DEV_USERNAME }}
           key: ${{ secrets.DEV_SSH_KEY }}
           script: |
-            # 파일이 잘 도착했는지 디버깅용 로그 출력
-            echo "--- 전송된 파일 목록 확인 ---"
-            ls -R /home/ubuntu/SnapHaven_tmp
+            # Node.js 환경 로드 (nvm 경로 설정)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 20 || echo "NVM use failed, using system node"
 
-            # 목적지 폴더 생성
-            mkdir -p /home/ubuntu/SnapHaven/server
-            mkdir -p /home/ubuntu/SnapHaven/client
+            # 파일 이동 (에러 방지를 위해 폴더 확인 후 복사)
+            mkdir -p /home/ubuntu/SnapHaven/server/dist
+            mkdir -p /home/ubuntu/SnapHaven/client/.next
 
-            # 빌드 파일 교체
-            # 파일이 존재하지 않아도 에러로 중단되지 않게 처리
-            cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/ || echo "Server dist copy failed"
-            cp -f /home/ubuntu/SnapHaven_tmp/server-pkg/package*.json /home/ubuntu/SnapHaven/server/ || echo "Server pkg copy failed"
-            cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/ || echo "Client next copy failed"
-            cp -f /home/ubuntu/SnapHaven_tmp/client-pkg/package*.json /home/ubuntu/SnapHaven/client/ || echo "Client pkg copy failed"
-            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/
+            # 파일이 존재하는 경우에만 복사하도록 수정
+            [ -d "/home/ubuntu/SnapHaven_tmp/server-dist" ] && cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* /home/ubuntu/SnapHaven/server/dist/
+            [ -d "/home/ubuntu/SnapHaven_tmp/client-next" ] && cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* /home/ubuntu/SnapHaven/client/.next/
+            cp -f /home/ubuntu/SnapHaven_tmp/server-pkg/package*.json /home/ubuntu/SnapHaven/server/ || true
+            cp -f /home/ubuntu/SnapHaven_tmp/client-pkg/package*.json /home/ubuntu/SnapHaven/client/ || true
+            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh /home/ubuntu/SnapHaven/ || true
 
             # 배포 스크립트 실행
             cd /home/ubuntu/SnapHaven
@@ -126,7 +126,7 @@ jobs:
             cd server && npm install --production
             cd ../client && npm install --production
 
-            # [핵심] 기존에 만든 manage.sh 실행 (무중단 reload)
+            # 기존에 만든 manage.sh 실행 (무중단 reload)
             cd ..
             ./manage.sh reload dev
 
