@@ -106,12 +106,15 @@ jobs:
             # 기존 빌드 파일 완전 삭제 (깨끗한 상태에서 복사)
             rm -rf server/dist client/.next
 
-            echo "🚚 2. 새 파일 배치 시작"
-            cp -rf /home/ubuntu/SnapHaven_tmp/server-dist/* server/dist/
-            cp -rf /home/ubuntu/SnapHaven_tmp/client-next/* client/.next/
+            echo "🚚 2. 새 파일 배치 (폴더 이동)"
+            # 임시 폴더에 있는 폴더를 통째로 목적지로 이동
+            mv /home/ubuntu/SnapHaven_tmp/server-dist server/dist
+            mv /home/ubuntu/SnapHaven_tmp/client-next client/.next
 
-            cp -f /home/ubuntu/SnapHaven_tmp/package*.json server/
-            cp -f /home/ubuntu/SnapHaven_tmp/package*.json client/
+            # package.json 파일 복구
+            cp -f /home/ubuntu/SnapHaven_tmp/server-package.json server/package.json
+            cp -f /home/ubuntu/SnapHaven_tmp/client-package.json client/package.json
+            cp -f /home/ubuntu/SnapHaven_tmp/manage.sh ./
 
             echo "🔑 3. 환경 설정 및 권한 부여"
             export NVM_DIR="$HOME/.nvm"
