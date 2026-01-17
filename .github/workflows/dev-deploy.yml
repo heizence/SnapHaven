@@ -33,7 +33,7 @@ jobs:
         run: |
           cd client
           npm install
-          npm run build
+          npm run build:dev
 
       # 2. 배포에 필요한 파일만 묶기 (Artifact 준비)
       # 빌드 결과물(dist, .next)과 설정 파일(package.json, manage.sh)만 포함
