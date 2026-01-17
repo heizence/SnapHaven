@@ -22,6 +22,16 @@ jobs:
             server/package-lock.json
             client/package-lock.json
 
+      # 1. 서버 환경 변수 파일 생성
+      - name: Create Server Env File
+        run: |
+          echo "${{ secrets.SERVER_ENV_DEV }}" > server/.env.dev
+
+      # 2. 클라이언트 환경 변수 파일 생성
+      - name: Create Client Env File
+        run: |
+          echo "${{ secrets.CLIENT_ENV_DEV }}" > client/.env.dev
+
       # 1. 의존성 설치 및 빌드 (GitHub Runner의 자원 사용)
       - name: Install & Build Server (NestJS)
         run: |
