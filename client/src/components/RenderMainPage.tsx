@@ -13,7 +13,6 @@ import { Photo } from "@/types/data";
 import { TagButton } from "./ui/TagButton";
 
 type RenderType = "MAIN" | "KEYWORD_SEARCH" | "TAG_SEARCH";
-export const dynamic = "force-dynamic";
 
 /**
  * 메인 페이지, 검색 페이지, 태그 검색 페이지를 랜더링하는 공용 컴포넌트
