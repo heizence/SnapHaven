@@ -250,7 +250,7 @@ export class AuthService {
         refreshToken: tokens.refreshToken,
         id: user.id,
         nickname: user.nickname,
-        profileImageKey: null,
+        profileImageKey: user.profileImageKey,
         role: user.role,
       };
       return {
