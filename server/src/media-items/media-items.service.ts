@@ -574,6 +574,11 @@ export class MediaItemsService {
       await queryRunner.manager.softDelete(MediaItem, mediaId);
 
       await queryRunner.commitTransaction();
+
+      await Promise.all([
+        this.redisService.delMediaDetailCache(mediaId), // 상세 페이지 캐시 삭제
+        this.redisService.delMediaListCache(), // 메인 목록 캐시 삭제
+      ]);
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw new InternalServerErrorException(

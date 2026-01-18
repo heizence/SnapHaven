@@ -36,6 +36,7 @@ import {
   InitiateMultipartUploadResDto,
   EachPresignedPartDto,
 } from 'src/upload/dto/multipart-upload.dto';
+import { RedisService } from 'src/common/redis/redis.service';
 
 const MAX_RETRIES = 5;
 
@@ -54,6 +55,7 @@ export class MediaPipelineService {
 
     private readonly s3UtilityService: S3UtilityService,
     private readonly mediaProcessorService: MediaProcessorService,
+    private readonly redisService: RedisService,
   ) {}
 
   // 양 끝 공백 제거 및 금지 문자 제거
@@ -387,6 +389,8 @@ export class MediaPipelineService {
           ...processedkeys,
           status: ContentStatus.ACTIVE,
         });
+
+        await this.redisService.delMediaListCache(); // 메인 목록 캐시 삭제
         break; // 성공 시 종료
       } catch (error) {
         // DB 상태를 FAILED로 업데이트

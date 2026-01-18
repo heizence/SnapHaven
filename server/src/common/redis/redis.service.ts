@@ -124,6 +124,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /******************* 데이터 캐시 삭제 (Public API) ******************/
+  async delMediaListCache(): Promise<void> {
+    // feed:s=LATEST:t=ALL... 등 모든 목록 캐시 무효화
+    await this.delByPattern('feed:*');
+  }
 
   async delMediaDetailCache(mediaId: number): Promise<void> {
     await this.delByPattern(`media:detail:${mediaId}:*`);
