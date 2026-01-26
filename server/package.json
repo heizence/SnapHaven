@@ -8,9 +8,9 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start:local": "cross-env NODE_ENV=local nest start --watch",
-    "start:dev": "cross-env NODE_ENV=dev node dist/main",
-    "start:prod": "cross-env NODE_ENV=prod node dist/main",
+    "start:local": "NODE_ENV=local nest start --watch",
+    "start:dev": "NODE_ENV=dev node dist/main",
+    "start:prod": "NODE_ENV=prod node dist/main",
     "start": "if [ \"$NODE_ENV\" = \"prod\" ]; then npm run start:prod; else npm run start:dev; fi",
     "docker:build:dev": "docker build --build-arg TARGET_ENV=dev -t snaphaven-server-dev .",
     "docker:run:dev": "docker run -d -p 8001:8001 --name snaphaven-server-dev --network snaphaven-network --env-file .env.dev snaphaven-server-dev",
@@ -63,7 +63,8 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
     "winston": "^3.19.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "cross-env": "^10.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -83,7 +84,6 @@
     "@types/nodemailer": "^7.0.4",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
-    "cross-env": "^10.1.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
