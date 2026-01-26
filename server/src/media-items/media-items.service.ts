@@ -419,21 +419,30 @@ export class MediaItemsService {
     const isCurrentlyLiked = user.likedMediaItems.some(
       (item) => item.id === mediaId,
     );
+    let resMessage: string;
     if (isCurrentlyLiked) {
       // likedMediaItems 배열에서 해당 미디어 아이템 제거
       user.likedMediaItems = user.likedMediaItems.filter(
         (item) => item.id !== mediaId,
       );
       await this.userRepository.save(user); // 관계 테이블에서 레코드 삭제
-      return { message: '좋아요 취소 처리가 완료되었습니다.', isLiked: false };
+
+      resMessage = '좋아요 취소 처리가 완료되었습니다.';
     } else {
       // 미디어 아이템을 관계 배열에 추가
       user.likedMediaItems.push(mediaItem);
 
       await this.userRepository.save(user); // 관계 테이블에 레코드 추가
-
-      return { message: '좋아요 처리가 완료되었습니다.', isLiked: true };
+      resMessage = '좋아요 처리가 완료되었습니다.';
     }
+
+    await Promise.all([
+      this.redisService.delUserMediaDetailCache(mediaId, userId),
+      this.redisService.delUserFeedsCache(userId),
+      this.redisService.delProfileCache(userId),
+    ]);
+
+    return { message: resMessage, isLiked: true };
   }
 
   // 사용자가 좋아요 표시한 콘텐츠들을 조회
@@ -533,7 +542,7 @@ export class MediaItemsService {
       title,
       description,
     });
-    this.redisService.delMediaDetailCache(dto.contentId);
+    await this.redisService.delUserMediaDetailCache(dto.contentId, userId);
     return { message: '수정이 완료되었습니다.' };
   }
 

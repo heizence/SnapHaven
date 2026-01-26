@@ -171,7 +171,7 @@ export class AlbumsService {
       await queryRunner.release();
     }
 
-    this.redisService.delAlbumDetailCache(contentId);
+    await this.redisService.delAlbumDetailCache(contentId);
 
     return { message: '수정이 완료되었습니다.' };
   }

@@ -27,6 +27,7 @@ import {
   GetCollectionContentsReqDto,
   GetCollectionContentsResDto,
 } from './dto/get-collection-contents.dto';
+import { RedisService } from 'src/common/redis/redis.service';
 
 type RawCollection = {
   collection_id: string;
@@ -49,6 +50,7 @@ export class CollectionsService {
     private albumRepository: Repository<Album>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly redisService: RedisService,
   ) {}
 
   // 사용자별 컬렉션 기본정보 조회
@@ -258,7 +260,7 @@ export class CollectionsService {
         await this.toggleMediaItem(savedCollection.id, mediaId, userId)
       )?.message;
     }
-
+    await this.redisService.delProfileCache(userId);
     return {
       message,
       collection,
@@ -367,6 +369,7 @@ export class CollectionsService {
       (item) => item.id === mediaId,
     );
 
+    await this.redisService.delProfileCache(currentUserId);
     if (isCurrentlyInCollection) {
       // 제거 (Dislike)
       collection.mediaItems = collection.mediaItems.filter(

@@ -100,7 +100,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     userId: number | undefined,
     factory: () => Promise<T>,
   ): Promise<T> {
-    const key = `media:detail:${mediaId}:u=${userId ?? 'guest'}`;
+    const key = `media:detail:${mediaId}:user=${userId ?? 'guest'}`;
     return this.getOrSet(key, factory, 3600, 'MediaDetail');
   }
 
@@ -110,7 +110,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     userId: number | undefined,
     factory: () => Promise<T>,
   ): Promise<T> {
-    const key = `album:detail:${albumId}:u=${userId ?? 'guest'}`;
+    const key = `album:detail:${albumId}:user=${userId ?? 'guest'}`;
     return this.getOrSet(key, factory, 3600, 'AlbumDetail');
   }
 
@@ -124,6 +124,41 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /******************* 데이터 캐시 삭제 (Public API) ******************/
+  // 특정 사용자의 모든 피드 목록 캐시 삭제
+  async delUserFeedsCache(userId: number): Promise<void> {
+    const pattern = `feed:*:user=${userId}`;
+    await this.delByPattern(pattern);
+    // this.logger.log(
+    //   `[Redis] Cache cleared for User ${userId} feeds with pattern: ${pattern}`,
+    // );
+  }
+
+  // 특정 사용자의 특정 콘텐츠 상세 페이지 캐시 삭제
+  async delUserMediaDetailCache(
+    mediaId: number,
+    userId: number,
+  ): Promise<void> {
+    const key = `media:detail:${mediaId}:user=${userId ?? 'guest'}`;
+    await this.client.del(key);
+    // this.logger.log(
+    //   `[Redis] Cache cleared for User ${userId}, Media ${mediaId}`,
+    // );
+  }
+
+  // 특정 사용자의 특정 앨범 상세 페이지 캐시 삭제
+  async delUserAlbumDetailCache(
+    albumId: number,
+    userId: number,
+  ): Promise<void> {
+    await this.delByPattern(
+      `album:detail:${albumId}:user=${userId ?? 'guest'}`,
+    );
+    // this.logger.log(
+    //   `[Redis] Cache cleared for User ${userId}, album ${albumId}`,
+    // );
+  }
+
+  /*** 아래 매서드들은 특정 콘텐츠가 수정, 삭제되었을 때 사용(전체 사용자들에게 반영해 줄 필요가 있을 때) ***/
   async delMediaListCache(): Promise<void> {
     // feed:s=LATEST:t=ALL... 등 모든 목록 캐시 무효화
     await this.delByPattern('feed:*');
