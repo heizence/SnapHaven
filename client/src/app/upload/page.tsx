@@ -126,7 +126,7 @@ export default function Page() {
     // 유효하지 않은 파일이 있을 경우 에러 표시
     if (invalidFileNames.length > 0) {
       setUploadError(
-        `지원하지 않는 파일 형식(${invalidFileNames.join(", ")})은(는) 제외되었습니다.`
+        `지원하지 않는 파일 형식(${invalidFileNames.join(", ")})은(는) 제외되었습니다.`,
       );
       if (validFiles.length === 0) return; // 유효한 파일이 없으면 여기서 중단
     }
@@ -173,13 +173,13 @@ export default function Page() {
           height: dims.height,
           videoDuration: duration,
         };
-      })
+      }),
     );
 
     if (isVideoPresent) {
       if (videoLengthError) {
         setUploadError(
-          `영상 길이는 60초를 초과할 수 없습니다. (현재 ${newVideoDuration.toFixed(1)} 초.)`
+          `영상 길이는 60초를 초과할 수 없습니다. (현재 ${newVideoDuration.toFixed(1)} 초.)`,
         );
         setFiles([]);
         setPreviews([]);
@@ -247,7 +247,7 @@ export default function Page() {
       (prev) =>
         prev.includes(tagToToggle)
           ? prev.filter((tag) => tag !== tagToToggle) // 이미 있으면 제거
-          : [...prev, tagToToggle] // 없으면 추가
+          : [...prev, tagToToggle], // 없으면 추가
     );
   };
 
@@ -332,7 +332,7 @@ export default function Page() {
     } catch (error: any) {
       hideLoading();
       console.error("[Upload Error]", error);
-      setUploadError(error.message || "업로드 중 오류가 발생했습니다.");
+      alert("업로드 중 오류가 발생했습니다.");
     }
   };
 
