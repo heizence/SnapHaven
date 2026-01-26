@@ -69,7 +69,7 @@ export default function ContentDetailPage() {
     hideLoading();
     if (res.code === 202) {
       setMediaDetail((prev) =>
-        prev ? { ...prev, title: editTitle, description: editDesc } : null
+        prev ? { ...prev, title: editTitle, description: editDesc } : null,
       );
       setIsEditing(false);
       alert("콘텐츠가 수정되었습니다.");
@@ -129,7 +129,23 @@ export default function ContentDetailPage() {
                 />
               </div>
             )}
-            {/* ... 비디오 렌더링 부분은 동일하게 유지 ... */}
+            {mediaDetail.type === "VIDEO" && mediaDetail.keyVideoPlayback && (
+              <video
+                // 비디오 비율에 맞게 스타일 적용 (object-contain)
+                className={mediaClassName}
+                src={AWS_BASE_URL + mediaDetail.keyVideoPlayback}
+                controls
+                playsInline
+                preload="metadata"
+                // 세로 비디오가 9:16일 때 가로를 채우지 않도록 처리
+                style={{
+                  width: mediaDetail.width > mediaDetail.height ? "100%" : "auto",
+                  height: mediaDetail.width > mediaDetail.height ? "auto" : "100%",
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
           </div>
 
           {/* 정보 및 제어 영역 */}
