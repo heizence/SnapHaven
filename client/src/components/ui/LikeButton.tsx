@@ -31,13 +31,9 @@ export function LikeButton({ isLiked = false, mediaItemId }: Props) {
         toggleLiked(e);
       }}
       className={`flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition-colors
-        ${
-          _isLiked
-            ? "border-red-500 bg-red-500 text-white"
-            : "border-gray-300 text-gray-700 hover:bg-gray-100"
-        }`}
+        ${"border-gray-300 text-gray-700 hover:bg-gray-100"}`}
     >
-      <Heart size={20} fill={_isLiked ? "currentColor" : "none"} strokeWidth={1.5} />
+      <Heart size={20} fill={_isLiked ? "red" : "none"} strokeWidth={_isLiked ? 0 : 1.5} />
     </button>
   );
 }
