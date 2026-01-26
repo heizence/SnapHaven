@@ -146,75 +146,64 @@ export class MediaProcessorService {
     };
 
     try {
-      const processingTasks: Promise<void>[] = [];
-
-      // 트랜스코딩 (MP4)
-      processingTasks.push(
-        new Promise((resolve, reject) => {
-          this.logger.log(`[Processor] [Task 1] 트랜스코딩 시작...`);
-          ffmpeg(localPath)
-            .outputOptions([
-              '-vcodec libx264',
-              '-acodec aac',
-              '-b:v 1000k',
-              '-preset slow',
-              '-crf 23',
-              '-threads 1',
-            ]) // threads 제한 추가 권장
-            .on('end', () => {
-              this.logger.log(`[Processor] [Task 1] 트랜스코딩 완료`);
-              resolve();
-            })
-            .on('error', (err) => reject(err))
-            .save(outputPaths.playback);
-        }),
-      );
-
-      // 썸네일 추출
-      processingTasks.push(
-        new Promise((resolve, reject) => {
-          this.logger.log(`[Processor] [Task 2] 썸네일 추출 시작...`);
-          ffmpeg(localPath)
-            .screenshots({
-              timestamps: ['00:00:01.000'],
-              filename: path.basename(outputPaths.thumbnail),
-              folder: tempLocalDir,
-              size: '640x?',
-            })
-            .on('end', () => {
-              this.logger.log(`[Processor] [Task 2] 썸네일 추출 완료`);
-              resolve();
-            })
-            .on('error', (err) => reject(err));
-        }),
-      );
-
-      // 미리보기 클립 생성 (5s Muted)
-      processingTasks.push(
-        new Promise((resolve, reject) => {
-          this.logger.log(`[Processor] [Task 3] 미리보기 클립 생성 시작...`);
-          ffmpeg(localPath)
-            .outputOptions([
-              '-ss 00:00:00.000',
-              `-t ${VIDEO_PREVIEW_DURATION}`,
-              '-an',
-              '-vcodec libx264',
-              '-preset ultrafast',
-            ])
-            .on('end', () => {
-              this.logger.log(`[Processor] [Task 3] 미리보기 완료`);
-              resolve();
-            })
-            .on('error', (err) => reject(err))
-            .save(outputPaths.preview);
-        }),
-      );
-
-      // 모든 처리 작업 완료 대기
+      // Task 1: 트랜스코딩(mp4)
       this.logger.log(
-        `[Processor] 모든 FFmpeg 태스크 병렬 실행 중 (Promise.all)...`,
+        `[Processor] [Step 1] 트랜스코딩 시작 (threads 1, ultrafast)`,
       );
-      await Promise.all(processingTasks);
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(localPath)
+          .outputOptions([
+            '-vcodec libx264',
+            '-acodec aac',
+            '-b:v 1000k',
+            '-preset ultrafast',
+            '-crf 23',
+            '-threads 1',
+          ])
+          .on('end', () => {
+            this.logger.log(`[Processor] [Task 1] 트랜스코딩 완료`);
+            resolve();
+          })
+          .on('error', (err) => reject(err))
+          .save(outputPaths.playback);
+      });
+
+      // Task 2: 썸네일 추출 (상대적으로 가벼움)
+      this.logger.log(`[Processor] [Step 2] 썸네일 추출 시작`);
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(localPath)
+          .screenshots({
+            timestamps: ['00:00:01.000'],
+            filename: path.basename(outputPaths.thumbnail),
+            folder: tempLocalDir,
+            size: '640x?',
+          })
+          .on('end', () => {
+            this.logger.log(`[Processor] [Task 2] 썸네일 추출 완료`);
+            resolve();
+          })
+          .on('error', (err) => reject(err));
+      });
+      // Task 3: 미리보기 클립 생성
+      this.logger.log(`[Processor] [Step 3] 미리보기 생성 시작`);
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(localPath)
+          .outputOptions([
+            '-ss 00:00:00.000',
+            `-t ${VIDEO_PREVIEW_DURATION}`,
+            '-an',
+            '-vcodec libx264',
+            '-preset ultrafast',
+            '-threads 1',
+          ])
+          .on('end', () => {
+            this.logger.log(`[Processor] [Task 3] 미리보기 생성 완료`);
+            resolve();
+          })
+          .on('error', (err) => reject(err))
+          .save(outputPaths.preview);
+      });
+
       this.logger.log(
         `[Processor] 모든 가공 완료. 소요시간: ${((Date.now() - startAt) / 1000).toFixed(2)}s`,
       );
