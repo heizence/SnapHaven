@@ -354,6 +354,10 @@ export class MediaPipelineService {
   async handleMediaUpload(payload: MediaUploadedEvent): Promise<void> {
     const { mediaId, s3Key, contentType, mimeType } = payload;
 
+    this.logger.log(
+      `[Pipeline] >>> 파이프라인 시작 | MediaId: ${mediaId} | Type: ${contentType}`,
+    );
+
     let attempt = 1;
     while (attempt <= MAX_RETRIES) {
       // 임시 스토리지 경로 설정
@@ -363,14 +367,23 @@ export class MediaPipelineService {
       );
 
       try {
+        this.logger.log(
+          `[Pipeline] [${attempt}/${MAX_RETRIES}] 원본 다운로드 시도...`,
+        );
         // Private S3에서 원본 파일 다운로드
         await this.s3UtilityService.downloadOriginal(s3Key, originalLocalPath);
+
+        const stats = await fsPromises.stat(originalLocalPath);
+        this.logger.log(
+          `[Pipeline] 다운로드 완료: ${originalLocalPath} (${(stats.size / 1024 / 1024).toFixed(2)} MB)`,
+        );
 
         let processedkeys: ProcessedKeys;
 
         // 미디어 타입 분기 및 처리 실행
         if (contentType === ContentType.IMAGE) {
           // 이미지 처리: L, M, S 생성 및 Public S3 업로드 (sharp)
+          this.logger.log(`[Pipeline] 이미지 프로세싱 시작: ${mediaId}`);
           processedkeys = await this.mediaProcessorService.processImage(
             originalLocalPath,
             mediaId,
@@ -378,6 +391,7 @@ export class MediaPipelineService {
           );
         } else {
           // 비디오 처리: 트랜스코딩, 썸네일, 클립 생성 (FFmpeg)
+          this.logger.log(`[Pipeline] 비디오 프로세싱 시작: ${mediaId}`);
           processedkeys = await this.mediaProcessorService.processVideo(
             originalLocalPath,
             mediaId,
@@ -389,17 +403,28 @@ export class MediaPipelineService {
           ...processedkeys,
           status: ContentStatus.ACTIVE,
         });
-
+        this.logger.log(
+          `[Pipeline] <<< 파이프라인 완료 및 캐시 무효화: MediaId: ${mediaId}`,
+        );
         await this.redisService.delMediaListCache(); // 메인 목록 캐시 삭제
         break; // 성공 시 종료
       } catch (error) {
+        this.logger.error(
+          `[Pipeline Error] 시도 ${attempt} 실패: ${error.message}`,
+          error.stack,
+        );
+
         // DB 상태를 FAILED로 업데이트
         if (attempt === MAX_RETRIES) {
+          this.logger.error(
+            `[Pipeline Critical] 최대 재시도 횟수 도달. MediaId ${mediaId} 처리 실패.`,
+          );
           await this.mediaItemRepository.update(mediaId, {
             status: ContentStatus.FAILED,
           });
           break;
         } else {
+          this.logger.warn(`[Pipeline] 1000ms 후 재시도 예정...`);
           await new Promise((res) => setTimeout(res, 1000 * attempt));
           attempt++;
         }
@@ -408,6 +433,9 @@ export class MediaPipelineService {
           if (fs.existsSync(originalLocalPath)) {
             // 파일이 존재하는지 먼저 확인
             await fsPromises.unlink(originalLocalPath);
+            this.logger.log(
+              `[Pipeline] 임시 원본 파일 삭제 완료: ${originalLocalPath}`,
+            );
           }
         } catch (cleanupError) {
           this.logger.error(

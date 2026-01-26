@@ -126,6 +126,10 @@ export class MediaProcessorService {
     localPath: string,
     mediaId: number,
   ): Promise<ProcessedKeys> {
+    this.logger.log(
+      `[Processor] 비디오 가공 프로세스 진입 | MediaId: ${mediaId}`,
+    );
+    const startAt = Date.now();
     const keys: ProcessedKeys = {};
     const uniqueFolderName = `${mediaId}_${Date.now()}`;
     const tempBaseKey = `media-items/${uniqueFolderName}`;
@@ -147,6 +151,7 @@ export class MediaProcessorService {
       // 트랜스코딩 (MP4)
       processingTasks.push(
         new Promise((resolve, reject) => {
+          this.logger.log(`[Processor] [Task 1] 트랜스코딩 시작...`);
           ffmpeg(localPath)
             .outputOptions([
               '-vcodec libx264',
@@ -154,16 +159,13 @@ export class MediaProcessorService {
               '-b:v 1000k',
               '-preset slow',
               '-crf 23',
-              '-pix_fmt yuv420p',
-            ])
-            .on('end', () => resolve())
-            .on('error', (err) =>
-              reject(
-                new InternalServerErrorException(
-                  `Transcoding failed: ${err.message}`,
-                ),
-              ),
-            )
+              '-threads 1',
+            ]) // threads 제한 추가 권장
+            .on('end', () => {
+              this.logger.log(`[Processor] [Task 1] 트랜스코딩 완료`);
+              resolve();
+            })
+            .on('error', (err) => reject(err))
             .save(outputPaths.playback);
         }),
       );
@@ -171,53 +173,54 @@ export class MediaProcessorService {
       // 썸네일 추출
       processingTasks.push(
         new Promise((resolve, reject) => {
+          this.logger.log(`[Processor] [Task 2] 썸네일 추출 시작...`);
           ffmpeg(localPath)
             .screenshots({
               timestamps: ['00:00:01.000'],
-              filename: path.basename(outputPaths.thumbnail), // thumbnail.jpg
+              filename: path.basename(outputPaths.thumbnail),
               folder: tempLocalDir,
               size: '640x?',
-              count: 1,
             })
-            .on('end', () => resolve())
-            .on('error', (err) =>
-              reject(
-                new InternalServerErrorException(
-                  `Thumbnail failed: ${err.message}`,
-                ),
-              ),
-            );
+            .on('end', () => {
+              this.logger.log(`[Processor] [Task 2] 썸네일 추출 완료`);
+              resolve();
+            })
+            .on('error', (err) => reject(err));
         }),
       );
 
       // 미리보기 클립 생성 (5s Muted)
       processingTasks.push(
         new Promise((resolve, reject) => {
+          this.logger.log(`[Processor] [Task 3] 미리보기 클립 생성 시작...`);
           ffmpeg(localPath)
             .outputOptions([
               '-ss 00:00:00.000',
               `-t ${VIDEO_PREVIEW_DURATION}`,
-              '-an', // No audio (Muted)
+              '-an',
               '-vcodec libx264',
-              '-crf 28',
               '-preset ultrafast',
             ])
-            .on('end', () => resolve())
-            .on('error', (err) =>
-              reject(
-                new InternalServerErrorException(
-                  `Preview clip failed: ${err.message}`,
-                ),
-              ),
-            )
+            .on('end', () => {
+              this.logger.log(`[Processor] [Task 3] 미리보기 완료`);
+              resolve();
+            })
+            .on('error', (err) => reject(err))
             .save(outputPaths.preview);
         }),
       );
 
       // 모든 처리 작업 완료 대기
+      this.logger.log(
+        `[Processor] 모든 FFmpeg 태스크 병렬 실행 중 (Promise.all)...`,
+      );
       await Promise.all(processingTasks);
+      this.logger.log(
+        `[Processor] 모든 가공 완료. 소요시간: ${((Date.now() - startAt) / 1000).toFixed(2)}s`,
+      );
 
       // Public S3 업로드
+      this.logger.log(`[Processor] 가공 파일 S3 업로드 시작...`);
       const uploadResults = await Promise.all([
         this.s3UtilityService.uploadProcessedFile(
           outputPaths.playback,
@@ -235,6 +238,7 @@ export class MediaProcessorService {
           'video/mp4',
         ),
       ]);
+      this.logger.log(`[Processor] S3 업로드 완료`);
 
       // URL 맵 업데이트
       keys.keyVideoPlayback = uploadResults[0];
@@ -259,6 +263,9 @@ export class MediaProcessorService {
       await fs
         .rm(tempLocalDir, { recursive: true, force: true })
         .catch(() => {});
+      this.logger.log(
+        `[Processor] 임시 작업 디렉토리 삭제 완료: ${tempLocalDir}`,
+      );
     }
   }
 }
