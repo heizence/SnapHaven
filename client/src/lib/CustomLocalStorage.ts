@@ -2,6 +2,7 @@ export interface UserState {
   id?: number;
   nickname?: string;
   profileImageKey?: string | null;
+  role?: "ADMIN" | "USER";
 }
 
 const STORAGE_KEY = "userState";

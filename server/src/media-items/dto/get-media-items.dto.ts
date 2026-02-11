@@ -49,6 +49,12 @@ export class GetMediaItemsReqDto {
   @IsOptional()
   @IsString()
   tag?: string;
+
+  @IsOptional()
+  lastId?: string; // 마지막으로 본 아이템의 ID
+
+  @IsOptional()
+  lastValue?: string | number; // 정렬 기준이 '인기순'일 경우 마지막으로 본 좋아요 수
 }
 
 export class GetMediaItemsResDto {

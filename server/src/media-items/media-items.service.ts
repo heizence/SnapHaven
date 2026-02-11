@@ -136,29 +136,33 @@ export class MediaItemsService {
     isFetchingMyUploads?: boolean,
   ) {
     const limit = 40;
-    const { page, sort, type, keyword, tag } = query;
-    const offset = (page - 1) * limit;
+    const { sort, type, keyword, tag, lastId, lastValue } = query;
+
+    // lastId가 문자열로 들어올 수 있으므로 숫자로 변환
+    const numericLastId = lastId ? Number(lastId) : null;
+
+    console.log('findallFromDB. query : ', query);
 
     const qb = this.mediaRepository
       .createQueryBuilder('media')
+      .leftJoin('media.owner', 'user')
+      .leftJoin('media.likedByUsers', 'likes')
+      .leftJoin('media.tags', 'tag')
+      .leftJoin('media.album', 'album')
       .where('media.status = :status', { status: ContentStatus.ACTIVE })
       .andWhere(
         new Brackets((subQb) => {
           subQb
-            .where('media.albumId IS NULL') // 단일 콘텐츠인 경우 그대로 노출
+            .where('media.albumId IS NULL')
             .orWhere('album.status = :status', {
               status: ContentStatus.ACTIVE,
-            }); // 앨범 콘텐츠인 경우 앨범도 ACTIVE여야 함
+            });
         }),
       )
-
-      // 내가 업로드한 콘텐츠 필터링(내 업로드 콘텐츠 조회 시 사용)
       .andWhere(
         isFetchingMyUploads ? 'media.ownerId = :currentUserId' : '1=1',
         { currentUserId },
       )
-
-      // 앨범 내 아이템 중 대표 콘텐츠만 필터링
       .andWhere(
         new Brackets((subQb) => {
           subQb
@@ -166,15 +170,12 @@ export class MediaItemsService {
             .orWhere('media.isRepresentative = 1');
         }),
       )
-      .leftJoin('media.owner', 'user')
-      .leftJoin('media.likedByUsers', 'likes')
-      .leftJoin('media.tags', 'tag')
-      .leftJoin('media.album', 'album')
-
       .andWhere(type !== 'ALL' ? 'media.type = :type' : '1=1', { type });
+
     if (tag) {
       qb.andWhere('tag.name = :searchTag', { searchTag: tag });
     }
+
     if (keyword) {
       const searchPattern = `%${keyword}%`;
       qb.andWhere(
@@ -186,6 +187,14 @@ export class MediaItemsService {
             });
         }),
       );
+    }
+
+    // 커서 기반 조건 처리
+    if (numericLastId) {
+      if (sort === MediaSort.LATEST) {
+        // 최신순은 ID가 작아지는 순서이므로 단순 ID 비교가 가장 정확
+        qb.andWhere('media.id < :numericLastId', { numericLastId });
+      }
     }
 
     qb.select([
@@ -204,9 +213,7 @@ export class MediaItemsService {
       'user.nickname',
       'album.id',
     ])
-      // DISTINCT를 추가하여 조인으로 인한 중복 카운트 방지
       .addSelect('COUNT(DISTINCT likes.id)', 'likeCount')
-      // 서브쿼리에 LIMIT 1을 추가하여 성능 최적화 및 결과 보장
       .addSelect(
         currentUserId
           ? `(SELECT 1 FROM user_media_likes WHERE user_media_likes.user_id = ${currentUserId} AND user_media_likes.media_id = media.id LIMIT 1)`
@@ -217,18 +224,36 @@ export class MediaItemsService {
       .addGroupBy('user.id')
       .addGroupBy('album.id');
 
+    // 인기순 커서 처리
+    if (numericLastId && sort === MediaSort.POPULAR) {
+      const lastLikeCount = Number(lastValue || 0);
+      qb.having(
+        '(COUNT(DISTINCT likes.id) < :lastLikeCount OR (COUNT(DISTINCT likes.id) = :lastLikeCount AND media.id < :numericLastId))',
+        { lastLikeCount, numericLastId },
+      );
+    }
+
+    // 정렬 설정
     if (sort === MediaSort.LATEST) {
-      qb.orderBy('media.createdAt', 'DESC').addOrderBy('media.id', 'DESC');
+      // ID를 보조 정렬 지표로 사용하여 순서를 보장
+      qb.orderBy('media.id', 'DESC');
     } else if (sort === MediaSort.POPULAR) {
       qb.orderBy('likeCount', 'DESC').addOrderBy('media.id', 'DESC');
     } else {
-      // 기본 정렬값 명시
       qb.orderBy('media.id', 'DESC');
     }
 
-    qb.offset(offset).limit(limit);
+    qb.limit(limit);
 
     const rawItems: RawMediaItemResult[] = await qb.getRawMany();
+
+    console.log(
+      'rawItems count : ',
+      rawItems.length,
+      'lastId was : ',
+      numericLastId,
+    );
+
     const mappedItems: MediaItemDto[] = rawItems.map((rawItem) => ({
       id: rawItem.media_id,
       title: rawItem.media_title,
@@ -243,6 +268,7 @@ export class MediaItemsService {
       createdAt: rawItem.media_created_at,
       albumId: rawItem.album_id || null,
       isLikedByCurrentUser: rawItem.isLiked === 1,
+      likeCount: Number(rawItem.likeCount),
     }));
 
     const totalCounts = await this.getItemsCount(
