@@ -13,6 +13,7 @@ export interface SignInResDto {
   id: number;
   nickname: string;
   profileImageKey: string | null;
+  role: "ADMIN" | "USER";
 }
 
 // 구글 로그인(회원가입 포함)

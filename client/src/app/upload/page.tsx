@@ -15,6 +15,7 @@ import {
 import { useLoading } from "@/contexts/LoadingProvider";
 import { uploadFilesToS3, uploadLargeVideoToS3 } from "./utils/uploadToS3";
 import { Tag } from "@/types/api-dtos";
+import CustomLocalStorage from "@/lib/CustomLocalStorage";
 
 interface FileToUpload {
   fileOrigin: File;
@@ -33,9 +34,10 @@ const UploadModeArr = [
   { type: "ALBUM", label: "묶음(앨범)" },
 ];
 
-// (개발 환경)테스트용 콘텐츠 업로드 기능 추가
-if (process.env.NODE_ENV === "development")
-  UploadModeArr.push({ type: "TEST", label: "테스트용 콘텐츠 업로드" });
+const userInfo = CustomLocalStorage.getUserInfo();
+
+if (process.env.NODE_ENV === "development" || userInfo?.role === "ADMIN")
+  UploadModeArr.push({ type: "TEST", label: "(테스트용)콘텐츠 대량 업로드" });
 
 export default function Page() {
   const [files, setFiles] = useState<FileToUpload[]>([]);
