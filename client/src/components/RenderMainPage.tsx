@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { throttle } from "lodash";
 import RenderContents from "@/components/RenderContents";
 import NoDataMessage from "@/components/ui/NoDataMessage";
 import { ITEM_REQUEST_LIMIT } from "@/constants";
@@ -24,10 +23,11 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
   const [totalCount, setTotalCount] = useState<number>(0);
   const [filterType, setFilterType] = useState<FilterType>(FilterType.ALL);
   const [orderType, setOrderType] = useState<OrderType>(OrderType.LATEST);
-  const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState(true);
 
   const isFetching = useRef(false);
+  const observerTarget = useRef<HTMLDivElement>(null); // Intersection Observer를 위한 Ref
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -36,41 +36,48 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
 
   const { showLoading, hideLoading } = useLoading();
 
-  // 스크롤 보존용 ref
-  const scrollPositionRef = useRef(0);
-
   const getFeeds = useCallback(
-    async (forcedPage?: number, forcedOrder?: OrderType, forcedFilter?: FilterType) => {
+    async (isInitial: boolean = false) => {
       if (isFetching.current) return;
       isFetching.current = true;
 
-      const loadPage = forcedPage ?? page;
-      const loadOrder = forcedOrder ?? orderType;
-      const loadFilter = forcedFilter ?? filterType;
+      // 커서 데이터 추출
+      const lastItem = isInitial ? null : photos[photos.length - 1];
+
+      // 최신순이면 createdAt을, 인기순이면 likeCount를 lastValue로 사용합니다.
+      const lastValue = lastItem
+        ? orderType === OrderType.LATEST
+          ? lastItem.createdAt
+          : lastItem.likeCount
+        : undefined;
+      const lastId = lastItem?.key;
 
       // 최초 로딩 or 필터/정렬 변경 시에만 스피너 표시
-      if (isInit) {
+      if (isInitial) {
         showLoading();
       }
 
       const request = {
-        page: loadPage,
-        sort: loadOrder,
-        type: loadFilter,
+        sort: orderType,
+        type: filterType,
         keyword: keyword || "",
         tag: tagName || "",
+        lastId,
+        lastValue,
       };
 
       const res = await getMediaItemsAPI(request);
 
       if (res.code === 200) {
         const items = res.data.items;
+
         const photos: Photo[] = items.map((item) => ({
           key: item.id,
           type: item.type,
           title: item.title,
           albumId: item.albumId,
           isLikedByCurrentUser: item.isLikedByCurrentUser,
+          likeCount: item.likeCount,
 
           width: item.width,
           height: item.height,
@@ -80,26 +87,23 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
           keyImageSmall: item.keyImageSmall,
           keyVideoPreview: item.type === ContentType.VIDEO ? item.keyVideoPreview : null,
           keyVideoPlayback: item.type === ContentType.VIDEO ? item.keyVideoPlayback : null,
+          createdAt: item.createdAt,
         }));
 
         // 스크롤 중에는 기존 내용 유지 + append
         setPhotos((prev) => [...prev, ...photos]);
         setTotalCount(res.data?.totalCounts || 0);
-        setPage(loadPage + 1);
 
         if (items.length < ITEM_REQUEST_LIMIT) {
           setHasMore(false);
         }
       }
 
-      if (isInit) {
-        setIsInit(false);
-      }
-
+      setIsInit(false);
       hideLoading();
       isFetching.current = false;
     },
-    [page, orderType, filterType, keyword, tagName],
+    [photos, orderType, filterType, keyword, tagName, showLoading, hideLoading],
   );
 
   const handleItemOnclick = (photo: Photo) => {
@@ -114,32 +118,33 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
   useEffect(() => {
     // 기존 데이터 유지 X → 초기화 후 새 로딩
     setPhotos([]);
-    setPage(1);
     setHasMore(true);
-
-    getFeeds(1, orderType, filterType);
+    setIsInit(true);
+    getFeeds(true);
   }, [filterType, orderType, keyword, tagName]);
 
   // 스크롤 이벤트
   useEffect(() => {
-    const handleScrollLogic = () => {
-      const bottom =
-        window.innerHeight + window.scrollY >= document.documentElement.offsetHeight - 400;
+    if (!hasMore || isFetching.current || isInit) return;
 
-      if (bottom && hasMore) {
-        scrollPositionRef.current = window.scrollY; // 현재 위치 저장
-        getFeeds();
-      }
-    };
+    // 감시 대상이 화면에 보이면 데이터를 가져옵니다.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          getFeeds();
+        }
+      },
+      { threshold: 0.1 }, // 대상이 10% 정도 보일 때 즉시 로딩
+    );
 
-    const throttledHandleScroll = throttle(handleScrollLogic, 200);
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
 
-    window.addEventListener("scroll", throttledHandleScroll);
     return () => {
-      window.removeEventListener("scroll", throttledHandleScroll);
-      throttledHandleScroll.cancel();
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
     };
-  }, [getFeeds, hasMore]);
+  }, [getFeeds, hasMore, isInit]);
 
   // 메인 페이지 헤더 랜더링
   const MainHeader = () => {
@@ -258,6 +263,9 @@ export default function RenderMainPage({ type }: { type: RenderType }) {
           onClick={({ photo }: { photo: Photo }) => handleItemOnclick(photo)}
         />
       )}
+
+      {/* 관찰 대상 (Sentinel) */}
+      <div ref={observerTarget} className="h-10 w-full" />
 
       {/* No Data */}
       <div className="mt-10">
