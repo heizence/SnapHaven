@@ -13,6 +13,7 @@ export interface SignInResDto {
   id: number;
   nickname: string;
   profileImageKey: string | null;
+  role: "ADMIN" | "USER";
 }
 
 // 구글 로그인(회원가입 포함)
@@ -165,7 +166,7 @@ export type Tag = {
 
 // 각 미디어 아이템 형식
 type MediaItemDto = {
-  id: number;
+  id: string;
   title: string;
   type: ContentType.IMAGE | ContentType.VIDEO;
   status: ContentStatus;
@@ -178,15 +179,19 @@ type MediaItemDto = {
   keyVideoPreview: string | null;
   keyVideoPlayback: string | null;
   isLikedByCurrentUser: boolean;
+  likeCount: number;
+  createdAt: string;
 };
 
 // 미디어 아이템 불러오기(앨범 포함)
 export interface GetMediaItemsReqDto {
-  page?: number; // starts with 1
+  //page?: number; // starts with 1
   sort?: OrderType;
   type?: FilterType;
   keyword?: string;
   tag?: string;
+  lastId?: string; // 마지막으로 본 아이템의 ID
+  lastValue?: string | number; // 정렬 기준이 '인기순'일 경우 마지막으로 본 좋아요 수/조회수
 }
 
 // 미디어 아이템 불러오기 응답(내 업로드, 내 좋아요 조회 시에도 사용)

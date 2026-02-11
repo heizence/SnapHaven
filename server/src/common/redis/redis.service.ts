@@ -86,6 +86,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     currentUserId?: number,
     isFetchingMyUploads?: boolean,
   ): Promise<T> {
+    // 커서(lastId)가 있다는 것은 추가 데이터를 불러오는 중임을 의미
+    // 무한 스크롤 깊은 지점의 데이터는 캐싱 효율이 낮으므로 DB에서 직접 가져온다
+    if (query.lastId) {
+      return await factory();
+    }
+
+    // 첫 페이지 요청인 경우에만 캐시 로직을 수행
     const key = this.generateMediaKey(
       query,
       currentUserId,
@@ -128,9 +135,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async delUserFeedsCache(userId: number): Promise<void> {
     const pattern = `feed:*:user=${userId}`;
     await this.delByPattern(pattern);
-    // this.logger.log(
-    //   `[Redis] Cache cleared for User ${userId} feeds with pattern: ${pattern}`,
-    // );
   }
 
   // 특정 사용자의 특정 콘텐츠 상세 페이지 캐시 삭제
@@ -140,9 +144,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   ): Promise<void> {
     const key = `media:detail:${mediaId}:user=${userId ?? 'guest'}`;
     await this.client.del(key);
-    // this.logger.log(
-    //   `[Redis] Cache cleared for User ${userId}, Media ${mediaId}`,
-    // );
   }
 
   // 특정 사용자의 특정 앨범 상세 페이지 캐시 삭제
@@ -153,9 +154,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.delByPattern(
       `album:detail:${albumId}:user=${userId ?? 'guest'}`,
     );
-    // this.logger.log(
-    //   `[Redis] Cache cleared for User ${userId}, album ${albumId}`,
-    // );
   }
 
   /*** 아래 매서드들은 특정 콘텐츠가 수정, 삭제되었을 때 사용(전체 사용자들에게 반영해 줄 필요가 있을 때) ***/
@@ -183,18 +181,24 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     currentUserId?: number,
     isFetchingMyUploads?: boolean,
   ): string {
-    const {
-      page = 1,
-      sort = 'LATEST',
-      type = 'ALL',
-      tag = '',
-      keyword = '',
-    } = query;
-    let key = `feed:s=${sort}:t=${type}:p=${page}`;
+    const { sort = 'LATEST', type = 'ALL', tag = '', keyword = '' } = query;
+
+    // first 라는 식별자를 사용하여 첫 페이지임을 명시
+    let key = `feed:first:s=${sort}:t=${type}`;
+
     if (tag) key += `:tag=${tag}`;
     if (keyword) key += `:kw=${keyword}`;
-    if (isFetchingMyUploads) key += `:myUploads=${currentUserId}`;
-    else if (currentUserId) key += `:user=${currentUserId}`;
+
+    // 내 업로드와 일반 피드 구분
+    if (isFetchingMyUploads) {
+      key += `:my=${currentUserId}`;
+    } else if (currentUserId) {
+      // 로그인 사용자의 경우 '좋아요' 여부가 포함되므로 사용자별 키 생성
+      key += `:u=${currentUserId}`;
+    } else {
+      key += `:u=guest`;
+    }
+
     return key;
   }
 }

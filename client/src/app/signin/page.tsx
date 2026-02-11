@@ -54,15 +54,15 @@ export default function Page() {
     setEmailStatus("checking");
 
     showLoading();
-    const request: SignInReqDto = {
+    const request = {
       email,
       password,
     };
     const res = await signinAPI(request);
 
     if (res.code === 200) {
-      const { id, nickname, profileImageKey } = res.data;
-      CustomLocalStorage.saveUserInfo({ id, nickname, profileImageKey });
+      const { id, nickname, profileImageKey, role } = res.data;
+      CustomLocalStorage.saveUserInfo({ id, nickname, profileImageKey, role });
 
       router.push("/");
       router.refresh();
