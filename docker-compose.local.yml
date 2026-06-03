@@ -1,0 +1,39 @@
+# 로컬 개발/검증 전용 스택 (클라우드 비종속)
+# - 표준 PostgreSQL + Redis 만 구동. 어떤 클라우드로 옮겨도 동일하게 동작.
+# - 운영/배포용 docker-compose.yml 과 분리하여 로컬 실험이 배포에 영향 주지 않게 함.
+# 사용: docker compose -f docker-compose.local.yml up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: snaphaven-postgres-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: snaphaven
+      POSTGRES_PASSWORD: snaphaven
+      POSTGRES_DB: snaphaven_local
+    # 호스트에 네이티브 PostgreSQL(5432)이 떠 있어도 충돌하지 않도록 5433으로 매핑.
+    ports:
+      - "5433:5432"
+    volumes:
+      - snaphaven_pg_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U snaphaven -d snaphaven_local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: snaphaven-redis-local
+    restart: unless-stopped
+    # 호스트 네이티브 Redis(6379) 충돌 회피를 위해 6380으로 매핑.
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  snaphaven_pg_local:

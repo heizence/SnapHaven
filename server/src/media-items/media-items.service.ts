@@ -118,8 +118,8 @@ export class MediaItemsService {
       countQb.andWhere(
         new Brackets((where) => {
           where
-            .where('media.title LIKE :searchPattern', { searchPattern })
-            .orWhere('media.description LIKE :searchPattern', {
+            .where('media.title ILIKE :searchPattern', { searchPattern })
+            .orWhere('media.description ILIKE :searchPattern', {
               searchPattern,
             });
         }),
@@ -181,8 +181,8 @@ export class MediaItemsService {
       qb.andWhere(
         new Brackets((where) => {
           where
-            .where('media.title LIKE :searchPattern', { searchPattern })
-            .orWhere('media.description LIKE :searchPattern', {
+            .where('media.title ILIKE :searchPattern', { searchPattern })
+            .orWhere('media.description ILIKE :searchPattern', {
               searchPattern,
             });
         }),
@@ -238,7 +238,9 @@ export class MediaItemsService {
       // ID를 보조 정렬 지표로 사용하여 순서를 보장
       qb.orderBy('media.id', 'DESC');
     } else if (sort === MediaSort.POPULAR) {
-      qb.orderBy('likeCount', 'DESC').addOrderBy('media.id', 'DESC');
+      // PG: SELECT alias로 정렬하면 따옴표 없이 생성돼 소문자 폴딩으로 실패하므로
+      // 집계식 자체로 정렬한다(MySQL/PG 공통 동작).
+      qb.orderBy('COUNT(DISTINCT likes.id)', 'DESC').addOrderBy('media.id', 'DESC');
     } else {
       qb.orderBy('media.id', 'DESC');
     }
@@ -523,7 +525,8 @@ export class MediaItemsService {
       // 좋아요를 최근에 누른 순서대로 정렬
       .addSelect('MAX(uml.created_at)', 'likedAt')
       .groupBy('media.id, user.id, album.id')
-      .orderBy('likedAt', 'DESC')
+      // PG: alias('likedAt') 정렬 대신 집계식으로 정렬(소문자 폴딩 회피)
+      .orderBy('MAX(uml.created_at)', 'DESC')
       .offset(offset)
       .limit(limit);
 

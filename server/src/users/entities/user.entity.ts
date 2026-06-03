@@ -63,7 +63,7 @@ export class User {
   @DeleteDateColumn({
     type: 'timestamp',
     name: 'deleted_at',
-    default: () => 'null',
+    nullable: true,
   })
   deletedAt: Date;
 

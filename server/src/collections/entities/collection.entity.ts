@@ -15,8 +15,8 @@ export class Collection {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  // user_id (FK to users.id)
-  @Column({ name: 'user_id', type: 'bigint' })
+  // user_id (FK to users.id). PG FK 타입 정합성을 위해 int 사용.
+  @Column({ name: 'user_id', type: 'int' })
   userId: number;
 
   @Column({ type: 'varchar', length: 30, nullable: false })

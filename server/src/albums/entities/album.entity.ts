@@ -19,8 +19,8 @@ export class Album {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  // owner_id (FK to users.id)
-  @Column({ name: 'owner_id', type: 'bigint' })
+  // owner_id (FK to users.id). PG FK 타입 정합성을 위해 int 사용.
+  @Column({ name: 'owner_id', type: 'int' })
   ownerId: number;
 
   @Column({ type: 'varchar', length: 30, nullable: true })
@@ -29,7 +29,13 @@ export class Album {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.ACTIVE })
+  // media_items.status와 동일한 PG enum 타입(content_status_enum)을 공유한다.
+  @Column({
+    type: 'enum',
+    enum: ContentStatus,
+    enumName: 'content_status_enum',
+    default: ContentStatus.ACTIVE,
+  })
   status: ContentStatus;
 
   // ---------------- Relationships ----------------

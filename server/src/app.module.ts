@@ -52,7 +52,7 @@ import { RedisModule } from './common/redis/redis.module';
       imports: [ConfigModule], // TypeORM 설정 내에서 ConfigService 를 사용하기 위해 ConfigModule 을 임포트
       inject: [ConfigService], // useFactory 에 ConfigService 를 주입
       useFactory: (configService: ConfigService) => ({
-        type: 'mysql',
+        type: 'postgres',
         host: configService.get<string>('DB_HOST'),
         port: configService.get<number>('DB_PORT'),
         username: configService.get<string>('DB_USERNAME'),
@@ -60,12 +60,16 @@ import { RedisModule } from './common/redis/redis.module';
         database: configService.get<string>('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
 
-        // 테스트 환경일 때는 true. 실행 시마다 데이터 자동 초기화
-        // 그 외 환경에서는 false. 엔티티와 DB 스키마 자동 동기화 안 함 (데이터 유실 방지)
+        // 스키마는 마이그레이션(npm run migration:run)으로만 관리한다.
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        migrationsTableName: 'migrations',
+        migrationsRun: false, // 부팅 시 자동 실행 안 함. 배포 단계에서 CLI로 명시 실행.
+
+        // synchronize는 항상 false. 엔티티-스키마 자동 동기화 금지(데이터 유실/예측불가 방지)
         synchronize: false,
 
-        // 실행되는 SQL 쿼리문 로깅하기. 'development' 환경일 때만 logging: true
-        logging: configService.get<string>('NODE_ENV') === 'development',
+        // 로컬에서만 SQL 로깅 활성화(쿼리 학습/디버깅용)
+        logging: configService.get<string>('NODE_ENV') === 'local',
       }),
     }),
     ThrottlerModule.forRootAsync({

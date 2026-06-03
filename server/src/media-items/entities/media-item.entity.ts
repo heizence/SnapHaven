@@ -19,10 +19,12 @@ export class MediaItem {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
-  @Column({ name: 'owner_id', type: 'bigint' })
+  // PostgreSQL은 FK 컬럼과 참조 PK(users.id, albums.id = int4)의 타입이 일치해야 하므로 int 사용.
+  // (MySQL은 bigint↔int FK를 허용하지만 PG는 거부함)
+  @Column({ name: 'owner_id', type: 'int' })
   ownerId: number;
 
-  @Column({ name: 'album_id', type: 'bigint', nullable: true })
+  @Column({ name: 'album_id', type: 'int', nullable: true })
   albumId: number | null;
 
   @Column({ type: 'enum', enum: ContentType, default: ContentType.IMAGE })
@@ -40,15 +42,24 @@ export class MediaItem {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  // PostgreSQL에는 tinyint가 없으므로 smallint 사용(0/1 숫자 의미 유지).
   @Column({
     name: 'is_representative',
-    type: 'tinyint',
+    type: 'smallint',
     nullable: true,
     default: 0,
   })
   isRepresentative: number;
 
-  @Column({ type: 'enum', enum: ContentStatus, default: ContentStatus.PENDING })
+  // ContentStatus는 albums.status와 동일한 PG enum 타입을 공유한다(enumName).
+  // 그래야 두 컬럼을 같은 파라미터로 비교하는 쿼리가 PG에서 동작한다.
+  // (PG는 컬럼마다 별도 enum 타입을 만들고, 서로 다른 enum 타입 간 비교를 거부함)
+  @Column({
+    type: 'enum',
+    enum: ContentStatus,
+    enumName: 'content_status_enum',
+    default: ContentStatus.PENDING,
+  })
   status: ContentStatus;
 
   @DeleteDateColumn({ name: 'deleted_at' })
